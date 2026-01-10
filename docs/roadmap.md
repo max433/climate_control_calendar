@@ -91,50 +91,63 @@ The integration is developed in four major milestones, each building upon the pr
 
 ---
 
-## Milestone 3: Device Control
+## Milestone 3: Device Control ✅
 
-**Status**: Planned
-**Target Date**: TBD
+**Status**: Completed
+**Completed Date**: 2026-01-10
 **Focus**: Climate device application, override flags, skip logic
 
 ### Goals
-- [ ] Implement climate device control logic
-- [ ] Override flag system (skip_until_next_slot, skip_today, force_slot)
-- [ ] Flag persistence and management
-- [ ] Service implementations (`set_flag`, `clear_flag`, `force_slot`, `refresh_now`)
-- [ ] Skip logic priority handling
-- [ ] Multi-device application strategy
+- [x] Implement climate device control logic
+- [x] Override flag system (skip_until_next_slot, skip_today, force_slot)
+- [x] Flag persistence and management (HA Storage)
+- [x] Service implementations (`set_flag`, `clear_flag`, `force_slot`, `refresh_now`)
+- [x] Skip logic with mutual exclusion
+- [x] Multi-device application strategy (sequential + retry)
 
-### Key Features
-- Apply climate payloads to devices (temperature, HVAC mode, preset)
-- Override flags for temporary behavior changes
-- Service calls for manual control
-- Sequential device application with error handling
-- Dry run support for device operations
+### Key Features Implemented
+- ✅ Apply climate payloads to devices (temperature, HVAC mode, preset, fan, swing)
+- ✅ Override flags with persistence across restarts
+- ✅ Service calls for manual control (4 services)
+- ✅ Sequential device application with 1-retry error handling
+- ✅ Continue on error (partial success reporting)
+- ✅ Smart flag auto-expiration based on type
 
-### Event Types to Implement
-- `climate_applied`: Payload successfully applied to device
-- `climate_skipped`: Application skipped due to flag
-- `flag_set`: Override flag activated
-- `flag_cleared`: Override flag cleared
+### Event Types Implemented
+- ✅ `climate_applied`: Payload successfully applied to device (with success/fail)
+- ✅ `climate_skipped`: Application skipped due to flag
+- ✅ `flag_set`: Override flag activated
+- ✅ `flag_cleared`: Override flag cleared
 
-### Services to Implement
-- `set_flag`: Set an override flag
-- `clear_flag`: Clear an override flag
-- `force_slot`: Force activation of specific slot
-- `refresh_now`: Force immediate coordinator refresh
+### Services Implemented
+- ✅ `set_flag`: Set an override flag (strict validation)
+- ✅ `clear_flag`: Clear an override flag
+- ✅ `force_slot`: Force activation of specific slot
+- ✅ `refresh_now`: Force immediate coordinator refresh
+
+### Architectural Decisions Made
+- **D016**: Device Application Strategy - Sequential
+- **D017**: Error Handling - Continue with Immediate Retry
+- **D018**: Override Flag Persistence - HA Storage
+- **D019**: Override Flag Priority - Mutual Exclusion
+- **D020**: Override Flag Expiration - Smart Auto-Clear
+- **D021**: Service Call Validation - Strict
+- **D022**: Slot UI Management - Deferred to M4
+- **D023**: Services and Dry Run - Services Override
 
 ### Testing Scope
-- Device application tests
-- Flag behavior tests (priority, persistence)
-- Service call tests
-- Error handling tests
+- [ ] Device application tests
+- [ ] Flag behavior tests (persistence, expiration, mutual exclusion)
+- [ ] Service call tests
+- [ ] Error handling and retry tests
+
+**Note**: Full testing deferred to M4 per policy.
 
 ---
 
 ## Milestone 4: Polish & Release
 
-**Status**: Planned
+**Status**: In Progress
 **Target Date**: TBD
 **Focus**: UX improvements, documentation, testing, localization
 
