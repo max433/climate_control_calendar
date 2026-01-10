@@ -260,14 +260,212 @@ Each decision is documented with:
 
 ---
 
+### D010: Slot & Calendar Interaction Logic
+
+**Date**: 2026-01-10
+**Milestone**: M2
+**Status**: Active
+
+**Context**: Define when time slots should be active in relation to calendar state.
+
+**Decision**: Slots are active **only when calendar is ON** and current time matches slot time window.
+
+**Logic**:
+```
+IF calendar_state == "on" AND current_time in slot_window:
+    slot is active
+ELSE:
+    slot is inactive
+```
+
+**Rationale**:
+- **Intuitive**: Calendar ON = "this pattern is active now"
+- **Clear Semantics**: Slots represent behaviors for when calendar pattern is active
+- **No Ambiguity**: Calendar OFF = nothing happens, regardless of time
+- **Use Case Alignment**: "Smart Working calendar active → apply work-from-home slots"
+
+**Alternatives Considered**:
+1. Slots independent of calendar state - Calendar becomes meaningless switch
+2. Configurable per slot - Unnecessary complexity for M2
+
+---
+
+### D011: Overlapping Slots Prevention
+
+**Date**: 2026-01-10
+**Milestone**: M2
+**Status**: Active
+
+**Context**: Handle situation where multiple slots have overlapping time windows.
+
+**Decision**: **Prevent overlapping slots** via validation in config flow. Reject slot creation/edit if it overlaps with existing slot.
+
+**Overlap Definition**: Two slots overlap if they share any time window on the same day(s).
+
+**Example (REJECTED)**:
+- Slot A: Mon-Fri 06:00-09:00
+- Slot B: Mon-Fri 08:00-12:00
+- Overlap: Mon-Fri 08:00-09:00 ❌
+
+**Rationale**:
+- **No Ambiguity**: User always knows which slot applies
+- **Simpler Engine**: No priority resolution logic needed
+- **Clear Feedback**: Validation error guides user to fix config
+- **Predictable**: No hidden priority rules to learn
+
+**Alternatives Considered**:
+1. First defined wins - Order-dependent, fragile
+2. Last defined wins - Confusing for users
+3. Most specific wins - Complex to implement and explain
+4. Allow with warning - Doesn't solve ambiguity
+
+**Implementation**: `validate_slot_overlap()` in helpers.py checks all existing slots before accepting new/modified slot.
+
+---
+
+### D012: Climate Payload Structure - All Optional
+
+**Date**: 2026-01-10
+**Milestone**: M2
+**Status**: Active
+
+**Context**: Define required vs. optional fields in climate payload configuration.
+
+**Decision**: **All fields optional**, at least one must be present.
+
+**Supported Fields**:
+- `temperature`: Target temperature (float)
+- `hvac_mode`: heat, cool, heat_cool, auto, off, dry, fan_only
+- `preset_mode`: away, home, eco, comfort, sleep, activity (device-specific)
+- `fan_mode`: auto, low, medium, high (device-specific)
+- `swing_mode`: on, off, vertical, horizontal (device-specific)
+
+**Valid Payloads**:
+```json
+{"temperature": 22.0}
+{"hvac_mode": "off"}
+{"temperature": 20.0, "hvac_mode": "heat", "preset_mode": "eco"}
+```
+
+**Invalid Payload**:
+```json
+{}  // At least one field required
+```
+
+**Rationale**:
+- **Flexibility**: Support diverse use cases (temp-only, mode-only, combined)
+- **Device Compatibility**: Not all devices support all features
+- **User Control**: User decides what to control
+- **Use Cases**: Night mode might only set "off", morning might set temp+mode
+
+**Validation**: Config flow validates at least one field present.
+
+---
+
+### D013: Slot Days of Week - Default All Days
+
+**Date**: 2026-01-10
+**Milestone**: M2
+**Status**: Active
+
+**Context**: What days should a slot apply to if user doesn't specify?
+
+**Decision**: **All days (Mon-Sun)** if not explicitly configured.
+
+**Behavior**:
+```python
+slot_days = user_input.get("days", ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"])
+```
+
+**Rationale**:
+- **Simplicity**: Most common case is "apply every day"
+- **Progressive Enhancement**: User can refine later
+- **Less Friction**: New users can create basic slot without day selection
+- **Explicit Override**: User can narrow to specific days if needed
+
+**Alternatives Considered**:
+1. No days default - Forces selection, annoying for simple cases
+2. Weekdays default - Too opinionated, not universal
+3. Current day only - Too narrow, poor default
+
+---
+
+### D014: Engine Trigger Strategy
+
+**Date**: 2026-01-10
+**Milestone**: M2
+**Status**: Active
+
+**Context**: When should the slot evaluation engine execute?
+
+**Decision**: **Engine runs on every coordinator update** (every 60 seconds).
+
+**Trigger Events**:
+1. Coordinator update tick (every 60s) → evaluate slots
+2. Calendar state change → coordinator updates → evaluate slots
+
+**Slot Activation Latency**: Maximum 60 seconds from slot time boundary.
+
+**Example**:
+- Slot "Morning" starts at 06:00:00
+- Coordinator next tick: 06:00:47
+- Slot activates at 06:00:47 (47s delay)
+
+**Rationale**:
+- **Simplicity**: Reuse existing coordinator infrastructure
+- **Acceptable Latency**: 60s delay acceptable for climate control
+- **Reliability**: Single update mechanism, no race conditions
+- **Resource Efficient**: No additional timers/schedulers
+
+**Alternatives Considered**:
+1. Only on calendar state change - Misses time-based slot transitions
+2. Every minute (separate scheduler) - Additional complexity, marginal improvement
+3. Event-based on time boundaries - Over-engineered for climate control
+
+**Future Optimization**: Can reduce to 30s if user feedback indicates 60s too slow.
+
+---
+
+### D015: Event Deduplication
+
+**Date**: 2026-01-10
+**Milestone**: M2
+**Status**: Active
+
+**Context**: Prevent event spam when slot remains active across multiple engine evaluations.
+
+**Decision**: **Emit events only on state transitions**, not on every evaluation.
+
+**Implementation**:
+- Track last active slot ID
+- Emit `slot_activated` only when slot ID changes from previous
+- Emit `slot_deactivated` when active slot becomes None
+- Emit `climate_applied` only when actually applying new payload
+
+**Example (60s evaluations)**:
+```
+06:00:00 → Slot A activates → emit slot_activated
+06:01:00 → Slot A still active → NO EVENT
+06:02:00 → Slot A still active → NO EVENT
+...
+09:00:00 → Slot A deactivates → emit slot_deactivated
+```
+
+**Rationale**:
+- **Meaningful Events**: Each event represents actual state change
+- **Automation-Friendly**: No spam, automations trigger only on real changes
+- **Log Clarity**: Logs show transitions, not redundant checks
+- **Performance**: Fewer events = less processing
+
+**Alternatives Considered**:
+1. Emit on every evaluation - Spams logs and event bus
+2. Throttle events (max 1/minute) - Still redundant, arbitrary limit
+
+---
+
 ## Future Decisions
 
 The following areas require decisions in upcoming milestones:
-
-### M2 Decisions Needed
-- Slot matching algorithm (exact time vs. closest match)
-- Climate payload structure (support for fan mode, swing, etc.)
-- Event emission throttling strategy
 
 ### M3 Decisions Needed
 - Override flag persistence across restarts
@@ -281,5 +479,5 @@ The following areas require decisions in upcoming milestones:
 
 ---
 
-**Last Updated**: 2026-01-10
-**Next Review**: End of Milestone 2
+**Last Updated**: 2026-01-10 (M2 decisions added)
+**Next Review**: End of Milestone 3

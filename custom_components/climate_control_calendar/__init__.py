@@ -6,17 +6,28 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.helpers.event import async_track_time_interval
+from datetime import timedelta
 
 from .const import (
     DOMAIN,
     CONF_CALENDAR_ENTITY,
+    CONF_CLIMATE_ENTITIES,
     CONF_DRY_RUN,
+    CONF_DEBUG_MODE,
+    CONF_SLOTS,
     DATA_COORDINATOR,
+    DATA_ENGINE,
+    DATA_EVENT_EMITTER,
     DATA_CONFIG,
     DATA_UNSUB,
     DEFAULT_UPDATE_INTERVAL,
+    DEFAULT_DRY_RUN,
+    DEFAULT_DEBUG_MODE,
 )
 from .coordinator import ClimateControlCalendarCoordinator
+from .engine import ClimateControlEngine
+from .events import EventEmitter
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,9 +48,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """
     _LOGGER.info("Setting up Climate Control Calendar integration")
 
-    # Get configuration
+    # Get configuration from data (immutable)
     calendar_entity_id = entry.data.get(CONF_CALENDAR_ENTITY)
-    dry_run = entry.data.get(CONF_DRY_RUN, True)
+    dry_run = entry.data.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
+    debug_mode = entry.data.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
+
+    # Get configuration from options (mutable)
+    climate_entities = entry.options.get(CONF_CLIMATE_ENTITIES, [])
+    slots = entry.options.get(CONF_SLOTS, [])
 
     if not calendar_entity_id:
         _LOGGER.error("No calendar entity configured")
@@ -52,6 +68,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "Please ensure the calendar integration is loaded."
         )
 
+    # Create event emitter
+    event_emitter = EventEmitter(hass, entry.entry_id)
+
+    # Create engine
+    engine = ClimateControlEngine(
+        hass=hass,
+        entry_id=entry.entry_id,
+        event_emitter=event_emitter,
+        dry_run=dry_run,
+        debug_mode=debug_mode,
+    )
+
     # Create coordinator
     coordinator = ClimateControlCalendarCoordinator(
         hass=hass,
@@ -62,16 +90,47 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
 
-    # Store coordinator and config in hass.data
+    # Store components in hass.data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         DATA_COORDINATOR: coordinator,
+        DATA_ENGINE: engine,
+        DATA_EVENT_EMITTER: event_emitter,
         DATA_CONFIG: {
             CONF_CALENDAR_ENTITY: calendar_entity_id,
             CONF_DRY_RUN: dry_run,
+            CONF_DEBUG_MODE: debug_mode,
+            CONF_CLIMATE_ENTITIES: climate_entities,
+            CONF_SLOTS: slots,
         },
         DATA_UNSUB: [],
     }
+
+    # Set up coordinator listener to trigger engine evaluation
+    async def _handle_coordinator_update() -> None:
+        """Handle coordinator updates by running engine evaluation."""
+        calendar_state = coordinator.get_current_calendar_state()
+
+        # Run engine evaluation
+        result = engine.evaluate(
+            calendar_state=calendar_state,
+            slots=slots,
+            climate_entities=climate_entities,
+        )
+
+        if debug_mode:
+            _LOGGER.debug(
+                "Engine evaluation complete | Active slot: %s | Changed: %s",
+                result.get("active_slot_id"),
+                result.get("changed"),
+            )
+
+    # Register coordinator listener
+    unsub_coordinator = coordinator.async_add_listener(_handle_coordinator_update)
+    hass.data[DOMAIN][entry.entry_id][DATA_UNSUB].append(unsub_coordinator)
+
+    # Trigger initial engine evaluation
+    await _handle_coordinator_update()
 
     # Set up platforms (empty for now, will be added in future milestones)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -80,9 +139,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     _LOGGER.info(
-        "Climate Control Calendar setup complete. Calendar: %s, Dry Run: %s",
+        "Climate Control Calendar setup complete. Calendar: %s, Dry Run: %s, Slots: %d, Climate entities: %d",
         calendar_entity_id,
         dry_run,
+        len(slots),
+        len(climate_entities),
     )
 
     return True

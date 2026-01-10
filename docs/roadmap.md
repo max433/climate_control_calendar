@@ -36,38 +36,58 @@ The integration is developed in four major milestones, each building upon the pr
 
 ---
 
-## Milestone 2: Slot Engine
+## Milestone 2: Slot Engine ✅
 
-**Status**: Planned
-**Target Date**: TBD
+**Status**: Completed (Core)
+**Completed Date**: 2026-01-10
 **Focus**: Time slot evaluation, dry run, event system
 
 ### Goals
-- [ ] Implement slot engine (`engine.py`)
-- [ ] Slot resolution algorithm (time-based matching)
-- [ ] Dry run execution with comprehensive logging
-- [ ] Event emission system (`events.py`)
-- [ ] Slot configuration UI in Options Flow
-- [ ] Climate payload structure definition
+- [x] Implement slot engine (`engine.py`)
+- [x] Slot resolution algorithm (time-based matching)
+- [x] Dry run execution with comprehensive logging
+- [x] Event emission system (`events.py`)
+- [x] Climate payload structure definition
+- [x] Overlapping slot validation (Decision D011)
+- [x] Engine integration with coordinator
+- [ ] Slot configuration UI in Options Flow *(Deferred to M3/M4)*
 
-### Key Features
-- Time slot definitions with start/end times
-- Day-of-week filtering for slots
-- Active slot detection based on current time
-- Event emission for all significant actions
-- Dry run mode with "what would happen" logging
+### Key Features Implemented
+- ✅ Time slot definitions with start/end times
+- ✅ Day-of-week filtering for slots (default: all days)
+- ✅ Active slot detection based on current time and calendar state
+- ✅ Event emission for all significant actions
+- ✅ Dry run mode with comprehensive "what would happen" logging
+- ✅ Event deduplication (emit only on state transitions)
+- ✅ Overlapping slot prevention via validation
+- ✅ Support for overnight slots (e.g., 23:00-02:00)
 
-### Event Types to Implement
-- `calendar_changed`: Calendar state transition
-- `slot_activated`: Time slot becomes active
-- `slot_deactivated`: Time slot becomes inactive
-- `dry_run_executed`: Dry run action logged
+### Event Types Implemented
+- ✅ `climate_control_calendar_calendar_changed`: Calendar state transition
+- ✅ `climate_control_calendar_slot_activated`: Time slot becomes active
+- ✅ `climate_control_calendar_slot_deactivated`: Time slot becomes inactive
+- ✅ `climate_control_calendar_dry_run_executed`: Dry run action logged
+- ✅ `climate_control_calendar_climate_applied`: Climate payload applied (stub for M3)
+- ✅ `climate_control_calendar_climate_skipped`: Climate application skipped (stub for M3)
+- ✅ `climate_control_calendar_flag_set`: Override flag set (stub for M3)
+- ✅ `climate_control_calendar_flag_cleared`: Override flag cleared (stub for M3)
+
+### Architectural Decisions Made
+- **D010**: Slot & Calendar Interaction - Slots active only when calendar ON
+- **D011**: Overlapping Slots Prevention - Validation rejects overlaps
+- **D012**: Climate Payload Structure - All fields optional, at least one required
+- **D013**: Slot Days Default - All days (Mon-Sun) if not specified
+- **D014**: Engine Trigger Strategy - Every coordinator update (60s)
+- **D015**: Event Deduplication - Emit only on state transitions
 
 ### Testing Scope
-- Comprehensive engine tests (various time scenarios)
-- Slot resolution algorithm tests
-- Dry run verification tests
-- Event emission tests
+- [ ] Comprehensive engine tests (various time scenarios)
+- [ ] Slot resolution algorithm tests
+- [ ] Dry run verification tests
+- [ ] Event emission tests
+- [ ] Overlapping slot validation tests
+
+**Note**: Testing to be completed per M2 testing policy (end-of-milestone). Slot UI management deferred to allow focus on core engine functionality.
 
 ---
 
@@ -271,21 +291,30 @@ We welcome contributions in these areas:
 **Note**: These are rough estimates and may change based on development progress and feedback.
 
 - **M1**: 1 week ✅ (Completed 2026-01-10)
-- **M2**: 2-3 weeks
+- **M2**: 1 day ✅ (Completed 2026-01-10) - *Faster than expected!*
 - **M3**: 2-3 weeks
 - **M4**: 2 weeks
-- **Total**: ~2 months to v1.0.0
+- **Total**: ~6-7 weeks to v1.0.0
 
 ---
 
-**Last Updated**: 2026-01-10
-**Next Review**: End of Milestone 2
+**Last Updated**: 2026-01-10 (M2 completed)
+**Next Review**: End of Milestone 3
 
 ---
 
 ## Changelog
 
-### 2026-01-10
+### 2026-01-10 (Evening) - M2 Completed
+- Completed Milestone 2 (Slot Engine) core functionality
+- Implemented engine.py with slot resolution algorithm
+- Implemented events.py with full event emission system
+- Added overlapping slot validation (Decision D011)
+- Integrated engine with coordinator
+- Documented 6 new architectural decisions (D010-D015)
+- Deferred slot UI management to M3/M4 to focus on engine quality
+
+### 2026-01-10 (Morning) - M1 Completed
 - Created roadmap document
 - Completed Milestone 1 (Foundation)
 - Defined M2-M4 goals and scope
