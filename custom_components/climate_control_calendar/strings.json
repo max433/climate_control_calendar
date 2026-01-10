@@ -1,0 +1,85 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Select Calendar",
+        "description": "Choose the calendar entity that will control your climate devices. This calendar will represent different usage patterns (smart working, vacation, weekly routine, etc.).\n\nAvailable calendars: {calendar_count}",
+        "data": {
+          "calendar_entity": "Calendar Entity"
+        }
+      },
+      "climate": {
+        "title": "Select Climate Devices",
+        "description": "Select the climate devices you want to control with this calendar.\n\nCalendar selected: {calendar_entity}\nAvailable climate devices: {climate_count}",
+        "data": {
+          "climate_entities": "Climate Entities (optional)"
+        }
+      },
+      "options": {
+        "title": "Configuration Options",
+        "description": "Configure operational settings.\n\nCalendar: {calendar_entity}\nClimate devices: {climate_count}",
+        "data": {
+          "dry_run": "Dry Run Mode (simulation only, no actual changes)",
+          "debug_mode": "Debug Mode (verbose logging)"
+        }
+      }
+    },
+    "error": {
+      "calendar_not_found": "The selected calendar entity was not found",
+      "no_calendars": "No calendar entities found in Home Assistant",
+      "cannot_connect": "Failed to connect to calendar entity",
+      "unknown": "Unexpected error occurred"
+    },
+    "abort": {
+      "already_configured": "This calendar is already configured",
+      "no_calendars": "No calendar entities available. Please install and configure a calendar integration first."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Update Configuration",
+        "description": "Update climate devices and operational settings.\n\nCalendar: {calendar_entity}",
+        "data": {
+          "climate_entities": "Climate Entities",
+          "dry_run": "Dry Run Mode (simulation only)",
+          "debug_mode": "Debug Mode (verbose logging)"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_flag": {
+      "name": "Set Override Flag",
+      "description": "Set an override flag to temporarily alter automatic climate control behavior. Only one flag can be active at a time (mutual exclusion).",
+      "fields": {
+        "flag_type": {
+          "name": "Flag Type",
+          "description": "Type of override flag: skip_today (skip until midnight), skip_until_next_slot (skip current slot), or force_slot (force specific slot)."
+        },
+        "target_slot_id": {
+          "name": "Target Slot ID",
+          "description": "Target slot ID (required when flag_type is force_slot). Find slot IDs in your configuration."
+        }
+      }
+    },
+    "clear_flag": {
+      "name": "Clear Override Flag",
+      "description": "Clear the currently active override flag and resume normal automatic behavior."
+    },
+    "force_slot": {
+      "name": "Force Slot Activation",
+      "description": "Force activation of a specific time slot, ignoring calendar state and time restrictions. This is a convenience wrapper for set_flag with flag_type=force_slot.",
+      "fields": {
+        "slot_id": {
+          "name": "Slot ID",
+          "description": "ID of the slot to force activate. The slot will remain active until manually cleared."
+        }
+      }
+    },
+    "refresh_now": {
+      "name": "Refresh Now",
+      "description": "Force immediate coordinator refresh and slot evaluation. Use this to apply configuration changes without waiting for the next automatic update (60 seconds)."
+    }
+  }
+}
