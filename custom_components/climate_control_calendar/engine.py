@@ -1,7 +1,7 @@
 """Slot evaluation engine for Climate Control Calendar integration."""
 from datetime import datetime, time
 import logging
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from homeassistant.core import HomeAssistant
 
@@ -16,11 +16,16 @@ from .const import (
     SLOT_DAYS,
     SLOT_CLIMATE_PAYLOAD,
     DAYS_OF_WEEK,
+    FLAG_FORCE_SLOT,
     LOG_PREFIX_ENGINE,
     LOG_PREFIX_DRY_RUN,
 )
 from .events import EventEmitter
 from .helpers import parse_time_string, get_current_day_name
+
+if TYPE_CHECKING:
+    from .flag_manager import FlagManager
+    from .applier import ClimatePayloadApplier
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,9 +36,10 @@ class ClimateControlEngine:
 
     Responsibilities:
     - Resolve active calendar state
-    - Resolve active time slot
+    - Resolve active time slot (or forced slot)
+    - Handle override flags
+    - Apply climate payloads or execute dry run
     - Emit events on state changes
-    - Execute dry run logging
     """
 
     def __init__(
@@ -41,6 +47,8 @@ class ClimateControlEngine:
         hass: HomeAssistant,
         entry_id: str,
         event_emitter: EventEmitter,
+        flag_manager: "FlagManager | None" = None,
+        applier: "ClimatePayloadApplier | None" = None,
         dry_run: bool = True,
         debug_mode: bool = False,
     ) -> None:
@@ -51,20 +59,26 @@ class ClimateControlEngine:
             hass: Home Assistant instance
             entry_id: Config entry ID
             event_emitter: Event emitter instance
+            flag_manager: Override flag manager (optional for M2 compatibility)
+            applier: Climate payload applier (optional for M2 compatibility)
             dry_run: Dry run mode enabled
             debug_mode: Debug logging enabled
         """
         self.hass = hass
         self.entry_id = entry_id
         self.event_emitter = event_emitter
+        self.flag_manager = flag_manager
+        self.applier = applier
         self.dry_run = dry_run
         self.debug_mode = debug_mode
 
         _LOGGER.info(
-            "%s Engine initialized | Dry Run: %s | Debug: %s",
+            "%s Engine initialized | Dry Run: %s | Debug: %s | Flags: %s | Applier: %s",
             LOG_PREFIX_ENGINE,
             self.dry_run,
             self.debug_mode,
+            "enabled" if flag_manager else "disabled",
+            "enabled" if applier else "disabled",
         )
 
     def _is_time_in_slot(
@@ -178,7 +192,27 @@ class ClimateControlEngine:
 
         return None
 
-    def evaluate(
+    def _find_slot_by_id(
+        self,
+        slots: list[dict[str, Any]],
+        slot_id: str,
+    ) -> dict[str, Any] | None:
+        """
+        Find slot by ID.
+
+        Args:
+            slots: List of slot configurations
+            slot_id: Slot ID to find
+
+        Returns:
+            Slot dict or None if not found
+        """
+        for slot in slots:
+            if slot.get(SLOT_ID) == slot_id:
+                return slot
+        return None
+
+    async def evaluate(
         self,
         calendar_state: str | None,
         slots: list[dict[str, Any]],
@@ -210,8 +244,36 @@ class ClimateControlEngine:
                 len(climate_entities),
             )
 
-        # Resolve active slot
-        active_slot = self.resolve_active_slot(calendar_state, slots)
+        # Check flag expiration (D020)
+        if self.flag_manager:
+            await self.flag_manager.async_check_expiration()
+
+        # Check for forced slot (takes precedence)
+        forced_slot_id = None
+        if self.flag_manager:
+            forced_slot_id = self.flag_manager.get_forced_slot_id()
+
+        active_slot = None
+
+        if forced_slot_id:
+            # Force slot active regardless of time/calendar
+            active_slot = self._find_slot_by_id(slots, forced_slot_id)
+            if active_slot:
+                _LOGGER.info(
+                    "%s Forcing slot: %s (ID: %s)",
+                    LOG_PREFIX_ENGINE,
+                    active_slot.get(SLOT_LABEL),
+                    forced_slot_id,
+                )
+            else:
+                _LOGGER.warning(
+                    "%s Forced slot ID not found: %s",
+                    LOG_PREFIX_ENGINE,
+                    forced_slot_id,
+                )
+        else:
+            # Normal slot resolution
+            active_slot = self.resolve_active_slot(calendar_state, slots)
 
         # Get previous active slot for change detection
         previous_slot_id = self.event_emitter.get_last_active_slot_id()
@@ -219,7 +281,7 @@ class ClimateControlEngine:
 
         # Handle slot activation
         if active_slot and current_slot_id != previous_slot_id:
-            self._handle_slot_activation(active_slot, climate_entities)
+            await self._handle_slot_activation(active_slot, climate_entities)
 
         # Handle slot deactivation
         elif not active_slot and previous_slot_id is not None:
@@ -245,15 +307,16 @@ class ClimateControlEngine:
             "active_slot_id": current_slot_id,
             "previous_slot_id": previous_slot_id,
             "changed": current_slot_id != previous_slot_id,
+            "forced": forced_slot_id is not None,
         }
 
-    def _handle_slot_activation(
+    async def _handle_slot_activation(
         self,
         slot: dict[str, Any],
         climate_entities: list[str],
     ) -> None:
         """
-        Handle slot activation (emit events, dry run).
+        Handle slot activation (emit events, apply payload).
 
         Args:
             slot: Activated slot configuration
@@ -274,8 +337,28 @@ class ClimateControlEngine:
             climate_payload=climate_payload,
         )
 
-        # Execute dry run for each climate entity
+        # Check if application should be skipped (D019)
+        if self.flag_manager and self.flag_manager.should_skip_application():
+            flag_type = self.flag_manager.get_active_flag_type()
+            _LOGGER.info(
+                "%s Skipping climate application due to flag: %s",
+                LOG_PREFIX_ENGINE,
+                flag_type,
+            )
+
+            # Emit skip events for each entity
+            for entity_id in climate_entities:
+                self.event_emitter.emit_climate_skipped(
+                    climate_entity_id=entity_id,
+                    slot_id=slot_id,
+                    slot_label=slot_label,
+                    reason=f"override_flag_{flag_type}",
+                )
+            return
+
+        # Apply payload or dry run
         if self.dry_run:
+            # Dry run mode
             self._execute_dry_run(
                 slot_id=slot_id,
                 slot_label=slot_label,
@@ -283,11 +366,25 @@ class ClimateControlEngine:
                 climate_entities=climate_entities,
             )
         else:
-            # M3: Actual device application will go here
-            _LOGGER.warning(
-                "%s Device application not yet implemented (M3). Dry run recommended.",
-                LOG_PREFIX_ENGINE,
-            )
+            # Real application (M3)
+            if self.applier:
+                await self._execute_application(
+                    slot_id=slot_id,
+                    slot_label=slot_label,
+                    climate_payload=climate_payload,
+                    climate_entities=climate_entities,
+                )
+            else:
+                _LOGGER.warning(
+                    "%s Applier not available, falling back to dry run logging",
+                    LOG_PREFIX_ENGINE,
+                )
+                self._execute_dry_run(
+                    slot_id=slot_id,
+                    slot_label=slot_label,
+                    climate_payload=climate_payload,
+                    climate_entities=climate_entities,
+                )
 
     def _handle_slot_deactivation(self, previous_slot_id: str) -> None:
         """
@@ -302,6 +399,58 @@ class ClimateControlEngine:
             slot_id=previous_slot_id,
             slot_label=f"Slot {previous_slot_id}",
             reason="time_window_ended",
+        )
+
+    async def _execute_application(
+        self,
+        slot_id: str,
+        slot_label: str,
+        climate_payload: dict[str, Any],
+        climate_entities: list[str],
+    ) -> None:
+        """
+        Execute real climate payload application.
+
+        Args:
+            slot_id: Source slot ID
+            slot_label: Source slot label
+            climate_payload: Climate settings
+            climate_entities: Target climate entities
+        """
+        if not climate_entities:
+            _LOGGER.warning(
+                "%s No climate entities configured, nothing to apply",
+                LOG_PREFIX_ENGINE,
+            )
+            return
+
+        if not climate_payload:
+            _LOGGER.warning(
+                "%s Slot has empty climate payload, nothing to apply",
+                LOG_PREFIX_ENGINE,
+            )
+            return
+
+        _LOGGER.info(
+            "%s Applying payload from slot '%s' to %d devices",
+            LOG_PREFIX_ENGINE,
+            slot_label,
+            len(climate_entities),
+        )
+
+        # Call applier
+        result = await self.applier.apply_to_devices(
+            climate_entities=climate_entities,
+            payload=climate_payload,
+            slot_id=slot_id,
+            slot_label=slot_label,
+        )
+
+        _LOGGER.info(
+            "%s Application result: %d/%d succeeded",
+            LOG_PREFIX_ENGINE,
+            result["succeeded"],
+            result["total"],
         )
 
     def _execute_dry_run(

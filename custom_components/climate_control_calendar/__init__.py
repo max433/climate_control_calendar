@@ -6,8 +6,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-from homeassistant.helpers.event import async_track_time_interval
-from datetime import timedelta
 
 from .const import (
     DOMAIN,
@@ -19,6 +17,8 @@ from .const import (
     DATA_COORDINATOR,
     DATA_ENGINE,
     DATA_EVENT_EMITTER,
+    DATA_FLAG_MANAGER,
+    DATA_APPLIER,
     DATA_CONFIG,
     DATA_UNSUB,
     DEFAULT_UPDATE_INTERVAL,
@@ -28,6 +28,9 @@ from .const import (
 from .coordinator import ClimateControlCalendarCoordinator
 from .engine import ClimateControlEngine
 from .events import EventEmitter
+from .flag_manager import FlagManager
+from .applier import ClimatePayloadApplier
+from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,11 +74,29 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create event emitter
     event_emitter = EventEmitter(hass, entry.entry_id)
 
-    # Create engine
+    # Create flag manager (M3)
+    flag_manager = FlagManager(
+        hass=hass,
+        entry_id=entry.entry_id,
+        event_emitter=event_emitter,
+    )
+
+    # Load flags from storage
+    await flag_manager.async_load()
+
+    # Create climate payload applier (M3)
+    applier = ClimatePayloadApplier(
+        hass=hass,
+        event_emitter=event_emitter,
+    )
+
+    # Create engine (with M3 enhancements)
     engine = ClimateControlEngine(
         hass=hass,
         entry_id=entry.entry_id,
         event_emitter=event_emitter,
+        flag_manager=flag_manager,
+        applier=applier,
         dry_run=dry_run,
         debug_mode=debug_mode,
     )
@@ -96,6 +117,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_COORDINATOR: coordinator,
         DATA_ENGINE: engine,
         DATA_EVENT_EMITTER: event_emitter,
+        DATA_FLAG_MANAGER: flag_manager,
+        DATA_APPLIER: applier,
         DATA_CONFIG: {
             CONF_CALENDAR_ENTITY: calendar_entity_id,
             CONF_DRY_RUN: dry_run,
@@ -112,7 +135,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         calendar_state = coordinator.get_current_calendar_state()
 
         # Run engine evaluation
-        result = engine.evaluate(
+        result = await engine.evaluate(
             calendar_state=calendar_state,
             slots=slots,
             climate_entities=climate_entities,
@@ -120,9 +143,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         if debug_mode:
             _LOGGER.debug(
-                "Engine evaluation complete | Active slot: %s | Changed: %s",
+                "Engine evaluation complete | Active slot: %s | Changed: %s | Forced: %s",
                 result.get("active_slot_id"),
                 result.get("changed"),
+                result.get("forced"),
             )
 
     # Register coordinator listener
@@ -138,8 +162,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
+    # Register services (M3) - only on first entry
+    if len(hass.data[DOMAIN]) == 1:
+        await async_setup_services(hass)
+
     _LOGGER.info(
-        "Climate Control Calendar setup complete. Calendar: %s, Dry Run: %s, Slots: %d, Climate entities: %d",
+        "Climate Control Calendar setup complete. "
+        "Calendar: %s, Dry Run: %s, Slots: %d, Climate entities: %d, Flags enabled: True",
         calendar_entity_id,
         dry_run,
         len(slots),
@@ -172,6 +201,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Cancel any subscriptions
         for unsub in entry_data.get(DATA_UNSUB, []):
             unsub()
+
+        # Unload services if last entry
+        await async_unload_services(hass)
 
         _LOGGER.info("Climate Control Calendar unloaded successfully")
 

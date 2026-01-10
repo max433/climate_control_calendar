@@ -463,14 +463,249 @@ slot_days = user_input.get("days", ["monday", "tuesday", "wednesday", "thursday"
 
 ---
 
+### D016: Device Application Strategy - Sequential
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: When applying climate payload to multiple devices, should we process sequentially or in parallel?
+
+**Decision**: **Sequential application** - Apply to one device at a time.
+
+**Implementation**:
+```python
+for entity_id in climate_entities:
+    await apply_payload_to_device(entity_id, payload)
+```
+
+**Rationale**:
+- **Simplicity**: Easier to implement and debug
+- **Error Isolation**: Each device's success/failure is independent and clear
+- **Predictable Logging**: Clear sequential log of what happened
+- **Acceptable Performance**: Climate control doesn't require sub-second updates
+
+**Alternatives Considered**:
+1. Parallel application - Faster but more complex error handling
+2. Parallel with chunking - Unnecessary complexity for climate use case
+
+**Performance**: For 5 devices × 2 service calls each, sequential adds ~500ms total. Acceptable for climate control.
+
+---
+
+### D017: Error Handling - Continue with Immediate Retry
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: When one device fails during payload application, how to handle?
+
+**Decision**: **Continue on error with immediate retry** before marking as failed.
+
+**Retry Logic**:
+1. Attempt to apply payload
+2. If fails: wait 1 second, retry once
+3. If still fails: log error, emit failure event, continue to next device
+4. At end: report partial success (X of Y devices succeeded)
+
+**Rationale**:
+- **Resilience**: Transient errors (momentary unavailability) can succeed on retry
+- **Better Than Nothing**: Applying to 4/5 devices better than 0/5
+- **User Awareness**: Events show which devices failed
+- **Not Aggressive**: Only 1 retry avoids hammering unavailable devices
+
+**Alternatives Considered**:
+1. Stop on first error - Too fragile, all-or-nothing
+2. Multiple retries - Overkill, delays other devices
+3. No retry - Gives up too easily on transient errors
+
+---
+
+### D018: Override Flag Persistence - HA Storage
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: Should override flags persist across Home Assistant restarts?
+
+**Decision**: **Use HA Storage** for flag persistence.
+
+**Implementation**:
+- Use `Store` helper from `homeassistant.helpers.storage`
+- Storage key: `climate_control_calendar_{entry_id}_flags`
+- Version: 1
+
+**Rationale**:
+- **Correct Pattern**: Storage designed for runtime state
+- **Persistence**: Flags survive restarts (important for user expectations)
+- **Separation**: Keeps runtime state separate from configuration (options)
+- **Migration Support**: Store versioning allows future schema changes
+
+**Alternatives Considered**:
+1. In-memory only - Lost on restart, poor UX
+2. ConfigEntry.options - Confuses configuration with runtime state
+3. Custom JSON files - Reinventing the wheel
+
+---
+
+### D019: Override Flag Priority - Mutual Exclusion
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: What happens if user sets multiple override flags?
+
+**Decision**: **Mutual exclusion** - Setting a new flag automatically clears any existing flag.
+
+**Behavior**:
+```
+Active: skip_today
+User sets: force_slot "evening"
+Result: skip_today cleared, force_slot "evening" active
+```
+
+**Rationale**:
+- **No Ambiguity**: Always exactly 0 or 1 flag active
+- **Predictable**: User knows which flag is in effect
+- **Simple Logic**: No priority resolution needed
+- **Clear UI**: One active flag to display
+
+**Alternatives Considered**:
+1. Priority hierarchy - More complex, harder to understand
+2. Allow multiple - Conflicting flags, confusing behavior
+
+---
+
+### D020: Override Flag Expiration - Smart Auto-Clear
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: Should flags automatically clear or require manual clearing?
+
+**Decision**: **Semantic auto-clear** based on flag type:
+
+| Flag | Expiration | Rationale |
+|------|------------|-----------|
+| `skip_today` | Auto-clear at midnight (00:00) | "Today" ends at midnight |
+| `skip_until_next_slot` | Auto-clear when next slot activates | Semantic meaning: skip current, not next |
+| `force_slot` | Manual clear only | User controls when to stop forcing |
+
+**Implementation**:
+- Engine checks flag expiration on each evaluation
+- Expired flags auto-cleared before slot resolution
+- Event emitted: `flag_cleared` with reason "expired"
+
+**Rationale**:
+- **Semantic Correctness**: Expiration matches flag meaning
+- **User Expectations**: "Skip today" should not affect tomorrow
+- **Flexibility**: Force slot gives user full control
+
+**Alternatives Considered**:
+1. All manual - skip_today staying active tomorrow is confusing
+2. All auto-clear - Force slot should be user-controlled
+
+---
+
+### D021: Service Call Validation - Strict
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: How to validate service call parameters?
+
+**Decision**: **Strict validation** at service call time.
+
+**Rules**:
+- `set_flag` with `flag_type: force_slot` **requires** `slot_id` parameter
+- `set_flag` with `flag_type: skip_*` **ignores** `slot_id` if provided
+- Missing required parameters → Service call error (not silent failure)
+
+**Example**:
+```yaml
+# Valid
+service: climate_control_calendar.set_flag
+data:
+  flag_type: force_slot
+  slot_id: a3f5c8d2e1b4
+
+# Invalid - raises error
+service: climate_control_calendar.set_flag
+data:
+  flag_type: force_slot
+  # Missing slot_id
+```
+
+**Rationale**:
+- **Immediate Feedback**: User knows instantly if call is wrong
+- **Better UX**: Error message guides correction
+- **Type Safety**: Prevents runtime surprises
+
+**Alternatives Considered**:
+1. Lenient validation - Runtime errors harder to debug
+
+---
+
+### D022: Slot UI Management - Deferred to M4
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: Should M3 implement slot management UI?
+
+**Decision**: **Defer to M4** - Focus M3 on device application and flags.
+
+**M3 Workaround**: Slots managed via Developer Tools (Services) or direct options edit.
+
+**Rationale**:
+- **Priority**: Device control functionality more critical than UI polish
+- **M4 Focus**: M4 is designated for UX improvements
+- **Complexity**: Slot UI requires multi-step form, validation feedback, day selection widgets
+- **Timeline**: Keeps M3 focused and achievable
+
+**M4 Scope**: Full slot CRUD UI with visual time picker, day selection, overlap validation feedback.
+
+---
+
+### D023: Services and Dry Run Mode - Services Override
+
+**Date**: 2026-01-10
+**Milestone**: M3
+**Status**: Active
+
+**Context**: Should service calls respect dry run mode?
+
+**Decision**: **Services ignore dry run** - Manual actions always execute.
+
+**Behavior**:
+```
+Integration: dry_run = true
+User calls: climate_control_calendar.force_slot
+Result: Slot actually forced (dry run bypassed for this manual action)
+```
+
+**Rationale**:
+- **User Intent**: Service call is explicit manual override
+- **Testing**: Users can test manual controls even during dry run phase
+- **Separation**: Dry run applies to automatic behavior, not manual commands
+- **Escape Hatch**: Provides way to force action when needed
+
+**Alternatives Considered**:
+1. Services respect dry run - User has no way to manually control during testing
+
+**Exception**: Dry run flag itself doesn't affect service call validation, only automatic slot application.
+
+---
+
 ## Future Decisions
 
 The following areas require decisions in upcoming milestones:
-
-### M3 Decisions Needed
-- Override flag persistence across restarts
-- Skip logic priority (multiple flags active)
-- Device application strategy (sequential vs. parallel)
 
 ### M4 Decisions Needed
 - Diagnostic data collection
@@ -479,5 +714,5 @@ The following areas require decisions in upcoming milestones:
 
 ---
 
-**Last Updated**: 2026-01-10 (M2 decisions added)
-**Next Review**: End of Milestone 3
+**Last Updated**: 2026-01-10 (M3 decisions added: D016-D023)
+**Next Review**: End of Milestone 4

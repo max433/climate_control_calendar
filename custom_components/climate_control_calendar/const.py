@@ -59,6 +59,8 @@ STORAGE_KEY: Final = f"{DOMAIN}_storage"
 DATA_COORDINATOR: Final = "coordinator"
 DATA_ENGINE: Final = "engine"
 DATA_EVENT_EMITTER: Final = "event_emitter"
+DATA_FLAG_MANAGER: Final = "flag_manager"
+DATA_APPLIER: Final = "applier"
 DATA_CONFIG: Final = "config"
 DATA_UNSUB: Final = "unsub"
 
