@@ -19,9 +19,7 @@ from .const import (
     CONF_DEBUG_MODE,
     DEFAULT_DRY_RUN,
     DEFAULT_DEBUG_MODE,
-    LOG_PREFIX_CONFIG_FLOW,
 )
-from .helpers import get_calendar_entities, get_climate_entities
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,22 +39,17 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """
-        Handle the initial step - calendar selection.
-
-        Args:
-            user_input: User input from form
-
-        Returns:
-            FlowResult for next step or create entry
-        """
+        """Handle the initial step - calendar selection."""
         errors: dict[str, str] = {}
 
         # Get available calendar entities
-        calendar_entities = get_calendar_entities(self.hass)
+        calendar_entities = [
+            state.entity_id
+            for state in self.hass.states.async_all("calendar")
+        ]
 
         if not calendar_entities:
-            _LOGGER.error("%s No calendar entities found", LOG_PREFIX_CONFIG_FLOW)
+            _LOGGER.error("No calendar entities found")
             return self.async_abort(reason="no_calendars")
 
         if user_input is not None:
@@ -94,27 +87,20 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
     async def async_step_climate(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """
-        Handle climate entities selection step.
-
-        Args:
-            user_input: User input from form
-
-        Returns:
-            FlowResult for next step or create entry
-        """
+        """Handle climate entities selection step."""
         errors: dict[str, str] = {}
 
         # Get available climate entities
-        climate_entities = get_climate_entities(self.hass)
+        climate_entities = [
+            state.entity_id
+            for state in self.hass.states.async_all("climate")
+        ]
 
         if user_input is not None:
             self._climate_entities = user_input.get(CONF_CLIMATE_ENTITIES, [])
-
-            # Proceed to options step
             return await self.async_step_options()
 
-        # Build schema for climate selection (optional, multi-select)
+        # Build schema for climate selection
         schema = vol.Schema(
             {
                 vol.Optional(CONF_CLIMATE_ENTITIES, default=[]): cv.multi_select(
@@ -128,30 +114,22 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
             data_schema=schema,
             errors=errors,
             description_placeholders={
+                "calendar_entity": self._calendar_entity or "",
                 "climate_count": str(len(climate_entities)),
-                "calendar_entity": self._calendar_entity or "Unknown",
             },
         )
 
     async def async_step_options(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """
-        Handle options step - dry run and debug toggles.
-
-        Args:
-            user_input: User input from form
-
-        Returns:
-            FlowResult to create entry
-        """
+        """Handle configuration options step."""
         if user_input is not None:
             self._dry_run = user_input.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
             self._debug_mode = user_input.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
 
-            # Create entry with collected data
+            # Create the config entry
             return self.async_create_entry(
-                title=f"Climate Calendar: {self._calendar_entity}",
+                title=f"Climate Control ({self._calendar_entity})",
                 data={
                     CONF_CALENDAR_ENTITY: self._calendar_entity,
                     CONF_DRY_RUN: self._dry_run,
@@ -174,7 +152,7 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
             step_id="options",
             data_schema=schema,
             description_placeholders={
-                "calendar_entity": self._calendar_entity or "Unknown",
+                "calendar_entity": self._calendar_entity or "",
                 "climate_count": str(len(self._climate_entities)),
             },
         )
@@ -184,15 +162,7 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> ClimateControlCalendarOptionsFlow:
-        """
-        Get the options flow handler.
-
-        Args:
-            config_entry: Config entry
-
-        Returns:
-            Options flow handler
-        """
+        """Get the options flow handler."""
         return ClimateControlCalendarOptionsFlow(config_entry)
 
 
@@ -200,64 +170,40 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Climate Control Calendar."""
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """
-        Initialize options flow.
-
-        Args:
-            config_entry: Config entry
-        """
+        """Initialize options flow."""
         self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """
-        Manage the options.
-
-        Args:
-            user_input: User input from form
-
-        Returns:
-            FlowResult to update options
-        """
-        errors: dict[str, str] = {}
-
+        """Manage the options."""
         if user_input is not None:
-            # Update options
             return self.async_create_entry(title="", data=user_input)
 
         # Get current values
-        current_climate_entities = self.config_entry.options.get(
-            CONF_CLIMATE_ENTITIES, []
-        )
+        climate_entities = [
+            state.entity_id
+            for state in self.hass.states.async_all("climate")
+        ]
+
+        current_climate = self.config_entry.options.get(CONF_CLIMATE_ENTITIES, [])
         current_dry_run = self.config_entry.data.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
-        current_debug_mode = self.config_entry.data.get(
-            CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE
-        )
+        current_debug = self.config_entry.data.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
 
-        # Get available climate entities
-        climate_entities = get_climate_entities(self.hass)
-
-        # Build schema
         schema = vol.Schema(
             {
                 vol.Optional(
-                    CONF_CLIMATE_ENTITIES, default=current_climate_entities
+                    CONF_CLIMATE_ENTITIES, default=current_climate
                 ): cv.multi_select({entity: entity for entity in climate_entities}),
                 vol.Optional(CONF_DRY_RUN, default=current_dry_run): cv.boolean,
-                vol.Optional(
-                    CONF_DEBUG_MODE, default=current_debug_mode
-                ): cv.boolean,
+                vol.Optional(CONF_DEBUG_MODE, default=current_debug): cv.boolean,
             }
         )
 
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
-            errors=errors,
             description_placeholders={
-                "calendar_entity": self.config_entry.data.get(
-                    CONF_CALENDAR_ENTITY, "Unknown"
-                ),
+                "calendar_entity": self.config_entry.data.get(CONF_CALENDAR_ENTITY, ""),
             },
         )
