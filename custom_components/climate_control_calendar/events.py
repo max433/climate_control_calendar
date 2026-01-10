@@ -3,7 +3,7 @@ import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import dt as dt_util
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
