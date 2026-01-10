@@ -1,0 +1,85 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Seleziona Calendario",
+        "description": "Scegli l'entità calendario che controllerà i tuoi dispositivi climatici. Questo calendario rappresenterà diversi schemi di utilizzo (smart working, vacanze, routine settimanale, ecc.).\n\nCalendari disponibili: {calendar_count}",
+        "data": {
+          "calendar_entity": "Entità Calendario"
+        }
+      },
+      "climate": {
+        "title": "Seleziona Dispositivi Climatici",
+        "description": "Seleziona i dispositivi climatici che vuoi controllare con questo calendario.\n\nCalendario selezionato: {calendar_entity}\nDispositivi climatici disponibili: {climate_count}",
+        "data": {
+          "climate_entities": "Entità Climatiche (opzionale)"
+        }
+      },
+      "options": {
+        "title": "Opzioni di Configurazione",
+        "description": "Configura le impostazioni operative.\n\nCalendario: {calendar_entity}\nDispositivi climatici: {climate_count}",
+        "data": {
+          "dry_run": "Modalità Dry Run (solo simulazione, nessuna modifica reale)",
+          "debug_mode": "Modalità Debug (logging dettagliato)"
+        }
+      }
+    },
+    "error": {
+      "calendar_not_found": "L'entità calendario selezionata non è stata trovata",
+      "no_calendars": "Nessuna entità calendario trovata in Home Assistant",
+      "cannot_connect": "Impossibile connettersi all'entità calendario",
+      "unknown": "Si è verificato un errore imprevisto"
+    },
+    "abort": {
+      "already_configured": "Questo calendario è già configurato",
+      "no_calendars": "Nessuna entità calendario disponibile. Installa e configura prima un'integrazione calendario."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aggiorna Configurazione",
+        "description": "Aggiorna i dispositivi climatici e le impostazioni operative.\n\nCalendario: {calendar_entity}",
+        "data": {
+          "climate_entities": "Entità Climatiche",
+          "dry_run": "Modalità Dry Run (solo simulazione)",
+          "debug_mode": "Modalità Debug (logging dettagliato)"
+        }
+      }
+    }
+  },
+  "services": {
+    "set_flag": {
+      "name": "Imposta Flag di Override",
+      "description": "Imposta un flag di override per alterare temporaneamente il comportamento automatico del controllo climatico. Solo un flag può essere attivo alla volta (esclusione reciproca).",
+      "fields": {
+        "flag_type": {
+          "name": "Tipo di Flag",
+          "description": "Tipo di flag di override: skip_today (salta fino a mezzanotte), skip_until_next_slot (salta lo slot corrente), oppure force_slot (forza uno slot specifico)."
+        },
+        "target_slot_id": {
+          "name": "ID Slot di Destinazione",
+          "description": "ID dello slot di destinazione (richiesto quando flag_type è force_slot). Trova gli ID degli slot nella tua configurazione."
+        }
+      }
+    },
+    "clear_flag": {
+      "name": "Cancella Flag di Override",
+      "description": "Cancella il flag di override attualmente attivo e riprende il comportamento automatico normale."
+    },
+    "force_slot": {
+      "name": "Forza Attivazione Slot",
+      "description": "Forza l'attivazione di uno slot temporale specifico, ignorando lo stato del calendario e le restrizioni temporali. Questa è una scorciatoia per set_flag con flag_type=force_slot.",
+      "fields": {
+        "slot_id": {
+          "name": "ID Slot",
+          "description": "ID dello slot da attivare forzatamente. Lo slot rimarrà attivo finché non viene cancellato manualmente."
+        }
+      }
+    },
+    "refresh_now": {
+      "name": "Aggiorna Ora",
+      "description": "Forza l'aggiornamento immediato del coordinator e la valutazione degli slot. Usa questo per applicare le modifiche alla configurazione senza attendere il prossimo aggiornamento automatico (60 secondi)."
+    }
+  }
+}

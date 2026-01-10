@@ -703,16 +703,262 @@ Result: Slot actually forced (dry run bypassed for this manual action)
 
 ---
 
-## Future Decisions
+### D024: Slot UI Management - Documentation Workaround for v1.0
 
-The following areas require decisions in upcoming milestones:
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
 
-### M4 Decisions Needed
-- Diagnostic data collection
-- Performance optimization targets
-- Backward compatibility policy for v1.0
+**Context**: Building a full GUI for slot management (CRUD operations with time pickers, day selection, overlap validation) is complex and time-consuming.
+
+**Decision**: **Skip slot UI for v1.0**. Provide documentation workaround using Developer Tools → Services or direct ConfigEntry.options editing.
+
+**Workaround**:
+- Users can manually edit slots via Developer Tools
+- Documentation includes step-by-step examples
+- Future v2.0 can add dedicated UI once core functionality proven
+
+**Rationale**:
+- **Time to Market**: v1.0 focuses on core climate control functionality
+- **Technical Users First**: Early adopters comfortable with workarounds
+- **Proven Demand**: Build UI after validating user demand
+- **Complexity vs Value**: Complex multi-step form better deferred to v2.0
+
+**Alternatives Considered**:
+1. Full slot CRUD UI - Delays v1.0 release significantly
+2. Basic single-slot form - Half-measure, still complex
+3. YAML configuration - Goes against D009 (GUI-first)
+
+**Future**: v2.0 will include visual slot editor with drag-and-drop time ranges.
 
 ---
 
-**Last Updated**: 2026-01-10 (M3 decisions added: D016-D023)
-**Next Review**: End of Milestone 4
+### D025: Italian Translations - Scope for v1.0
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: Which parts of the integration need Italian translations?
+
+**Decision**: Translate **config flow and services only** for v1.0.
+
+**Scope**:
+- ✅ Config flow steps (calendar selection, climate entities, options)
+- ✅ Service names and descriptions
+- ✅ Error messages shown in UI
+- ❌ README (remains English only for international audience)
+- ❌ Documentation files (English preferred for technical docs)
+- ❌ Code comments (English standard)
+
+**Implementation**: Create `translations/it.json` mirroring structure of `translations/en.json`.
+
+**Rationale**:
+- **User-Facing First**: UI strings most important for Italian users
+- **International Docs**: README in English reaches broader audience
+- **Standard Practice**: Most HACS integrations keep docs in English
+
+**Alternatives Considered**:
+1. Full Italian docs - Maintenance burden, fragments community
+2. No Italian translations - Poor UX for native language users
+
+---
+
+### D026: Testing Priority - Unit Tests for Critical Paths
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: Comprehensive test coverage ideal but time-consuming. Prioritize most critical code.
+
+**Decision**: Write unit tests for **critical business logic only** in v1.0.
+
+**Test Priorities**:
+1. **helpers.py**: Slot ID generation, overlap detection, payload validation
+2. **flag_manager.py**: Expiration logic, mutual exclusion, persistence
+3. **engine.py**: Slot resolution, flag integration, edge cases (overnight slots)
+
+**Not Tested in v1.0**:
+- Coordinator (HA framework well-tested)
+- Config flow (manual testing sufficient)
+- Event emitter (thin wrapper around HA event bus)
+
+**Coverage Target**: ~60-70% for critical modules (not 100%).
+
+**Rationale**:
+- **Risk-Based**: Test where bugs have highest impact
+- **Pragmatic**: Balance quality with release timeline
+- **Incremental**: Add more tests in v1.1+ based on bug reports
+
+**Alternatives Considered**:
+1. 100% coverage - Unrealistic timeline, diminishing returns
+2. No tests - Too risky for v1.0 release
+3. Integration tests only - Miss unit-level edge cases
+
+---
+
+### D027: Documentation Level - Quick Start Focus
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: How comprehensive should v1.0 documentation be?
+
+**Decision**: **Quick start focused** with three docs:
+
+1. **README.md**: Installation, prerequisites, 3-4 usage scenarios, quick start
+2. **docs/debugging.md**: Troubleshooting guide (logs, common errors, dry run)
+3. **docs/api-reference.md**: Events and services reference (automation examples)
+
+**Not Included in v1.0**:
+- Advanced configuration guide (deferred to wiki/blog posts)
+- Architecture deep-dive (decisions.md sufficient)
+- Video tutorials (community-driven)
+
+**Rationale**:
+- **Get Started Fast**: New users need quick wins
+- **Common Use Cases**: Cover 80% of scenarios
+- **Self-Service**: Debugging guide reduces support burden
+- **Automation Examples**: API reference enables power users
+
+**Alternatives Considered**:
+1. Minimal README only - Insufficient for new users
+2. Comprehensive docs - Premature, preferences unclear until user feedback
+
+---
+
+### D028: Diagnostics - Rely on Existing Observability
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: Should we implement dedicated diagnostics download feature?
+
+**Decision**: **Skip dedicated diagnostics** for v1.0. Existing logging and events sufficient.
+
+**Observability Tools**:
+- **Logs**: Detailed logging at INFO (dry run, slot changes) and DEBUG (engine internals)
+- **Events**: All state changes emit events (automation debugging)
+- **Developer Tools**: States show current slot, flags, last update time
+
+**Rationale**:
+- **Sufficient Coverage**: Logs + events provide complete audit trail
+- **Standard Tools**: Users already know HA logs and Developer Tools
+- **Complexity**: Diagnostics feature requires UI, data collection, privacy handling
+- **YAGNI**: No user demand proven yet
+
+**Future**: If support requests show need, add in v1.1+.
+
+**Alternatives Considered**:
+1. Full diagnostics download - Overengineering for v1.0
+2. Minimal system info dump - Still requires UI, limited value
+
+---
+
+### D029: Version Number - v1.0.0 Release Strategy
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: What version number for end of M4?
+
+**Decision**: **v1.0.0** - First stable release.
+
+**Rationale**:
+- **Feature Complete**: All core functionality implemented (M1-M4)
+- **Tested**: Critical paths have unit tests
+- **Documented**: README, debugging guide, API reference complete
+- **Signal Stability**: v1.0 communicates production-ready to users
+- **Semantic Versioning**: Commit to backward compatibility from this point
+
+**Pre-Release Approach**: No beta/RC versions for v1.0 (user cannot test currently).
+
+**Alternatives Considered**:
+1. v0.1.0 (cautious) - Undersells completeness
+2. v1.0.0-beta - No testing infrastructure, adds confusion
+
+---
+
+### D030: README Examples - Scenario-Based Approach
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: What examples should README include?
+
+**Decision**: **3-4 real-world scenarios** with calendar + slot configurations.
+
+**Scenarios**:
+1. **Smart Working**: Home office days with differentiated slots
+2. **Vacation Mode**: Away calendar turns off heating except morning/evening
+3. **Weekend/Weekday**: Different comfort profiles
+4. **Night Setback**: Automated temperature reduction overnight
+
+**Format**: Each scenario shows:
+- Use case description
+- Calendar event configuration
+- Example slots with time windows
+- Expected climate behavior
+
+**Rationale**:
+- **Relatable**: Users see themselves in scenarios
+- **Copy-Paste Ready**: Examples provide starting templates
+- **Cover Common Cases**: 4 scenarios address majority of use cases
+- **Visual Learning**: Easier than abstract documentation
+
+**Alternatives Considered**:
+1. Single generic example - Too abstract
+2. 10+ scenarios - Overwhelming, dilutes focus
+
+---
+
+### D031: Breaking Changes Policy - Semantic Versioning
+
+**Date**: 2026-01-10
+**Milestone**: M4
+**Status**: Active
+
+**Context**: How to handle future breaking changes post-v1.0?
+
+**Decision**: **Strict semantic versioning** compliance.
+
+**Policy**:
+- **Major version (2.0.0)**: Breaking changes allowed (storage schema, API changes)
+- **Minor version (1.1.0)**: New features, backward compatible
+- **Patch version (1.0.1)**: Bug fixes only, no new features
+
+**Stability Promise**:
+- ConfigEntry.data schema frozen for 1.x series
+- ConfigEntry.options schema can extend (new optional fields) but not break
+- Event payload structure frozen (can add fields, not remove)
+- Service signatures frozen (can add optional params, not change required)
+
+**Rationale**:
+- **User Trust**: Predictable upgrades, no surprise breakage
+- **Standard Practice**: Semantic versioning widely understood
+- **Migration Path**: Major versions allow clean breaks when needed
+
+**Alternatives Considered**:
+1. "Move fast, break things" - Erodes user trust
+2. Freeze forever - Prevents necessary evolution
+
+---
+
+## Future Decisions
+
+The following areas may require decisions in future milestones:
+
+### Post-v1.0 (v1.1+)
+- Performance optimization targets (if performance issues reported)
+- Additional language support based on community demand
+- Advanced slot features (priority levels, conditions, etc.)
+
+---
+
+**Last Updated**: 2026-01-10 (M4 decisions added: D024-D031)
+**Next Review**: Post v1.0 release (based on user feedback)
