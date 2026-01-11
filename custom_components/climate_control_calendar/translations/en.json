@@ -2,48 +2,202 @@
   "config": {
     "step": {
       "user": {
-        "title": "Select Calendar",
-        "description": "Choose the calendar entity that will control your climate devices. This calendar will represent different usage patterns (smart working, vacation, weekly routine, etc.).\n\nAvailable calendars: {calendar_count}",
+        "title": "Select Calendars",
+        "description": "Choose one or more calendar entities to monitor for climate control events.\n\n**Multi-Calendar Support**: You can select multiple calendars. Events from all calendars will be monitored simultaneously, with priority-based conflict resolution.\n\n**Examples**: Work calendar, personal calendar, vacation calendar, etc.\n\nAvailable calendars: {calendar_count}",
         "data": {
-          "calendar_entity": "Calendar Entity"
+          "calendar_entities": "Calendar Entities"
         }
       },
       "climate": {
-        "title": "Select Climate Devices",
-        "description": "Select the climate devices you want to control with this calendar.\n\nCalendar selected: {calendar_entity}\nAvailable climate devices: {climate_count}",
+        "title": "Select Climate Devices (Global Pool)",
+        "description": "Select climate devices that will be controlled by this integration.\n\n**Global Pool**: These devices form the default pool. You can later create specific bindings that target only certain devices.\n\n**Tip**: It's okay to leave this empty and configure device targeting in bindings instead.\n\nSelected calendars: {calendar_entities}\nAvailable climate devices: {climate_count}",
         "data": {
           "climate_entities": "Climate Entities (optional)"
         }
       },
       "options": {
-        "title": "Configuration Options",
-        "description": "Configure operational settings.\n\nCalendar: {calendar_entity}\nClimate devices: {climate_count}",
+        "title": "Initial Configuration",
+        "description": "Configure basic operational settings. You can change these later in the integration options.\n\n**Dry Run Mode**: Enable this to test your configuration without actually changing climate device states.\n\n**Debug Mode**: Enable verbose logging for troubleshooting.\n\nCalendars: {calendar_entities}\nClimate devices: {climate_count}",
         "data": {
-          "dry_run": "Dry Run Mode (simulation only, no actual changes)",
+          "dry_run": "Dry Run Mode (test without applying changes)",
           "debug_mode": "Debug Mode (verbose logging)"
         }
       }
     },
     "error": {
-      "calendar_not_found": "The selected calendar entity was not found",
+      "calendar_not_found": "One or more selected calendar entities were not found",
       "no_calendars": "No calendar entities found in Home Assistant",
+      "no_calendars_selected": "Please select at least one calendar",
       "cannot_connect": "Failed to connect to calendar entity",
+      "invalid_slot_id": "Invalid slot ID",
+      "invalid_binding_id": "Invalid binding ID",
+      "invalid_yaml": "Invalid YAML format",
+      "invalid_temperature": "Temperature must be between -50 and 50",
+      "slot_not_found": "Slot not found",
+      "binding_not_found": "Binding not found",
+      "invalid_pattern": "Invalid match pattern",
       "unknown": "Unexpected error occurred"
     },
     "abort": {
-      "already_configured": "This calendar is already configured",
+      "already_configured": "This calendar combination is already configured",
       "no_calendars": "No calendar entities available. Please install and configure a calendar integration first."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Update Configuration",
-        "description": "Update climate devices and operational settings.\n\nCalendar: {calendar_entity}",
+        "title": "Configuration Manager",
+        "description": "Manage all aspects of your Climate Control Calendar integration.\n\n**Current Configuration:**\n• Calendars: {calendar_count}\n• Climate Devices: {climate_count}\n• Slots: {slot_count}\n• Bindings: {binding_count}\n\nSelect a configuration area to manage:",
+        "menu_options": {
+          "basic": "Basic Settings",
+          "calendars": "Calendar Configuration",
+          "slots": "Slots Management",
+          "bindings": "Bindings Management",
+          "yaml_editor": "YAML Editor (Advanced)"
+        }
+      },
+      "basic": {
+        "title": "Basic Settings",
+        "description": "Configure global climate devices and operational modes.\n\n**Global Climate Pool**: Select devices to be controlled by default. Individual bindings can override this to target specific devices.\n\n**Operational Modes**: Configure dry run and debug settings.",
         "data": {
-          "climate_entities": "Climate Entities",
-          "dry_run": "Dry Run Mode (simulation only)",
+          "climate_entities": "Global Climate Entities Pool",
+          "dry_run": "Dry Run Mode (simulate changes only)",
           "debug_mode": "Debug Mode (verbose logging)"
+        }
+      },
+      "calendars": {
+        "title": "Calendar Configuration",
+        "description": "Configure individual calendar settings.\n\n**Enable/Disable**: Temporarily disable calendars without removing them.\n**Default Priority**: Set default priority for all bindings from this calendar (higher = more important).\n\n**Selected Calendars:**\n{calendar_list}",
+        "data": {
+          "calendar_id": "Calendar to Configure"
+        },
+        "data_description": {
+          "calendar_id": "Select a calendar to configure its settings"
+        }
+      },
+      "calendar_detail": {
+        "title": "Configure: {calendar_name}",
+        "description": "Adjust settings for this specific calendar.\n\n**Enabled**: Uncheck to temporarily ignore events from this calendar.\n**Default Priority**: Used when bindings don't specify their own priority. Higher values take precedence.\n**Description**: Optional note for this calendar.\n\nCurrent bindings from this calendar: {binding_count}",
+        "data": {
+          "enabled": "Enabled",
+          "default_priority": "Default Priority (0-100)",
+          "description": "Description (optional)"
+        }
+      },
+      "slots": {
+        "title": "Slots Management",
+        "description": "Manage climate slots (reusable templates).\n\n**What are slots?** Slots define climate settings (temperature, HVAC mode, etc.) that can be activated by calendar events through bindings.\n\n**Current Slots:** {slot_count}\n\nSelect an action:",
+        "menu_options": {
+          "add_slot": "Add New Slot",
+          "edit_slot": "Edit Existing Slot",
+          "delete_slot": "Delete Slot",
+          "view_slots": "View All Slots"
+        }
+      },
+      "add_slot": {
+        "title": "Add New Slot",
+        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Entity Overrides: Device-specific settings (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "data": {
+          "label": "Slot Label",
+          "temperature": "Temperature (°C)",
+          "hvac_mode": "HVAC Mode",
+          "preset_mode": "Preset Mode"
+        },
+        "data_description": {
+          "label": "e.g., 'Comfort', 'Eco', 'Sleep'",
+          "temperature": "Leave empty to not control temperature",
+          "hvac_mode": "e.g., heat, cool, heat_cool, auto, off",
+          "preset_mode": "e.g., away, home, eco, boost"
+        }
+      },
+      "edit_slot": {
+        "title": "Edit Slot",
+        "description": "Select a slot to modify.\n\nCurrent slots: {slot_count}\n\n**Tip**: Use YAML Editor for bulk operations.",
+        "data": {
+          "slot_id": "Slot to Edit"
+        }
+      },
+      "edit_slot_detail": {
+        "title": "Edit: {slot_label}",
+        "description": "Modify slot settings.\n\n**Slot ID**: {slot_id}\n**Bindings using this slot**: {binding_count}\n\n**Warning**: Changes affect all bindings that use this slot.",
+        "data": {
+          "label": "Slot Label",
+          "temperature": "Temperature (°C)",
+          "hvac_mode": "HVAC Mode",
+          "preset_mode": "Preset Mode"
+        }
+      },
+      "delete_slot": {
+        "title": "Delete Slot",
+        "description": "Select a slot to remove.\n\n**Warning**: Bindings referencing this slot will fail until reconfigured.\n\nCurrent slots: {slot_count}",
+        "data": {
+          "slot_id": "Slot to Delete"
+        }
+      },
+      "view_slots": {
+        "title": "All Slots",
+        "description": "Current slot configuration:\n\n{slots_summary}\n\n**Tip**: Use the YAML Editor for advanced editing."
+      },
+      "bindings": {
+        "title": "Bindings Management",
+        "description": "Manage event-to-slot bindings.\n\n**What are bindings?** Bindings connect calendar events to slots based on patterns (e.g., event summary matches 'Morning').\n\n**Current Bindings:** {binding_count}\n\nSelect an action:",
+        "menu_options": {
+          "add_binding": "Add New Binding",
+          "edit_binding": "Edit Existing Binding",
+          "delete_binding": "Delete Binding",
+          "view_bindings": "View All Bindings"
+        }
+      },
+      "add_binding": {
+        "title": "Add New Binding",
+        "description": "Create a binding between calendar events and a slot.\n\n**Binding Structure:**\n• Calendars: Which calendar(s) to monitor (or * for all)\n• Match Pattern: How to identify events (summary, contains, regex)\n• Target Slot: Which slot to activate\n• Target Entities: Specific devices (optional, uses global pool if empty)\n• Priority: Conflict resolution (optional, uses calendar default)\n\n**Example**: Summary contains 'Morning' → Comfort slot",
+        "data": {
+          "calendars": "Calendar Filter",
+          "match_type": "Match Type",
+          "match_value": "Match Value",
+          "slot_id": "Target Slot",
+          "priority": "Priority (0-100, optional)"
+        },
+        "data_description": {
+          "calendars": "Select specific calendar(s) or '*' for all",
+          "match_type": "How to match events: summary (exact), summary_contains, regex",
+          "match_value": "Pattern to match (e.g., 'Morning', 'Work', 'smart.*')",
+          "slot_id": "Slot to activate when pattern matches",
+          "priority": "Leave empty to use calendar's default priority"
+        }
+      },
+      "edit_binding": {
+        "title": "Edit Binding",
+        "description": "Select a binding to modify.\n\nCurrent bindings: {binding_count}",
+        "data": {
+          "binding_id": "Binding to Edit"
+        }
+      },
+      "delete_binding": {
+        "title": "Delete Binding",
+        "description": "Select a binding to remove.\n\nCurrent bindings: {binding_count}",
+        "data": {
+          "binding_id": "Binding to Delete"
+        }
+      },
+      "view_bindings": {
+        "title": "All Bindings",
+        "description": "Current binding configuration:\n\n{bindings_summary}\n\n**Tip**: Use the YAML Editor for advanced editing."
+      },
+      "yaml_editor": {
+        "title": "YAML Editor (Advanced)",
+        "description": "Edit configuration directly in YAML format.\n\n**⚠️ Advanced Feature**: Manual YAML editing. Invalid YAML will be rejected.\n\n**Sections Available:**\n• Slots\n• Bindings\n• Calendar Configs\n\n**Tip**: Export current config, edit externally, then import.",
+        "menu_options": {
+          "edit_slots_yaml": "Edit Slots (YAML)",
+          "edit_bindings_yaml": "Edit Bindings (YAML)",
+          "edit_calendar_configs_yaml": "Edit Calendar Configs (YAML)"
+        }
+      },
+      "edit_yaml": {
+        "title": "Edit {section} (YAML)",
+        "description": "**Current Configuration:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "data": {
+          "yaml_content": "YAML Configuration"
         }
       }
     }
