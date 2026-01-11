@@ -13,7 +13,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN,
-    CONF_CALENDAR_ENTITY,
+    CONF_CALENDAR_ENTITIES,  # Changed from CONF_CALENDAR_ENTITY (Decision D033)
     CONF_CLIMATE_ENTITIES,
     CONF_DRY_RUN,
     CONF_DEBUG_MODE,
@@ -31,7 +31,7 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
 
     def __init__(self) -> None:
         """Initialize config flow."""
-        self._calendar_entity: str | None = None
+        self._calendar_entities: list[str] = []  # Changed from singular to plural (Decision D033)
         self._climate_entities: list[str] = []
         self._dry_run: bool = DEFAULT_DRY_RUN
         self._debug_mode: bool = DEFAULT_DEBUG_MODE
@@ -39,7 +39,7 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step - calendar selection."""
+        """Handle the initial step - calendar selection (multi-select)."""
         errors: dict[str, str] = {}
 
         # Get available calendar entities
@@ -53,23 +53,34 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
             return self.async_abort(reason="no_calendars")
 
         if user_input is not None:
-            self._calendar_entity = user_input[CONF_CALENDAR_ENTITY]
+            self._calendar_entities = user_input.get(CONF_CALENDAR_ENTITIES, [])
 
-            # Verify calendar entity exists
-            if self.hass.states.get(self._calendar_entity) is None:
-                errors[CONF_CALENDAR_ENTITY] = "calendar_not_found"
+            # Validate at least one calendar selected
+            if not self._calendar_entities:
+                errors[CONF_CALENDAR_ENTITIES] = "no_calendars_selected"
             else:
-                # Check if already configured
-                await self.async_set_unique_id(self._calendar_entity)
-                self._abort_if_unique_id_configured()
+                # Verify all calendar entities exist
+                invalid_calendars = [
+                    cal for cal in self._calendar_entities
+                    if self.hass.states.get(cal) is None
+                ]
+                if invalid_calendars:
+                    errors[CONF_CALENDAR_ENTITIES] = "calendar_not_found"
+                else:
+                    # Create unique_id from sorted calendar list (Decision D033)
+                    import hashlib
+                    calendars_str = ",".join(sorted(self._calendar_entities))
+                    unique_id = hashlib.sha256(calendars_str.encode()).hexdigest()[:16]
+                    await self.async_set_unique_id(unique_id)
+                    self._abort_if_unique_id_configured()
 
-                # Proceed to climate entities selection
-                return await self.async_step_climate()
+                    # Proceed to climate entities selection
+                    return await self.async_step_climate()
 
-        # Build schema for calendar selection
+        # Build schema for calendar multi-selection (Decision D033)
         schema = vol.Schema(
             {
-                vol.Required(CONF_CALENDAR_ENTITY): vol.In(
+                vol.Required(CONF_CALENDAR_ENTITIES): cv.multi_select(
                     {entity: entity for entity in calendar_entities}
                 ),
             }
@@ -114,7 +125,7 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
             data_schema=schema,
             errors=errors,
             description_placeholders={
-                "calendar_entity": self._calendar_entity or "",
+                "calendar_entities": ", ".join(self._calendar_entities) if self._calendar_entities else "",
                 "climate_count": str(len(climate_entities)),
             },
         )
@@ -127,11 +138,15 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
             self._dry_run = user_input.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
             self._debug_mode = user_input.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
 
-            # Create the config entry
+            # Create the config entry (Decision D033: Multi-calendar support)
+            # Title shows count of calendars instead of single calendar name
+            calendar_count = len(self._calendar_entities)
+            title = f"Climate Control ({calendar_count} calendar{'s' if calendar_count != 1 else ''})"
+
             return self.async_create_entry(
-                title=f"Climate Control ({self._calendar_entity})",
+                title=title,
                 data={
-                    CONF_CALENDAR_ENTITY: self._calendar_entity,
+                    CONF_CALENDAR_ENTITIES: self._calendar_entities,  # Changed from singular
                     CONF_DRY_RUN: self._dry_run,
                     CONF_DEBUG_MODE: self._debug_mode,
                 },
@@ -152,7 +167,7 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
             step_id="options",
             data_schema=schema,
             description_placeholders={
-                "calendar_entity": self._calendar_entity or "",
+                "calendar_entities": ", ".join(self._calendar_entities) if self._calendar_entities else "",
                 "climate_count": str(len(self._climate_entities)),
             },
         )
@@ -200,10 +215,13 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             }
         )
 
+        calendar_entities = self.config_entry.data.get(CONF_CALENDAR_ENTITIES, [])
+        calendar_str = ", ".join(calendar_entities) if calendar_entities else ""
+
         return self.async_show_form(
             step_id="init",
             data_schema=schema,
             description_placeholders={
-                "calendar_entity": self.config_entry.data.get(CONF_CALENDAR_ENTITY, ""),
+                "calendar_entities": calendar_str,
             },
         )

@@ -5,20 +5,40 @@ from typing import Final
 DOMAIN: Final = "climate_control_calendar"
 
 # Config flow steps
-CONF_CALENDAR_ENTITY: Final = "calendar_entity"
+CONF_CALENDAR_ENTITIES: Final = "calendar_entities"  # Changed from singular to plural (Decision D033)
 CONF_CLIMATE_ENTITIES: Final = "climate_entities"
 CONF_DRY_RUN: Final = "dry_run"
 CONF_DEBUG_MODE: Final = "debug_mode"
 CONF_SLOTS: Final = "slots"
+CONF_BINDINGS: Final = "bindings"  # New: Event-to-slot bindings (Decision D032)
+CONF_CALENDAR_CONFIGS: Final = "calendar_configs"  # New: Per-calendar configuration
 CONF_OVERRIDE_FLAGS: Final = "override_flags"
 
-# Slot configuration keys
+# Slot configuration keys (New architecture: slots as reusable templates)
 SLOT_ID: Final = "id"
 SLOT_LABEL: Final = "label"
-SLOT_TIME_START: Final = "time_start"
-SLOT_TIME_END: Final = "time_end"
-SLOT_DAYS: Final = "days"
-SLOT_CLIMATE_PAYLOAD: Final = "climate_payload"
+SLOT_DEFAULT_CLIMATE_PAYLOAD: Final = "default_climate_payload"  # Renamed from climate_payload
+SLOT_ENTITY_OVERRIDES: Final = "entity_overrides"  # New: Entity-specific payload overrides
+SLOT_EXCLUDED_ENTITIES: Final = "excluded_entities"  # New: Entities to skip
+# Legacy support (will be converted to default_climate_payload)
+SLOT_CLIMATE_PAYLOAD: Final = "climate_payload"  # Deprecated, use default_climate_payload
+
+# Binding configuration keys (New architecture: entities in bindings)
+BINDING_ID: Final = "id"
+BINDING_CALENDARS: Final = "calendars"
+BINDING_MATCH: Final = "match"
+BINDING_SLOT_ID: Final = "slot_id"
+BINDING_TARGET_ENTITIES: Final = "target_entities"  # New: Specific entities for this binding
+BINDING_PRIORITY: Final = "priority"
+
+# Calendar configuration keys
+CALENDAR_CONFIG_ENABLED: Final = "enabled"
+CALENDAR_CONFIG_DEFAULT_PRIORITY: Final = "default_priority"
+CALENDAR_CONFIG_DESCRIPTION: Final = "description"
+
+# Match configuration keys
+MATCH_TYPE: Final = "type"
+MATCH_VALUE: Final = "value"
 
 # Climate payload keys
 PAYLOAD_TEMPERATURE: Final = "temperature"
@@ -50,8 +70,13 @@ SERVICE_SET_FLAG: Final = "set_flag"
 SERVICE_CLEAR_FLAG: Final = "clear_flag"
 SERVICE_FORCE_SLOT: Final = "force_slot"
 SERVICE_REFRESH_NOW: Final = "refresh_now"
+# Slot services (kept for backward compatibility, manage slots without time/days)
 SERVICE_ADD_SLOT: Final = "add_slot"
 SERVICE_REMOVE_SLOT: Final = "remove_slot"
+# Binding services (Decision D032: Event-to-slot binding system)
+SERVICE_ADD_BINDING: Final = "add_binding"
+SERVICE_REMOVE_BINDING: Final = "remove_binding"
+SERVICE_LIST_BINDINGS: Final = "list_bindings"
 
 # Storage keys
 STORAGE_VERSION: Final = 1
@@ -65,17 +90,7 @@ DATA_FLAG_MANAGER: Final = "flag_manager"
 DATA_APPLIER: Final = "applier"
 DATA_CONFIG: Final = "config"
 DATA_UNSUB: Final = "unsub"
-
-# Day names (internal)
-DAYS_OF_WEEK: Final = [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday"
-]
+DATA_BINDING_MANAGER: Final = "binding_manager"  # New: Binding manager instance
 
 # Logging prefixes
 LOG_PREFIX_ENGINE: Final = "[Engine]"
