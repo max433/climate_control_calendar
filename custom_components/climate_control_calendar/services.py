@@ -75,8 +75,8 @@ SERVICE_REFRESH_NOW_SCHEMA = vol.Schema({})
 SERVICE_ADD_SLOT_SCHEMA = vol.Schema(
     {
         vol.Required("label"): cv.string,
-        # Decision D034: Removed time_start, time_end, days - slots are now event-independent
-        vol.Required("climate_payload"): vol.Schema(
+        # New architecture: slots as reusable templates
+        vol.Required("default_climate_payload"): vol.Schema(
             {
                 vol.Optional("temperature"): vol.Coerce(float),
                 vol.Optional("hvac_mode"): cv.string,
@@ -86,6 +86,10 @@ SERVICE_ADD_SLOT_SCHEMA = vol.Schema(
             },
             extra=vol.ALLOW_EXTRA,
         ),
+        vol.Optional("entity_overrides", default={}): vol.Schema(
+            {cv.string: vol.Schema({}, extra=vol.ALLOW_EXTRA)}
+        ),
+        vol.Optional("excluded_entities", default=[]): cv.ensure_list,
     }
 )
 
@@ -95,7 +99,7 @@ SERVICE_REMOVE_SLOT_SCHEMA = vol.Schema(
     }
 )
 
-# Decision D032: New binding services
+# Decision D032: New binding services (with target_entities)
 SERVICE_ADD_BINDING_SCHEMA = vol.Schema(
     {
         vol.Required("calendars"): vol.Any(
@@ -109,7 +113,8 @@ SERVICE_ADD_BINDING_SCHEMA = vol.Schema(
             }
         ),
         vol.Required("slot_id"): cv.string,
-        vol.Optional("priority", default=0): vol.Coerce(int),
+        vol.Optional("target_entities", default=None): vol.Any(None, cv.ensure_list),  # New!
+        vol.Optional("priority", default=None): vol.Any(None, vol.Coerce(int)),  # Now optional (None = use calendar default)
     }
 )
 
@@ -236,11 +241,12 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         """
         Handle add_slot service call.
 
-        Decision D034: Simplified slots - only label and climate_payload required.
-        Time/day fields removed from slot structure.
+        New architecture: slots with default payload + optional overrides/exclusions.
         """
         label = call.data["label"]
-        climate_payload = call.data["climate_payload"]
+        default_climate_payload = call.data["default_climate_payload"]
+        entity_overrides = call.data.get("entity_overrides", {})
+        excluded_entities = call.data.get("excluded_entities", [])
 
         # Generate slot ID
         from homeassistant.util import dt as dt_util
@@ -249,7 +255,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         new_slot = {
             SLOT_ID: slot_id,
             SLOT_LABEL: label,
-            SLOT_CLIMATE_PAYLOAD: climate_payload,
+            "default_climate_payload": default_climate_payload,
+            "entity_overrides": entity_overrides,
+            "excluded_entities": excluded_entities,
         }
 
         # Validate slot data
@@ -325,19 +333,21 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         """
         Handle add_binding service call.
 
-        Decision D032: Event-to-slot binding system.
+        New architecture: bindings with target_entities and priority.
         """
         calendars = call.data["calendars"]
         match_config = call.data["match"]
         slot_id = call.data["slot_id"]
-        priority = call.data.get("priority", 0)
+        target_entities = call.data.get("target_entities")  # New: can be None
+        priority = call.data.get("priority")  # New: can be None (use calendar default)
 
         _LOGGER.info(
-            "Service call: add_binding | calendars=%s, match=%s, slot=%s, priority=%d",
+            "Service call: add_binding | calendars=%s, match=%s, slot=%s, entities=%s, priority=%s",
             calendars,
             match_config,
             slot_id,
-            priority,
+            target_entities or "global",
+            priority if priority is not None else "calendar_default",
         )
 
         # Add binding via binding manager
@@ -349,7 +359,8 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                         calendars=calendars,
                         match_config=match_config,
                         slot_id=slot_id,
-                        priority=priority,
+                        target_entities=target_entities,  # New parameter
+                        priority=priority,  # Can be None
                     )
                     _LOGGER.info("Binding added successfully: %s", binding_id)
 

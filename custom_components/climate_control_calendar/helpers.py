@@ -47,8 +47,7 @@ def validate_slot_data(slot_data: dict[str, Any]) -> tuple[bool, str | None]:
     """
     Validate slot configuration data.
 
-    Decision D034: Simplified slot validation - only label and climate payload required.
-    Time/day fields removed from slot structure.
+    New architecture: slots with default_climate_payload + optional entity_overrides/excluded_entities.
 
     Args:
         slot_data: Slot configuration dictionary
@@ -56,7 +55,7 @@ def validate_slot_data(slot_data: dict[str, Any]) -> tuple[bool, str | None]:
     Returns:
         Tuple of (is_valid, error_message)
     """
-    # Check required fields (Decision D034: only label required now)
+    # Check required fields
     if SLOT_LABEL not in slot_data:
         return False, "Missing required field: label"
 
@@ -64,11 +63,20 @@ def validate_slot_data(slot_data: dict[str, Any]) -> tuple[bool, str | None]:
     if not slot_data[SLOT_LABEL].strip():
         return False, "Slot label cannot be empty"
 
-    # Validate climate payload if present
-    if SLOT_CLIMATE_PAYLOAD in slot_data:
-        valid, error = validate_climate_payload(slot_data[SLOT_CLIMATE_PAYLOAD])
+    # Validate default_climate_payload (or legacy climate_payload)
+    default_payload = slot_data.get("default_climate_payload") or slot_data.get(SLOT_CLIMATE_PAYLOAD)
+    if default_payload:
+        valid, error = validate_climate_payload(default_payload)
         if not valid:
-            return False, f"Invalid climate payload: {error}"
+            return False, f"Invalid default climate payload: {error}"
+
+    # Validate entity_overrides if present
+    entity_overrides = slot_data.get("entity_overrides", {})
+    if entity_overrides:
+        for entity_id, payload in entity_overrides.items():
+            valid, error = validate_climate_payload(payload)
+            if not valid:
+                return False, f"Invalid override payload for {entity_id}: {error}"
 
     return True, None
 

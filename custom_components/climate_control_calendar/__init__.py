@@ -15,6 +15,7 @@ from .const import (
     CONF_DEBUG_MODE,
     CONF_SLOTS,
     CONF_BINDINGS,  # New: bindings (Decision D032)
+    CONF_CALENDAR_CONFIGS,  # New: calendar configs
     DATA_COORDINATOR,
     DATA_ENGINE,
     DATA_EVENT_EMITTER,
@@ -63,6 +64,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     climate_entities = entry.options.get(CONF_CLIMATE_ENTITIES, [])
     slots = entry.options.get(CONF_SLOTS, [])
     bindings = entry.options.get(CONF_BINDINGS, [])  # New: bindings (Decision D032)
+    calendar_configs = entry.options.get(CONF_CALENDAR_CONFIGS, {})  # New: calendar configs
 
     if not calendar_entities:
         _LOGGER.error("No calendar entities configured")
@@ -82,10 +84,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Create event emitter
     event_emitter = EventEmitter(hass, entry.entry_id)
 
-    # Create binding manager (Decision D032)
+    # Create binding manager (New architecture: with calendar_configs)
     binding_manager = BindingManager(
         hass=hass,
         entry_id=entry.entry_id,
+        calendar_configs=calendar_configs,  # New parameter
     )
 
     # Load bindings from config entry
@@ -145,6 +148,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             CONF_CLIMATE_ENTITIES: climate_entities,
             CONF_SLOTS: slots,
             CONF_BINDINGS: bindings,  # New: store bindings
+            CONF_CALENDAR_CONFIGS: calendar_configs,  # New: store calendar configs
         },
         DATA_UNSUB: [],
     }
@@ -190,12 +194,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.info(
         "Climate Control Calendar setup complete. "
-        "Calendars: %d, Dry Run: %s, Slots: %d, Bindings: %d, Climate entities: %d, Flags enabled: True",
+        "Calendars: %d, Dry Run: %s, Slots: %d, Bindings: %d, Climate entities: %d, "
+        "Calendar configs: %d, Flags enabled: True",
         len(calendar_entities),
         dry_run,
         len(slots),
         len(bindings),
         len(climate_entities),
+        len(calendar_configs),
     )
 
     return True
