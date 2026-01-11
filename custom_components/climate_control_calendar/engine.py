@@ -231,6 +231,7 @@ class ClimateControlEngine:
             forced_slot_id = self.flag_manager.get_forced_slot_id()
 
         active_slot = None
+        resolved_bindings = []  # Initialize to empty list
 
         if forced_slot_id:
             # Force slot active regardless of events/bindings
@@ -272,11 +273,14 @@ class ClimateControlEngine:
                 LOG_PREFIX_ENGINE,
             )
 
+        # New architecture: Return forced_slot_id when forced, else None (multiple slots may be active)
+        active_slot_id = forced_slot_id if forced_slot_id else None
+
         return {
             "active_slot": active_slot,
-            "active_slot_id": current_slot_id,
-            "previous_slot_id": previous_slot_id,
-            "changed": current_slot_id != previous_slot_id,
+            "active_slot_id": active_slot_id,
+            "previous_slot_id": None,  # No longer tracked in new architecture
+            "changed": False,  # Deprecated in new architecture (multiple slots)
             "forced": forced_slot_id is not None,
             "active_events_count": len(active_events),
             "bindings_applied": len(resolved_bindings) if not forced_slot_id else 0,
