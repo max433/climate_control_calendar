@@ -8,6 +8,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN,
@@ -112,7 +113,7 @@ class ClimateControlCalendarCoordinator(DataUpdateCoordinator):
             "event": current_event,
             "state_changed": state_changed,
             "event_changed": event_changed,
-            "last_update": self.hass.helpers.dt.utcnow(),
+            "last_update": dt_util.utcnow(),
         }
 
     async def async_refresh_now(self) -> None:
