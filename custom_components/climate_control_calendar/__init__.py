@@ -9,16 +9,18 @@ from homeassistant.exceptions import ConfigEntryNotReady
 
 from .const import (
     DOMAIN,
-    CONF_CALENDAR_ENTITY,
+    CONF_CALENDAR_ENTITIES,  # Changed from CONF_CALENDAR_ENTITY (Decision D033)
     CONF_CLIMATE_ENTITIES,
     CONF_DRY_RUN,
     CONF_DEBUG_MODE,
     CONF_SLOTS,
+    CONF_BINDINGS,  # New: bindings (Decision D032)
     DATA_COORDINATOR,
     DATA_ENGINE,
     DATA_EVENT_EMITTER,
     DATA_FLAG_MANAGER,
     DATA_APPLIER,
+    DATA_BINDING_MANAGER,  # New: binding manager
     DATA_CONFIG,
     DATA_UNSUB,
     DEFAULT_UPDATE_INTERVAL,
@@ -30,6 +32,7 @@ from .engine import ClimateControlEngine
 from .events import EventEmitter
 from .flag_manager import FlagManager
 from .applier import ClimatePayloadApplier
+from .binding_manager import BindingManager  # New import
 from .services import async_setup_services, async_unload_services
 
 _LOGGER = logging.getLogger(__name__)
@@ -52,29 +55,43 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info("Setting up Climate Control Calendar integration")
 
     # Get configuration from data (immutable)
-    calendar_entity_id = entry.data.get(CONF_CALENDAR_ENTITY)
+    calendar_entities = entry.data.get(CONF_CALENDAR_ENTITIES, [])  # Changed to plural (Decision D033)
     dry_run = entry.data.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
     debug_mode = entry.data.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
 
     # Get configuration from options (mutable)
     climate_entities = entry.options.get(CONF_CLIMATE_ENTITIES, [])
     slots = entry.options.get(CONF_SLOTS, [])
+    bindings = entry.options.get(CONF_BINDINGS, [])  # New: bindings (Decision D032)
 
-    if not calendar_entity_id:
-        _LOGGER.error("No calendar entity configured")
+    if not calendar_entities:
+        _LOGGER.error("No calendar entities configured")
         return False
 
-    # Verify calendar entity exists
-    if not hass.states.get(calendar_entity_id):
+    # Verify all calendar entities exist
+    missing_calendars = [
+        cal for cal in calendar_entities
+        if not hass.states.get(cal)
+    ]
+    if missing_calendars:
         raise ConfigEntryNotReady(
-            f"Calendar entity not found: {calendar_entity_id}. "
+            f"Calendar entities not found: {missing_calendars}. "
             "Please ensure the calendar integration is loaded."
         )
 
     # Create event emitter
     event_emitter = EventEmitter(hass, entry.entry_id)
 
-    # Create flag manager (M3)
+    # Create binding manager (Decision D032)
+    binding_manager = BindingManager(
+        hass=hass,
+        entry_id=entry.entry_id,
+    )
+
+    # Load bindings from config entry
+    await binding_manager.async_load(bindings=bindings)
+
+    # Create flag manager
     flag_manager = FlagManager(
         hass=hass,
         entry_id=entry.entry_id,
@@ -84,27 +101,28 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Load flags from storage
     await flag_manager.async_load()
 
-    # Create climate payload applier (M3)
+    # Create climate payload applier
     applier = ClimatePayloadApplier(
         hass=hass,
         event_emitter=event_emitter,
     )
 
-    # Create engine (with M3 enhancements)
+    # Create engine (Decision D032: now with binding_manager)
     engine = ClimateControlEngine(
         hass=hass,
         entry_id=entry.entry_id,
         event_emitter=event_emitter,
+        binding_manager=binding_manager,  # New parameter
         flag_manager=flag_manager,
         applier=applier,
         dry_run=dry_run,
         debug_mode=debug_mode,
     )
 
-    # Create coordinator
+    # Create coordinator (Decision D033: multi-calendar support)
     coordinator = ClimateControlCalendarCoordinator(
         hass=hass,
-        calendar_entity_id=calendar_entity_id,
+        calendar_entity_id=calendar_entities,  # Now passes list of calendar IDs
         update_interval=DEFAULT_UPDATE_INTERVAL,
     )
 
@@ -119,34 +137,38 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_EVENT_EMITTER: event_emitter,
         DATA_FLAG_MANAGER: flag_manager,
         DATA_APPLIER: applier,
+        DATA_BINDING_MANAGER: binding_manager,  # New: store binding manager
         DATA_CONFIG: {
-            CONF_CALENDAR_ENTITY: calendar_entity_id,
+            CONF_CALENDAR_ENTITIES: calendar_entities,  # Changed from singular
             CONF_DRY_RUN: dry_run,
             CONF_DEBUG_MODE: debug_mode,
             CONF_CLIMATE_ENTITIES: climate_entities,
             CONF_SLOTS: slots,
+            CONF_BINDINGS: bindings,  # New: store bindings
         },
         DATA_UNSUB: [],
     }
 
-    # Set up coordinator listener to trigger engine evaluation
+    # Set up coordinator listener to trigger engine evaluation (Decision D032)
     async def _handle_coordinator_update() -> None:
         """Handle coordinator updates by running engine evaluation."""
-        calendar_state = coordinator.get_current_calendar_state()
+        # Get active events from multi-calendar coordinator
+        active_events = coordinator.get_active_events()
 
-        # Run engine evaluation
+        # Run engine evaluation with event-based resolution
         result = await engine.evaluate(
-            calendar_state=calendar_state,
+            active_events=active_events,  # Changed from calendar_state
             slots=slots,
             climate_entities=climate_entities,
         )
 
         if debug_mode:
             _LOGGER.debug(
-                "Engine evaluation complete | Active slot: %s | Changed: %s | Forced: %s",
+                "Engine evaluation complete | Active slot: %s | Changed: %s | Forced: %s | Events: %d",
                 result.get("active_slot_id"),
                 result.get("changed"),
                 result.get("forced"),
+                result.get("active_events_count", 0),
             )
 
     # Register coordinator listener
@@ -168,10 +190,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     _LOGGER.info(
         "Climate Control Calendar setup complete. "
-        "Calendar: %s, Dry Run: %s, Slots: %d, Climate entities: %d, Flags enabled: True",
-        calendar_entity_id,
+        "Calendars: %d, Dry Run: %s, Slots: %d, Bindings: %d, Climate entities: %d, Flags enabled: True",
+        len(calendar_entities),
         dry_run,
         len(slots),
+        len(bindings),
         len(climate_entities),
     )
 

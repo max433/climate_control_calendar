@@ -18,19 +18,27 @@ from .const import (
     SERVICE_REFRESH_NOW,
     SERVICE_ADD_SLOT,
     SERVICE_REMOVE_SLOT,
+    SERVICE_ADD_BINDING,
+    SERVICE_REMOVE_BINDING,
+    SERVICE_LIST_BINDINGS,
     DATA_COORDINATOR,
     DATA_ENGINE,
     DATA_EVENT_EMITTER,
+    DATA_BINDING_MANAGER,
     CONF_SLOTS,
+    CONF_BINDINGS,
     SLOT_ID,
     SLOT_LABEL,
-    SLOT_TIME_START,
-    SLOT_TIME_END,
-    SLOT_DAYS,
     SLOT_CLIMATE_PAYLOAD,
-    DAYS_OF_WEEK,
+    BINDING_CALENDARS,
+    BINDING_MATCH,
+    BINDING_SLOT_ID,
+    BINDING_PRIORITY,
+    MATCH_TYPE,
+    MATCH_VALUE,
 )
-from .helpers import generate_slot_id, validate_slot_data, validate_slot_overlap
+from .helpers import generate_slot_id, validate_slot_data
+from .event_matcher import EventMatcher
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -67,9 +75,7 @@ SERVICE_REFRESH_NOW_SCHEMA = vol.Schema({})
 SERVICE_ADD_SLOT_SCHEMA = vol.Schema(
     {
         vol.Required("label"): cv.string,
-        vol.Required("time_start"): cv.string,
-        vol.Required("time_end"): cv.string,
-        vol.Optional("days", default=DAYS_OF_WEEK): vol.All(cv.ensure_list, [vol.In(DAYS_OF_WEEK)]),
+        # Decision D034: Removed time_start, time_end, days - slots are now event-independent
         vol.Required("climate_payload"): vol.Schema(
             {
                 vol.Optional("temperature"): vol.Coerce(float),
@@ -89,6 +95,32 @@ SERVICE_REMOVE_SLOT_SCHEMA = vol.Schema(
     }
 )
 
+# Decision D032: New binding services
+SERVICE_ADD_BINDING_SCHEMA = vol.Schema(
+    {
+        vol.Required("calendars"): vol.Any(
+            cv.string,  # "*" for all calendars
+            cv.ensure_list,  # List of calendar entity IDs
+        ),
+        vol.Required("match"): vol.Schema(
+            {
+                vol.Required("type"): vol.In(EventMatcher.SUPPORTED_MATCH_TYPES),
+                vol.Required("value"): cv.string,
+            }
+        ),
+        vol.Required("slot_id"): cv.string,
+        vol.Optional("priority", default=0): vol.Coerce(int),
+    }
+)
+
+SERVICE_REMOVE_BINDING_SCHEMA = vol.Schema(
+    {
+        vol.Required("binding_id"): cv.string,
+    }
+)
+
+SERVICE_LIST_BINDINGS_SCHEMA = vol.Schema({})  # No parameters
+
 
 def get_service_schemas() -> dict[str, vol.Schema]:
     """
@@ -104,6 +136,9 @@ def get_service_schemas() -> dict[str, vol.Schema]:
         SERVICE_REFRESH_NOW: SERVICE_REFRESH_NOW_SCHEMA,
         SERVICE_ADD_SLOT: SERVICE_ADD_SLOT_SCHEMA,
         SERVICE_REMOVE_SLOT: SERVICE_REMOVE_SLOT_SCHEMA,
+        SERVICE_ADD_BINDING: SERVICE_ADD_BINDING_SCHEMA,
+        SERVICE_REMOVE_BINDING: SERVICE_REMOVE_BINDING_SCHEMA,
+        SERVICE_LIST_BINDINGS: SERVICE_LIST_BINDINGS_SCHEMA,
     }
 
 
@@ -198,11 +233,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
                 await coordinator.async_request_refresh()
 
     async def handle_add_slot(call: ServiceCall) -> None:
-        """Handle add_slot service call."""
+        """
+        Handle add_slot service call.
+
+        Decision D034: Simplified slots - only label and climate_payload required.
+        Time/day fields removed from slot structure.
+        """
         label = call.data["label"]
-        time_start = call.data["time_start"]
-        time_end = call.data["time_end"]
-        days = call.data.get("days", DAYS_OF_WEEK)
         climate_payload = call.data["climate_payload"]
 
         # Generate slot ID
@@ -212,16 +249,14 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         new_slot = {
             SLOT_ID: slot_id,
             SLOT_LABEL: label,
-            SLOT_TIME_START: time_start,
-            SLOT_TIME_END: time_end,
-            SLOT_DAYS: days,
             SLOT_CLIMATE_PAYLOAD: climate_payload,
         }
 
         # Validate slot data
-        if not validate_slot_data(new_slot):
-            _LOGGER.error("Invalid slot data provided")
-            raise vol.Invalid("Invalid slot configuration")
+        valid, error = validate_slot_data(new_slot)
+        if not valid:
+            _LOGGER.error("Invalid slot data provided: %s", error)
+            raise vol.Invalid(f"Invalid slot configuration: {error}")
 
         _LOGGER.info("Service call: add_slot | label=%s, id=%s", label, slot_id)
 
@@ -234,11 +269,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         entry = entries[0]  # Use first entry
         current_slots = entry.options.get(CONF_SLOTS, [])
 
-        # Check for overlaps
-        overlap_check = validate_slot_overlap(new_slot, current_slots)
-        if not overlap_check["valid"]:
-            _LOGGER.error("Slot overlaps with existing slot: %s", overlap_check["overlaps_with"])
-            raise vol.Invalid(f"Slot overlaps with existing slot ID: {overlap_check['overlaps_with']}")
+        # Decision D034: No overlap validation needed (slots are event-independent)
 
         # Add new slot
         updated_slots = current_slots + [new_slot]
@@ -290,6 +321,98 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             if coordinator:
                 await coordinator.async_request_refresh()
 
+    async def handle_add_binding(call: ServiceCall) -> None:
+        """
+        Handle add_binding service call.
+
+        Decision D032: Event-to-slot binding system.
+        """
+        calendars = call.data["calendars"]
+        match_config = call.data["match"]
+        slot_id = call.data["slot_id"]
+        priority = call.data.get("priority", 0)
+
+        _LOGGER.info(
+            "Service call: add_binding | calendars=%s, match=%s, slot=%s, priority=%d",
+            calendars,
+            match_config,
+            slot_id,
+            priority,
+        )
+
+        # Add binding via binding manager
+        for entry_data in hass.data.get(DOMAIN, {}).values():
+            binding_manager = entry_data.get(DATA_BINDING_MANAGER)
+            if binding_manager:
+                try:
+                    binding_id = await binding_manager.async_add_binding(
+                        calendars=calendars,
+                        match_config=match_config,
+                        slot_id=slot_id,
+                        priority=priority,
+                    )
+                    _LOGGER.info("Binding added successfully: %s", binding_id)
+
+                    # Force refresh to apply immediately
+                    coordinator = entry_data.get(DATA_COORDINATOR)
+                    if coordinator:
+                        await coordinator.async_request_refresh()
+
+                    return  # Success
+                except Exception as err:
+                    _LOGGER.error("Failed to add binding: %s", err)
+                    raise vol.Invalid(f"Failed to add binding: {err}")
+
+        _LOGGER.error("No binding manager found")
+        raise vol.Invalid("Binding manager not available")
+
+    async def handle_remove_binding(call: ServiceCall) -> None:
+        """Handle remove_binding service call."""
+        binding_id = call.data["binding_id"]
+
+        _LOGGER.info("Service call: remove_binding | binding_id=%s", binding_id)
+
+        # Remove binding via binding manager
+        for entry_data in hass.data.get(DOMAIN, {}).values():
+            binding_manager = entry_data.get(DATA_BINDING_MANAGER)
+            if binding_manager:
+                success = await binding_manager.async_remove_binding(binding_id)
+                if success:
+                    _LOGGER.info("Binding removed successfully: %s", binding_id)
+
+                    # Force refresh
+                    coordinator = entry_data.get(DATA_COORDINATOR)
+                    if coordinator:
+                        await coordinator.async_request_refresh()
+
+                    return  # Success
+                else:
+                    _LOGGER.warning("Binding ID not found: %s", binding_id)
+                    raise vol.Invalid(f"Binding ID not found: {binding_id}")
+
+        _LOGGER.error("No binding manager found")
+        raise vol.Invalid("Binding manager not available")
+
+    async def handle_list_bindings(call: ServiceCall) -> dict[str, Any]:
+        """
+        Handle list_bindings service call.
+
+        Returns:
+            Dict with bindings list
+        """
+        _LOGGER.info("Service call: list_bindings")
+
+        # Get bindings from binding manager
+        for entry_data in hass.data.get(DOMAIN, {}).values():
+            binding_manager = entry_data.get(DATA_BINDING_MANAGER)
+            if binding_manager:
+                bindings = binding_manager.get_all_bindings()
+                _LOGGER.info("Returning %d bindings", len(bindings))
+                return {"bindings": bindings}
+
+        _LOGGER.warning("No binding manager found")
+        return {"bindings": []}
+
     # Register services
     hass.services.async_register(
         DOMAIN,
@@ -333,7 +456,33 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         schema=SERVICE_REMOVE_SLOT_SCHEMA,
     )
 
-    _LOGGER.info("Services registered: set_flag, clear_flag, force_slot, refresh_now, add_slot, remove_slot")
+    # Decision D032: Register binding services
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ADD_BINDING,
+        handle_add_binding,
+        schema=SERVICE_ADD_BINDING_SCHEMA,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REMOVE_BINDING,
+        handle_remove_binding,
+        schema=SERVICE_REMOVE_BINDING_SCHEMA,
+    )
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_LIST_BINDINGS,
+        handle_list_bindings,
+        schema=SERVICE_LIST_BINDINGS_SCHEMA,
+        supports_response=True,  # This service returns data
+    )
+
+    _LOGGER.info(
+        "Services registered: set_flag, clear_flag, force_slot, refresh_now, "
+        "add_slot, remove_slot, add_binding, remove_binding, list_bindings"
+    )
 
 
 async def async_unload_services(hass: HomeAssistant) -> None:
@@ -351,5 +500,8 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         hass.services.async_remove(DOMAIN, SERVICE_REFRESH_NOW)
         hass.services.async_remove(DOMAIN, SERVICE_ADD_SLOT)
         hass.services.async_remove(DOMAIN, SERVICE_REMOVE_SLOT)
+        hass.services.async_remove(DOMAIN, SERVICE_ADD_BINDING)
+        hass.services.async_remove(DOMAIN, SERVICE_REMOVE_BINDING)
+        hass.services.async_remove(DOMAIN, SERVICE_LIST_BINDINGS)
 
         _LOGGER.info("Services unregistered")
