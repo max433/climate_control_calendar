@@ -1,31 +1,38 @@
-"""Data coordinator for Climate Control Calendar integration."""
-from datetime import timedelta
+"""Data coordinator for Climate Control Calendar integration.
+
+DEPRECATED: This module now serves as a compatibility wrapper.
+The actual implementation is in calendar_monitor.MultiCalendarCoordinator.
+
+Decision D033: Multi-Calendar Support - This file maintains backward compatibility
+while the integration transitions to the new multi-calendar architecture.
+"""
+from __future__ import annotations
+
 import logging
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.update_coordinator import (
-    DataUpdateCoordinator,
-    UpdateFailed,
-)
-from homeassistant.util import dt as dt_util
 
-from .const import (
-    DOMAIN,
-    DEFAULT_UPDATE_INTERVAL,
-    LOG_PREFIX_COORDINATOR,
-)
+from .calendar_monitor import MultiCalendarCoordinator
+from .const import DEFAULT_UPDATE_INTERVAL
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class ClimateControlCalendarCoordinator(DataUpdateCoordinator):
-    """Coordinator to manage calendar state and trigger slot evaluation."""
+class ClimateControlCalendarCoordinator(MultiCalendarCoordinator):
+    """
+    Legacy coordinator class for backward compatibility.
+
+    This class now wraps MultiCalendarCoordinator and provides the same
+    interface as before, but supports monitoring multiple calendars.
+
+    DEPRECATED: Use MultiCalendarCoordinator directly for new code.
+    """
 
     def __init__(
         self,
         hass: HomeAssistant,
-        calendar_entity_id: str,
+        calendar_entity_id: str | list[str],
         update_interval: int = DEFAULT_UPDATE_INTERVAL,
     ) -> None:
         """
@@ -33,122 +40,72 @@ class ClimateControlCalendarCoordinator(DataUpdateCoordinator):
 
         Args:
             hass: Home Assistant instance
-            calendar_entity_id: Entity ID of the calendar to monitor
+            calendar_entity_id: Single calendar ID (legacy) or list of calendar IDs
             update_interval: Update interval in seconds
         """
-        self.calendar_entity_id = calendar_entity_id
-        self._previous_state: str | None = None
-        self._previous_event: dict[str, Any] | None = None
+        # Convert single calendar to list for backward compatibility
+        if isinstance(calendar_entity_id, str):
+            calendar_entities = [calendar_entity_id]
+            self.calendar_entity_id = calendar_entity_id  # Keep for legacy access
+        else:
+            calendar_entities = calendar_entity_id
+            self.calendar_entity_id = calendar_entities[0] if calendar_entities else None
 
+        # Initialize parent MultiCalendarCoordinator
         super().__init__(
-            hass,
-            _LOGGER,
-            name=f"{DOMAIN}_{calendar_entity_id}",
-            update_interval=timedelta(seconds=update_interval),
+            hass=hass,
+            calendar_entities=calendar_entities,
+            update_interval=update_interval,
         )
-
-    async def _async_update_data(self) -> dict[str, Any]:
-        """
-        Fetch calendar state and detect changes.
-
-        Returns:
-            Dictionary containing calendar state and metadata
-
-        Raises:
-            UpdateFailed: If calendar entity is unavailable
-        """
-        calendar_state = self.hass.states.get(self.calendar_entity_id)
-
-        if calendar_state is None:
-            raise UpdateFailed(
-                f"{LOG_PREFIX_COORDINATOR} Calendar entity not found: {self.calendar_entity_id}"
-            )
-
-        if calendar_state.state == "unavailable":
-            raise UpdateFailed(
-                f"{LOG_PREFIX_COORDINATOR} Calendar entity unavailable: {self.calendar_entity_id}"
-            )
-
-        # Extract current event data
-        current_state = calendar_state.state
-        current_event = None
-
-        if current_state == "on":
-            # Calendar is active (event in progress)
-            attributes = calendar_state.attributes
-            current_event = {
-                "summary": attributes.get("message", ""),
-                "start": attributes.get("start_time"),
-                "end": attributes.get("end_time"),
-                "description": attributes.get("description", ""),
-                "location": attributes.get("location", ""),
-            }
-
-        # Detect state change
-        state_changed = self._previous_state != current_state
-        event_changed = self._previous_event != current_event
-
-        if state_changed:
-            _LOGGER.debug(
-                "%s Calendar state changed: %s -> %s",
-                LOG_PREFIX_COORDINATOR,
-                self._previous_state,
-                current_state,
-            )
-
-        if event_changed and current_event:
-            _LOGGER.debug(
-                "%s Calendar event changed: %s",
-                LOG_PREFIX_COORDINATOR,
-                current_event.get("summary", "Unknown"),
-            )
-
-        # Update tracking
-        self._previous_state = current_state
-        self._previous_event = current_event
-
-        return {
-            "calendar_entity_id": self.calendar_entity_id,
-            "state": current_state,
-            "event": current_event,
-            "state_changed": state_changed,
-            "event_changed": event_changed,
-            "last_update": dt_util.utcnow(),
-        }
-
-    async def async_refresh_now(self) -> None:
-        """Force immediate coordinator refresh."""
-        _LOGGER.info("%s Forcing immediate refresh", LOG_PREFIX_COORDINATOR)
-        await self.async_request_refresh()
 
     def get_current_calendar_state(self) -> str | None:
         """
-        Get current calendar state.
+        Get current calendar state (legacy method).
+
+        For single calendar: returns its state.
+        For multiple calendars: returns 'on' if any calendar is active.
 
         Returns:
             Current state ('on', 'off', or None if unavailable)
         """
         if self.data is None:
             return None
-        return self.data.get("state")
+
+        # If monitoring single calendar (legacy mode), return its state
+        if len(self.calendar_entities) == 1:
+            calendar_states = self.data.get("calendar_states", {})
+            return calendar_states.get(self.calendar_entities[0])
+
+        # Multi-calendar mode: return 'on' if any calendar active
+        return "on" if self.is_any_calendar_active() else "off"
 
     def get_current_event(self) -> dict[str, Any] | None:
         """
-        Get current calendar event.
+        Get current calendar event (legacy method).
+
+        For single calendar: returns its active event.
+        For multiple calendars: returns first active event.
 
         Returns:
             Current event dict or None if no event active
         """
-        if self.data is None:
+        active_events = self.get_active_events()
+
+        if not active_events:
             return None
-        return self.data.get("event")
+
+        # Return first active event
+        return active_events[0]
 
     def is_calendar_active(self) -> bool:
         """
-        Check if calendar has an active event.
+        Check if calendar has an active event (legacy method).
 
         Returns:
-            True if calendar is active (on), False otherwise
+            True if any calendar is active (on), False otherwise
         """
-        state = self.get_current_calendar_state()
-        return state == "on"
+        return self.is_any_calendar_active()
+
+
+# Export MultiCalendarCoordinator for direct use in new code
+__all__ = ["ClimateControlCalendarCoordinator", "MultiCalendarCoordinator"]
