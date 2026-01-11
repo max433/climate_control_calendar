@@ -80,6 +80,42 @@
     "refresh_now": {
       "name": "Aggiorna Ora",
       "description": "Forza l'aggiornamento immediato del coordinator e la valutazione degli slot. Usa questo per applicare le modifiche alla configurazione senza attendere il prossimo aggiornamento automatico (60 secondi)."
+    },
+    "add_slot": {
+      "name": "Aggiungi Slot",
+      "description": "Aggiungi un nuovo slot temporale con impostazioni di temperatura e modalità. Gli slot sono validati automaticamente per sovrapposizioni.",
+      "fields": {
+        "label": {
+          "name": "Etichetta",
+          "description": "Nome descrittivo per questo slot (es. 'Comfort Mattino', 'Ore Lavoro')."
+        },
+        "time_start": {
+          "name": "Ora Inizio",
+          "description": "Ora di inizio in formato HH:MM (es. '06:00')."
+        },
+        "time_end": {
+          "name": "Ora Fine",
+          "description": "Ora di fine in formato HH:MM (es. '09:00'). Per slot notturni, usa orari come '23:00' to '02:00'."
+        },
+        "days": {
+          "name": "Giorni della Settimana",
+          "description": "Lista dei giorni in cui questo slot è attivo. Default: tutti i giorni."
+        },
+        "climate_payload": {
+          "name": "Impostazioni Clima",
+          "description": "Impostazioni climatiche da applicare (temperature, hvac_mode, preset_mode, ecc.). Almeno un campo richiesto."
+        }
+      }
+    },
+    "remove_slot": {
+      "name": "Rimuovi Slot",
+      "description": "Rimuovi uno slot temporale esistente tramite il suo ID.",
+      "fields": {
+        "slot_id": {
+          "name": "ID Slot",
+          "description": "ID dello slot da rimuovere. Trova gli ID degli slot nei log quando aggiungi slot."
+        }
+      }
     }
   }
 }

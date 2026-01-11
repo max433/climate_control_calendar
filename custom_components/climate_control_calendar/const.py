@@ -50,6 +50,8 @@ SERVICE_SET_FLAG: Final = "set_flag"
 SERVICE_CLEAR_FLAG: Final = "clear_flag"
 SERVICE_FORCE_SLOT: Final = "force_slot"
 SERVICE_REFRESH_NOW: Final = "refresh_now"
+SERVICE_ADD_SLOT: Final = "add_slot"
+SERVICE_REMOVE_SLOT: Final = "remove_slot"
 
 # Storage keys
 STORAGE_VERSION: Final = 1

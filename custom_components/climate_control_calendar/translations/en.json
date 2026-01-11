@@ -80,6 +80,42 @@
     "refresh_now": {
       "name": "Refresh Now",
       "description": "Force immediate coordinator refresh and slot evaluation. Use this to apply configuration changes without waiting for the next automatic update (60 seconds)."
+    },
+    "add_slot": {
+      "name": "Add Slot",
+      "description": "Add a new time slot with temperature and mode settings. Slots are automatically validated for overlaps.",
+      "fields": {
+        "label": {
+          "name": "Label",
+          "description": "Descriptive name for this slot (e.g., 'Morning Comfort', 'Work Hours')."
+        },
+        "time_start": {
+          "name": "Start Time",
+          "description": "Start time in HH:MM format (e.g., '06:00')."
+        },
+        "time_end": {
+          "name": "End Time",
+          "description": "End time in HH:MM format (e.g., '09:00'). For overnight slots, use times like '23:00' to '02:00'."
+        },
+        "days": {
+          "name": "Days of Week",
+          "description": "List of days when this slot is active. Default: all days."
+        },
+        "climate_payload": {
+          "name": "Climate Settings",
+          "description": "Climate settings to apply (temperature, hvac_mode, preset_mode, etc.). At least one field required."
+        }
+      }
+    },
+    "remove_slot": {
+      "name": "Remove Slot",
+      "description": "Remove an existing time slot by its ID.",
+      "fields": {
+        "slot_id": {
+          "name": "Slot ID",
+          "description": "ID of the slot to remove. Find slot IDs in logs when adding slots."
+        }
+      }
     }
   }
 }
