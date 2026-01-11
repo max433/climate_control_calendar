@@ -30,19 +30,27 @@ class BindingManager:
     - Add/remove bindings
     - Resolve which slot to use for a given event
     - Handle priority-based conflict resolution
+    - Respect calendar configs (enabled state, default priority)
     """
 
-    def __init__(self, hass: HomeAssistant, entry_id: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry_id: str,
+        calendar_configs: dict[str, dict[str, Any]] | None = None,
+    ) -> None:
         """
         Initialize binding manager.
 
         Args:
             hass: Home Assistant instance
             entry_id: Config entry ID
+            calendar_configs: Per-calendar configuration
         """
         self.hass = hass
         self.entry_id = entry_id
         self._bindings: list[dict[str, Any]] = []
+        self._calendar_configs = calendar_configs or {}
 
     async def async_load(self, bindings: list[dict[str, Any]] | None = None) -> None:
         """
@@ -77,21 +85,63 @@ class BindingManager:
         """
         return self._bindings.copy()
 
+    def update_calendar_configs(self, calendar_configs: dict[str, dict[str, Any]]) -> None:
+        """
+        Update calendar configurations.
+
+        Args:
+            calendar_configs: New calendar configurations
+        """
+        self._calendar_configs = calendar_configs or {}
+        _LOGGER.debug("Calendar configs updated: %d calendars", len(self._calendar_configs))
+
+    def _is_calendar_enabled(self, calendar_id: str) -> bool:
+        """
+        Check if a calendar is enabled in calendar_configs.
+
+        Args:
+            calendar_id: Calendar entity ID
+
+        Returns:
+            True if enabled (or no config = default enabled), False otherwise
+        """
+        if calendar_id not in self._calendar_configs:
+            # No config = enabled by default
+            return True
+
+        return self._calendar_configs[calendar_id].get("enabled", True)
+
+    def _get_calendar_default_priority(self, calendar_id: str) -> int:
+        """
+        Get default priority for bindings from a calendar.
+
+        Args:
+            calendar_id: Calendar entity ID
+
+        Returns:
+            Default priority (0 if not configured)
+        """
+        if calendar_id not in self._calendar_configs:
+            return 0
+
+        return self._calendar_configs[calendar_id].get("default_priority", 0)
+
     def resolve_slot_for_event(
         self,
         event: dict[str, Any],
         calendar_id: str,
         available_slots: list[dict[str, Any]],
-    ) -> dict[str, Any] | None:
+    ) -> tuple[dict[str, Any], list[str] | None, int] | None:
         """
         Resolve which slot to use for a given calendar event.
 
-        Resolution algorithm (Decision D032):
+        Resolution algorithm (New architecture):
+        0. Check if calendar is enabled
         1. Filter bindings that match the calendar
         2. Filter bindings that match the event
         3. Sort by priority (DESC)
         4. At same priority, last defined wins
-        5. Return the winning slot
+        5. Return (slot, target_entities, priority)
 
         Args:
             event: Calendar event with 'summary' and other attributes
@@ -99,15 +149,26 @@ class BindingManager:
             available_slots: List of available slot configurations
 
         Returns:
-            Matched slot or None if no binding matches
+            Tuple of (slot, target_entities, priority) or None if no binding matches
+            - slot: Matched slot dict
+            - target_entities: List of entity IDs or None (use global pool)
+            - priority: Resolved priority
 
         Example:
             >>> event = {"summary": "Morning"}
             >>> calendar_id = "calendar.work"
             >>> available_slots = [{"id": "slot1", "label": "Comfort"}]
-            >>> binding_manager.resolve_slot_for_event(event, calendar_id, available_slots)
-            {"id": "slot1", "label": "Comfort", ...}
+            >>> result = binding_manager.resolve_slot_for_event(event, calendar_id, available_slots)
+            >>> result  # (slot_dict, ["climate.studio"], 10)
         """
+        # Step 0: Check if calendar is enabled
+        if not self._is_calendar_enabled(calendar_id):
+            _LOGGER.debug(
+                "Calendar %s is disabled, skipping event resolution",
+                calendar_id,
+            )
+            return None
+
         # Step 1: Filter bindings for this calendar
         calendar_bindings = [
             b for b in self._bindings
@@ -136,28 +197,39 @@ class BindingManager:
             )
             return None
 
-        # Step 3: Sort by priority DESC
+        # Step 3: Sort by priority DESC (resolve priorities first)
+        # Priority resolution: binding.priority or calendar_config.default_priority or 0
+        def get_binding_priority(binding: dict[str, Any]) -> int:
+            binding_priority = binding.get("priority")
+            if binding_priority is not None:
+                return binding_priority
+            # Fallback to calendar default priority
+            return self._get_calendar_default_priority(calendar_id)
+
         # Python's sort is stable, so equal priorities maintain insertion order
         # To make "last defined wins", we rely on stable sort
         sorted_bindings = sorted(
             matching_bindings,
-            key=lambda b: b.get("priority", 0),
+            key=get_binding_priority,
             reverse=True,
         )
 
         # Step 4: Take first (highest priority, or last inserted if tie)
         winner = sorted_bindings[0]
         slot_id = winner.get("slot_id")
+        target_entities = winner.get("target_entities")  # Can be None (use global pool)
+        resolved_priority = get_binding_priority(winner)
 
         _LOGGER.info(
-            "Event '%s' on %s matched binding (priority=%d) -> slot_id=%s",
+            "Event '%s' on %s matched binding (priority=%d) -> slot_id=%s, entities=%s",
             event.get("summary", "Unknown"),
             calendar_id,
-            winner.get("priority", 0),
+            resolved_priority,
             slot_id,
+            target_entities or "global pool",
         )
 
-        # Step 5: Find and return the slot
+        # Step 5: Find and return (slot, target_entities, priority)
         slot = self._find_slot_by_id(available_slots, slot_id)
         if not slot:
             _LOGGER.warning(
@@ -166,7 +238,7 @@ class BindingManager:
             )
             return None
 
-        return slot
+        return (slot, target_entities, resolved_priority)
 
     @staticmethod
     def _find_slot_by_id(
@@ -193,7 +265,8 @@ class BindingManager:
         calendars: str | list[str],
         match_config: dict[str, Any],
         slot_id: str,
-        priority: int = 0,
+        target_entities: list[str] | None = None,
+        priority: int | None = None,
     ) -> str:
         """
         Add a new binding.
@@ -202,7 +275,8 @@ class BindingManager:
             calendars: Calendar filter ("*" or list of calendar IDs)
             match_config: Match configuration (type, value)
             slot_id: Target slot ID
-            priority: Binding priority (higher = more important)
+            target_entities: Specific entities for this binding (None = use global pool)
+            priority: Binding priority (None = use calendar default, higher = more important)
 
         Returns:
             Generated binding ID
@@ -224,7 +298,8 @@ class BindingManager:
             "calendars": calendars,
             "match": match_config,
             "slot_id": slot_id,
-            "priority": priority,
+            "target_entities": target_entities,  # New field
+            "priority": priority,  # Can be None (use calendar default)
         }
 
         # Add to list
@@ -234,11 +309,12 @@ class BindingManager:
         await self._persist_bindings()
 
         _LOGGER.info(
-            "Binding added: %s | calendars=%s, slot=%s, priority=%d",
+            "Binding added: %s | calendars=%s, slot=%s, entities=%s, priority=%s",
             binding_id,
             calendars,
             slot_id,
-            priority,
+            target_entities or "global",
+            priority if priority is not None else "calendar_default",
         )
 
         return binding_id

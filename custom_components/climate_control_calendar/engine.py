@@ -88,18 +88,18 @@ class ClimateControlEngine:
         self,
         active_events: list[dict[str, Any]],
         available_slots: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]:
+    ) -> list[tuple[dict[str, Any], list[str] | None, int]]:
         """
         Resolve slots for all active calendar events using binding manager.
 
-        Decision D032: Event-to-slot binding resolution.
+        New architecture: Returns list of (slot, target_entities, priority) tuples.
 
         Args:
             active_events: List of active calendar events from coordinator
             available_slots: List of available slot configurations
 
         Returns:
-            List of resolved slots (one per matching event)
+            List of (slot, target_entities, priority) tuples for all matched bindings
         """
         if not self.binding_manager:
             _LOGGER.warning(
@@ -123,7 +123,7 @@ class ClimateControlEngine:
                 len(active_events),
             )
 
-        resolved_slots = []
+        resolved_bindings = []
 
         for event in active_events:
             calendar_id = event.get("calendar_id")
@@ -137,21 +137,24 @@ class ClimateControlEngine:
                     calendar_id,
                 )
 
-            # Resolve slot for this event via binding manager
-            slot = self.binding_manager.resolve_slot_for_event(
+            # Resolve slot for this event via binding manager (returns tuple or None)
+            result = self.binding_manager.resolve_slot_for_event(
                 event=event,
                 calendar_id=calendar_id,
                 available_slots=available_slots,
             )
 
-            if slot:
-                resolved_slots.append(slot)
+            if result:
+                slot, target_entities, priority = result
+                resolved_bindings.append((slot, target_entities, priority))
                 _LOGGER.info(
-                    "%s Event '%s' resolved to slot: %s (ID: %s)",
+                    "%s Event '%s' resolved to slot: %s (ID: %s), entities: %s, priority: %d",
                     LOG_PREFIX_ENGINE,
                     event_summary,
                     slot.get(SLOT_LABEL),
                     slot.get(SLOT_ID),
+                    target_entities or "global",
+                    priority,
                 )
             else:
                 if self.debug_mode:
@@ -162,7 +165,7 @@ class ClimateControlEngine:
                         calendar_id,
                     )
 
-        return resolved_slots
+        return resolved_bindings
 
     def _find_slot_by_id(
         self,
@@ -246,44 +249,22 @@ class ClimateControlEngine:
                     forced_slot_id,
                 )
         else:
-            # Normal slot resolution via bindings (Decision D032)
-            resolved_slots = self.resolve_slots_for_active_events(
+            # Normal slot resolution via bindings (New architecture)
+            resolved_bindings = self.resolve_slots_for_active_events(
                 active_events=active_events,
                 available_slots=slots,
             )
 
-            # If multiple events matched, take first resolved slot
-            # TODO: Implement priority between events if needed
-            if resolved_slots:
-                active_slot = resolved_slots[0]
-                if len(resolved_slots) > 1:
-                    _LOGGER.info(
-                        "%s Multiple events matched (%d), using first resolved slot: %s",
-                        LOG_PREFIX_ENGINE,
-                        len(resolved_slots),
-                        active_slot.get(SLOT_LABEL),
-                    )
-
-        # Get previous active slot for change detection
-        previous_slot_id = self.event_emitter.get_last_active_slot_id()
-        current_slot_id = active_slot.get(SLOT_ID) if active_slot else None
-
-        # Handle slot activation
-        if active_slot and current_slot_id != previous_slot_id:
-            await self._handle_slot_activation(active_slot, climate_entities)
-
-        # Handle slot deactivation
-        elif not active_slot and previous_slot_id is not None:
-            self._handle_slot_deactivation(previous_slot_id)
-
-        # No change - already logged by event emitter deduplication
-        elif active_slot and current_slot_id == previous_slot_id:
-            if self.debug_mode:
-                _LOGGER.debug(
-                    "%s Slot unchanged: %s",
-                    LOG_PREFIX_ENGINE,
-                    active_slot.get(SLOT_LABEL),
+            # New architecture: Apply ALL resolved bindings, not just first!
+            # Bindings already sorted by priority in binding_manager
+            if resolved_bindings:
+                await self._apply_multiple_slots(
+                    resolved_bindings=resolved_bindings,
+                    climate_entities_pool=climate_entities,
                 )
+
+        # Note: Slot activation/deactivation tracking removed in new architecture
+        # Multiple slots can be active simultaneously, tracked at entity level
 
         if self.debug_mode:
             _LOGGER.debug(
@@ -298,7 +279,211 @@ class ClimateControlEngine:
             "changed": current_slot_id != previous_slot_id,
             "forced": forced_slot_id is not None,
             "active_events_count": len(active_events),
+            "bindings_applied": len(resolved_bindings) if not forced_slot_id else 0,
         }
+
+    async def _apply_multiple_slots(
+        self,
+        resolved_bindings: list[tuple[dict[str, Any], list[str] | None, int]],
+        climate_entities_pool: list[str],
+    ) -> None:
+        """
+        Apply multiple slots with priority-based conflict resolution.
+
+        New architecture: Multiple bindings can be active simultaneously.
+        Priority determines which slot wins for entities with conflicts.
+
+        Args:
+            resolved_bindings: List of (slot, target_entities, priority) tuples
+            climate_entities_pool: Global climate entities pool (fallback)
+        """
+        # Sort by priority DESC (higher priority wins conflicts)
+        sorted_bindings = sorted(
+            resolved_bindings,
+            key=lambda x: x[2],  # x[2] = priority
+            reverse=True,
+        )
+
+        # Track which entities have been applied (entity_id → slot_id)
+        applied_entities: dict[str, str] = {}
+
+        _LOGGER.info(
+            "%s Applying %d bindings (sorted by priority)",
+            LOG_PREFIX_ENGINE,
+            len(sorted_bindings),
+        )
+
+        for slot, target_entities, priority in sorted_bindings:
+            slot_id = slot.get("id")
+            slot_label = slot.get("label")
+
+            # Determine entities to apply to
+            if target_entities is None:
+                # Use global pool
+                entities_for_this_binding = climate_entities_pool
+            else:
+                # Use specific entities from binding
+                entities_for_this_binding = target_entities
+
+            # Apply entity_overrides and excluded_entities from slot
+            excluded = set(slot.get("excluded_entities", []))
+            entity_overrides = slot.get("entity_overrides", {})
+
+            # Filter out excluded entities
+            entities_to_apply = [
+                e for e in entities_for_this_binding
+                if e not in excluded
+            ]
+
+            # Filter out entities already applied by higher priority binding
+            entities_available = [
+                e for e in entities_to_apply
+                if e not in applied_entities
+            ]
+
+            if not entities_available:
+                _LOGGER.debug(
+                    "%s Slot '%s' (priority=%d): all entities already handled by higher priority",
+                    LOG_PREFIX_ENGINE,
+                    slot_label,
+                    priority,
+                )
+                continue
+
+            _LOGGER.info(
+                "%s Applying slot '%s' (priority=%d) to %d entities: %s",
+                LOG_PREFIX_ENGINE,
+                slot_label,
+                priority,
+                len(entities_available),
+                entities_available,
+            )
+
+            # Apply slot to available entities
+            await self._apply_slot_to_entities(
+                slot=slot,
+                entities=entities_available,
+                entity_overrides=entity_overrides,
+            )
+
+            # Mark entities as applied
+            for entity_id in entities_available:
+                applied_entities[entity_id] = slot_id
+
+    async def _apply_slot_to_entities(
+        self,
+        slot: dict[str, Any],
+        entities: list[str],
+        entity_overrides: dict[str, dict[str, Any]],
+    ) -> None:
+        """
+        Apply a slot to specific entities, respecting entity_overrides.
+
+        Args:
+            slot: Slot configuration
+            entities: Entities to apply to
+            entity_overrides: Entity-specific payload overrides
+        """
+        slot_id = slot.get("id")
+        slot_label = slot.get("label")
+
+        # Get default payload (support both old and new key names)
+        default_payload = slot.get("default_climate_payload") or slot.get("climate_payload", {})
+
+        # Group entities by payload (default vs override)
+        entities_by_payload: dict[str, list[str]] = {}
+
+        for entity_id in entities:
+            if entity_id in entity_overrides:
+                # Use override payload
+                override_payload = entity_overrides[entity_id]
+                payload_key = str(override_payload)  # Use str representation as key
+                if payload_key not in entities_by_payload:
+                    entities_by_payload[payload_key] = []
+                entities_by_payload[payload_key].append(entity_id)
+            else:
+                # Use default payload
+                payload_key = str(default_payload)
+                if payload_key not in entities_by_payload:
+                    entities_by_payload[payload_key] = []
+                entities_by_payload[payload_key].append(entity_id)
+
+        # Apply each unique payload to its entities
+        for payload_str, entity_list in entities_by_payload.items():
+            # Reconstruct payload from first entity in group
+            if entity_list[0] in entity_overrides:
+                payload = entity_overrides[entity_list[0]]
+            else:
+                payload = default_payload
+
+            await self._apply_payload_to_entities(
+                slot_id=slot_id,
+                slot_label=slot_label,
+                payload=payload,
+                entities=entity_list,
+            )
+
+    async def _apply_payload_to_entities(
+        self,
+        slot_id: str,
+        slot_label: str,
+        payload: dict[str, Any],
+        entities: list[str],
+    ) -> None:
+        """
+        Apply a climate payload to a list of entities.
+
+        Args:
+            slot_id: Slot ID (for logging/events)
+            slot_label: Slot label (for logging/events)
+            payload: Climate payload to apply
+            entities: Entities to apply to
+        """
+        # Check if application should be skipped (flags)
+        if self.flag_manager and self.flag_manager.should_skip_application():
+            flag_type = self.flag_manager.get_active_flag_type()
+            _LOGGER.info(
+                "%s Skipping climate application due to flag: %s",
+                LOG_PREFIX_ENGINE,
+                flag_type,
+            )
+            # Emit skip events
+            for entity_id in entities:
+                self.event_emitter.emit_climate_skipped(
+                    climate_entity_id=entity_id,
+                    slot_id=slot_id,
+                    slot_label=slot_label,
+                    reason=f"override_flag_{flag_type}",
+                )
+            return
+
+        # Apply payload or dry run
+        if self.dry_run:
+            self._execute_dry_run(
+                slot_id=slot_id,
+                slot_label=slot_label,
+                climate_payload=payload,
+                climate_entities=entities,
+            )
+        else:
+            if self.applier:
+                await self._execute_application(
+                    slot_id=slot_id,
+                    slot_label=slot_label,
+                    climate_payload=payload,
+                    climate_entities=entities,
+                )
+            else:
+                _LOGGER.warning(
+                    "%s Applier not available, falling back to dry run logging",
+                    LOG_PREFIX_ENGINE,
+                )
+                self._execute_dry_run(
+                    slot_id=slot_id,
+                    slot_label=slot_label,
+                    climate_payload=payload,
+                    climate_entities=entities,
+                )
 
     async def _handle_slot_activation(
         self,
