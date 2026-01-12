@@ -10,6 +10,7 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers import selector
 
 from .const import (
     DOMAIN,
@@ -838,7 +839,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Required("yaml_content", default=current_yaml): cv.string,
+                vol.Required("yaml_content", default=current_yaml): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        multiple=False,
+                    ),
+                ),
             }
         )
 
@@ -899,7 +905,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Required("yaml_content", default=current_yaml): cv.string,
+                vol.Required("yaml_content", default=current_yaml): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        multiple=False,
+                    ),
+                ),
             }
         )
 
@@ -950,7 +961,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         schema = vol.Schema(
             {
-                vol.Required("yaml_content", default=current_yaml): cv.string,
+                vol.Required("yaml_content", default=current_yaml): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        multiple=False,
+                    ),
+                ),
             }
         )
 
