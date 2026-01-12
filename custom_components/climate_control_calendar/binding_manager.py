@@ -131,7 +131,7 @@ class BindingManager:
         event: dict[str, Any],
         calendar_id: str,
         available_slots: list[dict[str, Any]],
-    ) -> tuple[dict[str, Any], list[str] | None, int] | None:
+    ) -> tuple[dict[str, Any], list[str] | None, int, dict[str, str]] | None:
         """
         Resolve which slot to use for a given calendar event.
 
@@ -141,7 +141,7 @@ class BindingManager:
         2. Filter bindings that match the event
         3. Sort by priority (DESC)
         4. At same priority, last defined wins
-        5. Return (slot, target_entities, priority)
+        5. Return (slot, target_entities, priority, binding_metadata)
 
         Args:
             event: Calendar event with 'summary' and other attributes
@@ -149,17 +149,18 @@ class BindingManager:
             available_slots: List of available slot configurations
 
         Returns:
-            Tuple of (slot, target_entities, priority) or None if no binding matches
+            Tuple of (slot, target_entities, priority, binding_metadata) or None if no binding matches
             - slot: Matched slot dict
             - target_entities: List of entity IDs or None (use global pool)
             - priority: Resolved priority
+            - binding_metadata: Dict with binding_id, match_type, match_value
 
         Example:
             >>> event = {"summary": "Morning"}
             >>> calendar_id = "calendar.work"
             >>> available_slots = [{"id": "slot1", "label": "Comfort"}]
             >>> result = binding_manager.resolve_slot_for_event(event, calendar_id, available_slots)
-            >>> result  # (slot_dict, ["climate.studio"], 10)
+            >>> result  # (slot_dict, ["climate.studio"], 10, {"binding_id": "bind1", "match_type": "summary", "match_value": "Morning"})
         """
         # Step 0: Check if calendar is enabled
         if not self._is_calendar_enabled(calendar_id):
@@ -216,9 +217,11 @@ class BindingManager:
 
         # Step 4: Take first (highest priority, or last inserted if tie)
         winner = sorted_bindings[0]
+        binding_id = winner.get("id", "unknown")
         slot_id = winner.get("slot_id")
         target_entities = winner.get("target_entities")  # Can be None (use global pool)
         resolved_priority = get_binding_priority(winner)
+        match_config = winner.get("match", {})
 
         _LOGGER.info(
             "Event '%s' on %s matched binding (priority=%d) -> slot_id=%s, entities=%s",
@@ -229,7 +232,7 @@ class BindingManager:
             target_entities or "global pool",
         )
 
-        # Step 5: Find and return (slot, target_entities, priority)
+        # Step 5: Find and return (slot, target_entities, priority, binding_metadata)
         slot = self._find_slot_by_id(available_slots, slot_id)
         if not slot:
             _LOGGER.warning(
@@ -238,7 +241,14 @@ class BindingManager:
             )
             return None
 
-        return (slot, target_entities, resolved_priority)
+        # Return extended tuple with binding metadata for event emission
+        binding_metadata = {
+            "binding_id": binding_id,
+            "match_type": match_config.get("type", "unknown"),
+            "match_value": match_config.get("value", "unknown"),
+        }
+
+        return (slot, target_entities, resolved_priority, binding_metadata)
 
     @staticmethod
     def _find_slot_by_id(

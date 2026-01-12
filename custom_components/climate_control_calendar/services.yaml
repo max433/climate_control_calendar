@@ -1,0 +1,123 @@
+# Services for Climate Control Calendar integration
+
+set_flag:
+  name: Set Override Flag
+  description: Set an override flag to temporarily alter automatic climate control behavior. Only one flag can be active at a time (mutual exclusion).
+  fields:
+    flag_type:
+      name: Flag Type
+      description: "Type of override flag: skip_today (skip until midnight), skip_until_next_slot (skip current slot), or force_slot (force specific slot)."
+      required: true
+      example: "force_slot"
+      selector:
+        select:
+          options:
+            - "skip_today"
+            - "skip_until_next_slot"
+            - "force_slot"
+    target_slot_id:
+      name: Target Slot ID
+      description: Target slot ID (required when flag_type is force_slot). Find slot IDs in your configuration.
+      required: false
+      example: "comfort_abc123"
+      selector:
+        text:
+
+clear_flag:
+  name: Clear Override Flag
+  description: Clear the currently active override flag and resume normal automatic behavior.
+
+force_slot:
+  name: Force Slot Activation
+  description: Force activation of a specific time slot, ignoring calendar state and time restrictions. This is a convenience wrapper for set_flag with flag_type=force_slot.
+  fields:
+    slot_id:
+      name: Slot ID
+      description: ID of the slot to force activate. The slot will remain active until manually cleared.
+      required: true
+      example: "comfort_abc123"
+      selector:
+        text:
+
+refresh_now:
+  name: Refresh Now
+  description: Force immediate coordinator refresh and slot evaluation. Use this to apply configuration changes without waiting for the next automatic update (60 seconds).
+
+add_slot:
+  name: Add Slot
+  description: Add a new time slot with temperature and mode settings. Slots are automatically validated for overlaps.
+  fields:
+    label:
+      name: Label
+      description: Descriptive name for this slot (e.g., 'Morning Comfort', 'Work Hours').
+      required: true
+      example: "Morning Comfort"
+      selector:
+        text:
+    default_climate_payload:
+      name: Climate Settings
+      description: Climate settings to apply (temperature, hvac_mode, preset_mode, etc.). At least one field required.
+      required: true
+      example: '{"temperature": 22, "hvac_mode": "heat"}'
+      selector:
+        object:
+
+remove_slot:
+  name: Remove Slot
+  description: Remove an existing time slot by its ID.
+  fields:
+    slot_id:
+      name: Slot ID
+      description: ID of the slot to remove. Find slot IDs in logs when adding slots.
+      required: true
+      example: "comfort_abc123"
+      selector:
+        text:
+
+add_binding:
+  name: Add Binding
+  description: Add a new event-to-slot binding with pattern matching.
+  fields:
+    calendars:
+      name: Calendars
+      description: Calendar entity IDs to monitor, or '*' for all calendars.
+      required: true
+      example: "*"
+      selector:
+        text:
+    match:
+      name: Match Configuration
+      description: Pattern matching configuration (type and value).
+      required: true
+      example: '{"type": "summary_contains", "value": "Morning"}'
+      selector:
+        object:
+    slot_id:
+      name: Target Slot ID
+      description: ID of the slot to activate when pattern matches.
+      required: true
+      example: "comfort_abc123"
+      selector:
+        text:
+    priority:
+      name: Priority
+      description: Binding priority (0-100). Higher values take precedence. Optional, uses calendar default if not specified.
+      required: false
+      example: 50
+      selector:
+        number:
+          min: 0
+          max: 100
+          mode: box
+
+remove_binding:
+  name: Remove Binding
+  description: Remove an existing event-to-slot binding by its ID.
+  fields:
+    binding_id:
+      name: Binding ID
+      description: ID of the binding to remove.
+      required: true
+      example: "binding_abc123"
+      selector:
+        text:

@@ -64,6 +64,8 @@ EVENT_CLIMATE_SKIPPED: Final = f"{DOMAIN}_climate_skipped"
 EVENT_DRY_RUN_EXECUTED: Final = f"{DOMAIN}_dry_run_executed"
 EVENT_FLAG_SET: Final = f"{DOMAIN}_flag_set"
 EVENT_FLAG_CLEARED: Final = f"{DOMAIN}_flag_cleared"
+EVENT_BINDING_MATCHED: Final = f"{DOMAIN}_binding_matched"  # New: Binding matched event
+EVENT_EVALUATION_COMPLETE: Final = f"{DOMAIN}_evaluation_complete"  # New: Evaluation summary
 
 # Service names
 SERVICE_SET_FLAG: Final = "set_flag"

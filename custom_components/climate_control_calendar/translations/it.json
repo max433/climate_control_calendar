@@ -173,6 +173,24 @@
           "binding_id": "Binding da Modificare"
         }
       },
+      "edit_binding_detail": {
+        "title": "Modifica: {match_pattern}",
+        "description": "Modify binding settings.\n\n**Binding ID**: {binding_id}\n\n**Note**: Changes to match pattern or calendars will affect when this binding is triggered.",
+        "data": {
+          "calendars": "Filtro Calendario",
+          "match_type": "Tipo di Match",
+          "match_value": "Valore Match",
+          "slot_id": "Slot Target",
+          "priority": "Priorità (0-100, opzionale)"
+        },
+        "data_description": {
+          "calendars": "Seleziona calendario/i specifico/i oppure '*' per tutti",
+          "match_type": "How to match events: summary (exact), summary_contains, regex",
+          "match_value": "Pattern da cercare (es. 'Mattina', 'Lavoro', 'smart.*')",
+          "slot_id": "Slot da attivare quando il pattern matcha",
+          "priority": "Lascia vuoto per usare la priorità predefinita del calendario"
+        }
+      },
       "delete_binding": {
         "title": "Elimina Binding",
         "description": "Select a binding to remove.\n\nBinding attuali: {binding_count}",
