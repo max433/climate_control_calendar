@@ -164,35 +164,76 @@ class BindingManager:
         """
         # Step 0: Check if calendar is enabled
         if not self._is_calendar_enabled(calendar_id):
-            _LOGGER.debug(
-                "Calendar %s is disabled, skipping event resolution",
+            _LOGGER.warning(
+                "[BINDING DEBUG] Calendar %s is disabled, skipping event resolution",
                 calendar_id,
             )
             return None
 
+        _LOGGER.warning(
+            "[BINDING DEBUG] Step 0 OK: Calendar %s is enabled",
+            calendar_id,
+        )
+
         # Step 1: Filter bindings for this calendar
+        _LOGGER.warning(
+            "[BINDING DEBUG] Step 1: Checking %d total bindings for calendar %s",
+            len(self._bindings),
+            calendar_id,
+        )
+
         calendar_bindings = [
             b for b in self._bindings
             if matches_calendar(b.get("calendars", []), calendar_id)
         ]
 
+        _LOGGER.warning(
+            "[BINDING DEBUG] Step 1 Result: Found %d bindings for calendar %s",
+            len(calendar_bindings),
+            calendar_id,
+        )
+
         if not calendar_bindings:
-            _LOGGER.debug(
-                "No bindings found for calendar: %s",
+            _LOGGER.warning(
+                "[BINDING DEBUG] No bindings found for calendar: %s (available calendars in bindings: %s)",
                 calendar_id,
+                [b.get("calendars") for b in self._bindings],
             )
             return None
 
         # Step 2: Filter bindings that match this event
+        _LOGGER.warning(
+            "[BINDING DEBUG] Step 2: Checking event '%s' against %d calendar bindings",
+            event.get("summary", "Unknown"),
+            len(calendar_bindings),
+        )
+
         matching_bindings = []
         for binding in calendar_bindings:
             match_config = binding.get("match", {})
+            _LOGGER.warning(
+                "[BINDING DEBUG] Step 2: Testing binding %s with match %s against event '%s'",
+                binding.get("id"),
+                match_config,
+                event.get("summary", "Unknown"),
+            )
             if EventMatcher.matches(match_config, event):
+                _LOGGER.warning(
+                    "[BINDING DEBUG] ✅ MATCH! Binding %s matched event '%s'",
+                    binding.get("id"),
+                    event.get("summary", "Unknown"),
+                )
                 matching_bindings.append(binding)
+            else:
+                _LOGGER.warning(
+                    "[BINDING DEBUG] ❌ NO MATCH: Binding %s did not match event '%s'",
+                    binding.get("id"),
+                    event.get("summary", "Unknown"),
+                )
 
         if not matching_bindings:
-            _LOGGER.debug(
-                "No matching bindings for event '%s' on calendar %s",
+            _LOGGER.warning(
+                "[BINDING DEBUG] Step 2 Result: No matching bindings for event '%s' on calendar %s",
                 event.get("summary", "Unknown"),
                 calendar_id,
             )
