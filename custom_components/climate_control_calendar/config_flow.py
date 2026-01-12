@@ -843,7 +843,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(
-            step_id="edit_yaml",
+            step_id="edit_slots_yaml",
             data_schema=schema,
             errors=errors,
             description_placeholders={
@@ -904,7 +904,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(
-            step_id="edit_yaml",
+            step_id="edit_bindings_yaml",
             data_schema=schema,
             errors=errors,
             description_placeholders={
@@ -955,7 +955,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         )
 
         return self.async_show_form(
-            step_id="edit_yaml",
+            step_id="edit_calendar_configs_yaml",
             data_schema=schema,
             errors=errors,
             description_placeholders={

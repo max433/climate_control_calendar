@@ -193,11 +193,25 @@
           "edit_calendar_configs_yaml": "Edit Calendar Configs (YAML)"
         }
       },
-      "edit_yaml": {
-        "title": "Edit {section} (YAML)",
-        "description": "**Current Configuration:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+      "edit_slots_yaml": {
+        "title": "Edit Slots (YAML)",
+        "description": "**Current Slots Configuration:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
         "data": {
-          "yaml_content": "YAML Configuration"
+          "yaml_content": "Slots YAML Configuration"
+        }
+      },
+      "edit_bindings_yaml": {
+        "title": "Edit Bindings (YAML)",
+        "description": "**Current Bindings Configuration:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "data": {
+          "yaml_content": "Bindings YAML Configuration"
+        }
+      },
+      "edit_calendar_configs_yaml": {
+        "title": "Edit Calendar Configs (YAML)",
+        "description": "**Current Calendar Configs:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "data": {
+          "yaml_content": "Calendar Configs YAML Configuration"
         }
       }
     }

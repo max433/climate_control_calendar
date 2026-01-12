@@ -154,8 +154,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     }
 
     # Set up coordinator listener to trigger engine evaluation (Decision D032)
-    async def _handle_coordinator_update() -> None:
-        """Handle coordinator updates by running engine evaluation."""
+    async def _async_handle_coordinator_update() -> None:
+        """Handle coordinator updates by running engine evaluation (async implementation)."""
         # Get active events from multi-calendar coordinator
         active_events = coordinator.get_active_events()
 
@@ -175,12 +175,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 result.get("active_events_count", 0),
             )
 
+    def _handle_coordinator_update() -> None:
+        """Handle coordinator updates (sync wrapper for listener)."""
+        hass.async_create_task(_async_handle_coordinator_update())
+
     # Register coordinator listener
     unsub_coordinator = coordinator.async_add_listener(_handle_coordinator_update)
     hass.data[DOMAIN][entry.entry_id][DATA_UNSUB].append(unsub_coordinator)
 
     # Trigger initial engine evaluation
-    await _handle_coordinator_update()
+    await _async_handle_coordinator_update()
 
     # Set up platforms (empty for now, will be added in future milestones)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
