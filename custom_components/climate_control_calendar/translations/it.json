@@ -2,118 +2,286 @@
   "config": {
     "step": {
       "user": {
-        "title": "Seleziona Calendario",
-        "description": "Scegli l'entità calendario che controllerà i tuoi dispositivi climatici. Questo calendario rappresenterà diversi schemi di utilizzo (smart working, vacanze, routine settimanale, ecc.).\n\nCalendari disponibili: {calendar_count}",
+        "title": "Seleziona Calendari",
+        "description": "Choose one or more calendar entities to monitor for climate control events.\n\n**Multi-Calendar Support**: You can select multiple calendars. Events from all calendars will be monitored simultaneously, with priority-based conflict resolution.\n\n**Examples**: Work calendar, personal calendar, vacation calendar, etc.\n\nCalendari disponibili: {calendar_count}",
         "data": {
-          "calendar_entity": "Entità Calendario"
+          "calendar_entities": "Entità Calendario"
         }
       },
       "climate": {
-        "title": "Seleziona Dispositivi Climatici",
-        "description": "Seleziona i dispositivi climatici che vuoi controllare con questo calendario.\n\nCalendario selezionato: {calendar_entity}\nDispositivi climatici disponibili: {climate_count}",
+        "title": "Seleziona Dispositivi Clima (Pool Globale)",
+        "description": "Select climate devices that will be controlled by this integration.\n\n**Global Pool**: These devices form the default pool. You can later create specific bindings that target only certain devices.\n\n**Tip**: It's okay to leave this empty and configure device targeting in bindings instead.\n\nCalendari selezionati: {calendar_entities}\nDispositivi clima disponibili: {climate_count}",
         "data": {
-          "climate_entities": "Entità Climatiche (opzionale)"
+          "climate_entities": "Entità Clima (opzionale)"
         }
       },
       "options": {
-        "title": "Opzioni di Configurazione",
-        "description": "Configura le impostazioni operative.\n\nCalendario: {calendar_entity}\nDispositivi climatici: {climate_count}",
+        "title": "Configurazione Iniziale",
+        "description": "Configure basic operational settings. You can change these later in the integration options.\n\n**Dry Run Mode**: Enable this to test your configuration without actually changing climate device states.\n\n**Debug Mode**: Enable verbose logging for troubleshooting.\n\nCalendari: {calendar_entities}\nDispositivi clima: {climate_count}",
         "data": {
-          "dry_run": "Modalità Dry Run (solo simulazione, nessuna modifica reale)",
-          "debug_mode": "Modalità Debug (logging dettagliato)"
+          "dry_run": "Modalità Dry Run (test senza applicare modifiche)",
+          "debug_mode": "Modalità Debug (log dettagliati)"
         }
       }
     },
     "error": {
-      "calendar_not_found": "L'entità calendario selezionata non è stata trovata",
+      "calendar_not_found": "Una o più entità calendario non sono state trovate",
       "no_calendars": "Nessuna entità calendario trovata in Home Assistant",
+      "no_calendars_selected": "Seleziona almeno un calendario",
       "cannot_connect": "Impossibile connettersi all'entità calendario",
-      "unknown": "Si è verificato un errore imprevisto"
+      "invalid_slot_id": "ID slot non valido",
+      "invalid_binding_id": "ID binding non valido",
+      "invalid_yaml": "Formato YAML non valido",
+      "invalid_temperature": "La temperatura deve essere tra -50 e 50",
+      "slot_not_found": "Slot non trovato",
+      "binding_not_found": "Binding non trovato",
+      "invalid_pattern": "Pattern di match non valido",
+      "unknown": "Errore imprevisto"
     },
     "abort": {
-      "already_configured": "Questo calendario è già configurato",
+      "already_configured": "Questa combinazione di calendari è già configurata",
       "no_calendars": "Nessuna entità calendario disponibile. Installa e configura prima un'integrazione calendario."
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Aggiorna Configurazione",
-        "description": "Aggiorna i dispositivi climatici e le impostazioni operative.\n\nCalendario: {calendar_entity}",
+        "title": "Gestione Configurazione",
+        "description": "Manage all aspects of your Climate Control Calendar integration.\n\n**Configurazione Attuale:**\n• Calendari: {calendar_count}\n• Dispositivi Clima: {climate_count}\n• Slot: {slot_count}\n• Binding: {binding_count}\n\nSeleziona un'area di configurazione:",
+        "menu_options": {
+          "basic": "Impostazioni Base",
+          "calendars": "Configurazione Calendari",
+          "slots": "Gestione Slot",
+          "bindings": "Gestione Binding",
+          "yaml_editor": "Editor YAML (Avanzato)"
+        }
+      },
+      "basic": {
+        "title": "Impostazioni Base",
+        "description": "Configure global climate devices and operational modes.\n\n**Global Climate Pool**: Select devices to be controlled by default. Individual bindings can override this to target specific devices.\n\n**Operational Modes**: Configure dry run and debug settings.",
         "data": {
-          "climate_entities": "Entità Climatiche",
-          "dry_run": "Modalità Dry Run (solo simulazione)",
-          "debug_mode": "Modalità Debug (logging dettagliato)"
+          "climate_entities": "Pool Globale Entità Clima",
+          "dry_run": "Modalità Dry Run (simula modifiche)",
+          "debug_mode": "Modalità Debug (log dettagliati)"
+        }
+      },
+      "calendars": {
+        "title": "Configurazione Calendari",
+        "description": "Configure individual calendar settings.\n\n**Enable/Disable**: Temporarily disable calendars without removing them.\n**Default Priority**: Set default priority for all bindings from this calendar (higher = more important).\n\n**Calendari Selezionati:**\n{calendar_list}",
+        "data": {
+          "calendar_id": "Calendario da Configurare"
+        },
+        "data_description": {
+          "calendar_id": "Seleziona un calendario per configurare le sue impostazioni"
+        }
+      },
+      "calendar_detail": {
+        "title": "Configura: {calendar_name}",
+        "description": "Adjust settings for this specific calendar.\n\n**Enabled**: Uncheck to temporarily ignore events from this calendar.\n**Default Priority**: Used when bindings don't specify their own priority. Higher values take precedence.\n**Description**: Optional note for this calendar.\n\nBinding attuali da questo calendario: {binding_count}",
+        "data": {
+          "enabled": "Abilitato",
+          "default_priority": "Priorità Predefinita (0-100)",
+          "description": "Descrizione (opzionale)"
+        }
+      },
+      "slots": {
+        "title": "Gestione Slot",
+        "description": "Manage climate slots (reusable templates).\n\n**What are slots?** Slots define climate settings (temperature, HVAC mode, etc.) that can be activated by calendar events through bindings.\n\n**Slot Attuali:** {slot_count}\n\nSeleziona un'azione:",
+        "menu_options": {
+          "add_slot": "Aggiungi Nuovo Slot",
+          "edit_slot": "Modifica Slot Esistente",
+          "delete_slot": "Elimina Slot",
+          "view_slots": "Visualizza Tutti gli Slot"
+        }
+      },
+      "add_slot": {
+        "title": "Aggiungi Nuovo Slot",
+        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Entity Overrides: Device-specific settings (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "data": {
+          "label": "Etichetta Slot",
+          "temperature": "Temperatura (°C)",
+          "hvac_mode": "Modalità HVAC",
+          "preset_mode": "Modalità Preset"
+        },
+        "data_description": {
+          "label": "es. 'Comfort', 'Eco', 'Notte'",
+          "temperature": "Lascia vuoto per non controllare la temperatura",
+          "hvac_mode": "es. heat, cool, heat_cool, auto, off",
+          "preset_mode": "es. away, home, eco, boost"
+        }
+      },
+      "edit_slot": {
+        "title": "Modifica Slot",
+        "description": "Select a slot to modify.\n\nSlot attuali: {slot_count}\n\n**Tip**: Use YAML Editor for bulk operations.",
+        "data": {
+          "slot_id": "Slot da Modificare"
+        }
+      },
+      "edit_slot_detail": {
+        "title": "Modifica: {slot_label}",
+        "description": "Modify slot settings.\n\n**Slot ID**: {slot_id}\n**Bindings using this slot**: {binding_count}\n\n**Warning**: Changes affect all bindings that use this slot.",
+        "data": {
+          "label": "Etichetta Slot",
+          "temperature": "Temperatura (°C)",
+          "hvac_mode": "Modalità HVAC",
+          "preset_mode": "Modalità Preset"
+        }
+      },
+      "delete_slot": {
+        "title": "Elimina Slot",
+        "description": "Select a slot to remove.\n\n**Warning**: Bindings referencing this slot will fail until reconfigured.\n\nSlot attuali: {slot_count}",
+        "data": {
+          "slot_id": "Slot da Eliminare"
+        }
+      },
+      "view_slots": {
+        "title": "Tutti gli Slot",
+        "description": "Current slot configuration:\n\n{slots_summary}\n\n**Tip**: Use the YAML Editor for advanced editing."
+      },
+      "bindings": {
+        "title": "Gestione Binding",
+        "description": "Manage event-to-slot bindings.\n\n**What are bindings?** Bindings connect calendar events to slots based on patterns (e.g., event summary matches 'Morning').\n\n**Binding Attuali:** {binding_count}\n\nSeleziona un'azione:",
+        "menu_options": {
+          "add_binding": "Aggiungi Nuovo Binding",
+          "edit_binding": "Modifica Binding Esistente",
+          "delete_binding": "Elimina Binding",
+          "view_bindings": "Visualizza Tutti i Binding"
+        }
+      },
+      "add_binding": {
+        "title": "Aggiungi Nuovo Binding",
+        "description": "Create a binding between calendar events and a slot.\n\n**Binding Structure:**\n• Calendars: Which calendar(s) to monitor (or * for all)\n• Match Pattern: How to identify events (summary, contains, regex)\n• Target Slot: Which slot to activate\n• Target Entities: Specific devices (optional, uses global pool if empty)\n• Priority: Conflict resolution (optional, uses calendar default)\n\n**Example**: Summary contains 'Morning' → Comfort slot",
+        "data": {
+          "calendars": "Filtro Calendario",
+          "match_type": "Tipo di Match",
+          "match_value": "Valore Match",
+          "slot_id": "Slot Target",
+          "priority": "Priorità (0-100, opzionale)"
+        },
+        "data_description": {
+          "calendars": "Seleziona calendario/i specifico/i oppure '*' per tutti",
+          "match_type": "How to match events: summary (exact), summary_contains, regex",
+          "match_value": "Pattern da cercare (es. 'Mattina', 'Lavoro', 'smart.*')",
+          "slot_id": "Slot da attivare quando il pattern matcha",
+          "priority": "Lascia vuoto per usare la priorità predefinita del calendario"
+        }
+      },
+      "edit_binding": {
+        "title": "Modifica Binding",
+        "description": "Select a binding to modify.\n\nBinding attuali: {binding_count}",
+        "data": {
+          "binding_id": "Binding da Modificare"
+        }
+      },
+      "delete_binding": {
+        "title": "Elimina Binding",
+        "description": "Select a binding to remove.\n\nBinding attuali: {binding_count}",
+        "data": {
+          "binding_id": "Binding da Eliminare"
+        }
+      },
+      "view_bindings": {
+        "title": "Tutti i Binding",
+        "description": "Current binding configuration:\n\n{bindings_summary}\n\n**Tip**: Use the YAML Editor for advanced editing."
+      },
+      "yaml_editor": {
+        "title": "Editor YAML (Avanzato)",
+        "description": "Edit configuration directly in YAML format.\n\n**⚠️ Advanced Feature**: Manual YAML editing. Invalid YAML will be rejected.\n\n**Sections Available:**\n• Slots\n• Bindings\n• Calendar Configs\n\n**Tip**: Export current config, edit externally, then import.",
+        "menu_options": {
+          "edit_slots_yaml": "Modifica Slot (YAML)",
+          "edit_bindings_yaml": "Modifica Binding (YAML)",
+          "edit_calendar_configs_yaml": "Modifica Config Calendari (YAML)"
+        }
+      },
+      "edit_slots_yaml": {
+        "title": "Modifica Slot (YAML)",
+        "description": "**Configurazione Slot Attuale:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "data": {
+          "yaml_content": "Configurazione YAML Slot"
+        }
+      },
+      "edit_bindings_yaml": {
+        "title": "Modifica Binding (YAML)",
+        "description": "**Configurazione Binding Attuale:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "data": {
+          "yaml_content": "Configurazione YAML Binding"
+        }
+      },
+      "edit_calendar_configs_yaml": {
+        "title": "Modifica Config Calendari (YAML)",
+        "description": "**Configurazione Calendari Attuale:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "data": {
+          "yaml_content": "Configurazione YAML Calendari"
         }
       }
     }
   },
   "services": {
     "set_flag": {
-      "name": "Imposta Flag di Override",
-      "description": "Imposta un flag di override per alterare temporaneamente il comportamento automatico del controllo climatico. Solo un flag può essere attivo alla volta (esclusione reciproca).",
+      "name": "Imposta Flag Override",
+      "description": "Set an override flag to temporarily alter automatic climate control behavior. Only one flag can be active at a time (mutual exclusion).",
       "fields": {
         "flag_type": {
-          "name": "Tipo di Flag",
-          "description": "Tipo di flag di override: skip_today (salta fino a mezzanotte), skip_until_next_slot (salta lo slot corrente), oppure force_slot (forza uno slot specifico)."
+          "name": "Tipo Flag",
+          "description": "Type of override flag: skip_today (skip until midnight), skip_until_next_slot (skip current slot), or force_slot (force specific slot)."
         },
         "target_slot_id": {
-          "name": "ID Slot di Destinazione",
-          "description": "ID dello slot di destinazione (richiesto quando flag_type è force_slot). Trova gli ID degli slot nella tua configurazione."
+          "name": "ID Slot Target",
+          "description": "Target slot ID (required when flag_type is force_slot). Find slot IDs in your configuration."
         }
       }
     },
     "clear_flag": {
-      "name": "Cancella Flag di Override",
-      "description": "Cancella il flag di override attualmente attivo e riprende il comportamento automatico normale."
+      "name": "Cancella Flag Override",
+      "description": "Clear the currently active override flag and resume normal automatic behavior."
     },
     "force_slot": {
       "name": "Forza Attivazione Slot",
-      "description": "Forza l'attivazione di uno slot temporale specifico, ignorando lo stato del calendario e le restrizioni temporali. Questa è una scorciatoia per set_flag con flag_type=force_slot.",
+      "description": "Force activation of a specific time slot, ignoring calendar state and time restrictions. This is a convenience wrapper for set_flag with flag_type=force_slot.",
       "fields": {
         "slot_id": {
           "name": "ID Slot",
-          "description": "ID dello slot da attivare forzatamente. Lo slot rimarrà attivo finché non viene cancellato manualmente."
+          "description": "ID of the slot to force activate. The slot will remain active until manually cleared."
         }
       }
     },
     "refresh_now": {
       "name": "Aggiorna Ora",
-      "description": "Forza l'aggiornamento immediato del coordinator e la valutazione degli slot. Usa questo per applicare le modifiche alla configurazione senza attendere il prossimo aggiornamento automatico (60 secondi)."
+      "description": "Force immediate coordinator refresh and slot evaluation. Use this to apply configuration changes without waiting for the next automatic update (60 seconds)."
     },
     "add_slot": {
       "name": "Aggiungi Slot",
-      "description": "Aggiungi un nuovo slot temporale con impostazioni di temperatura e modalità. Gli slot sono validati automaticamente per sovrapposizioni.",
+      "description": "Add a new time slot with temperature and mode settings. Slots are automatically validated for overlaps.",
       "fields": {
         "label": {
           "name": "Etichetta",
-          "description": "Nome descrittivo per questo slot (es. 'Comfort Mattino', 'Ore Lavoro')."
+          "description": "Descriptive name for this slot (e.g., 'Morning Comfort', 'Work Hours')."
         },
         "time_start": {
           "name": "Ora Inizio",
-          "description": "Ora di inizio in formato HH:MM (es. '06:00')."
+          "description": "Start time in HH:MM format (e.g., '06:00')."
         },
         "time_end": {
           "name": "Ora Fine",
-          "description": "Ora di fine in formato HH:MM (es. '09:00'). Per slot notturni, usa orari come '23:00' to '02:00'."
+          "description": "End time in HH:MM format (e.g., '09:00'). For overnight slots, use times like '23:00' to '02:00'."
         },
         "days": {
           "name": "Giorni della Settimana",
-          "description": "Lista dei giorni in cui questo slot è attivo. Default: tutti i giorni."
+          "description": "List of days when this slot is active. Default: all days."
         },
         "climate_payload": {
           "name": "Impostazioni Clima",
-          "description": "Impostazioni climatiche da applicare (temperature, hvac_mode, preset_mode, ecc.). Almeno un campo richiesto."
+          "description": "Climate settings to apply (temperature, hvac_mode, preset_mode, etc.). At least one field required."
         }
       }
     },
     "remove_slot": {
       "name": "Rimuovi Slot",
-      "description": "Rimuovi uno slot temporale esistente tramite il suo ID.",
+      "description": "Remove an existing time slot by its ID.",
       "fields": {
         "slot_id": {
           "name": "ID Slot",
-          "description": "ID dello slot da rimuovere. Trova gli ID degli slot nei log quando aggiungi slot."
+          "description": "ID of the slot to remove. Find slot IDs in logs when adding slots."
         }
       }
     }
