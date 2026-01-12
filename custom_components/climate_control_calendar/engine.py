@@ -137,7 +137,7 @@ class ClimateControlEngine:
                     calendar_id,
                 )
 
-            # Resolve slot for this event via binding manager (returns tuple or None)
+            # Resolve slot for this event via binding manager (returns 4-tuple or None)
             result = self.binding_manager.resolve_slot_for_event(
                 event=event,
                 calendar_id=calendar_id,
@@ -145,8 +145,9 @@ class ClimateControlEngine:
             )
 
             if result:
-                slot, target_entities, priority = result
+                slot, target_entities, priority, binding_metadata = result
                 resolved_bindings.append((slot, target_entities, priority))
+
                 _LOGGER.info(
                     "%s Event '%s' resolved to slot: %s (ID: %s), entities: %s, priority: %d",
                     LOG_PREFIX_ENGINE,
@@ -155,6 +156,19 @@ class ClimateControlEngine:
                     slot.get(SLOT_ID),
                     target_entities or "global",
                     priority,
+                )
+
+                # Emit binding matched event
+                self.event_emitter.emit_binding_matched(
+                    binding_id=binding_metadata["binding_id"],
+                    event_summary=event_summary,
+                    calendar_id=calendar_id,
+                    slot_id=slot.get(SLOT_ID),
+                    slot_label=slot.get(SLOT_LABEL),
+                    match_type=binding_metadata["match_type"],
+                    match_value=binding_metadata["match_value"],
+                    priority=priority,
+                    target_entities=target_entities,
                 )
             else:
                 if self.debug_mode:
@@ -232,6 +246,7 @@ class ClimateControlEngine:
 
         active_slot = None
         resolved_bindings = []  # Initialize to empty list
+        entities_applied_count = 0  # Track how many entities had payloads applied
 
         if forced_slot_id:
             # Force slot active regardless of events/bindings
@@ -243,6 +258,13 @@ class ClimateControlEngine:
                     active_slot.get(SLOT_LABEL),
                     forced_slot_id,
                 )
+                # Apply forced slot to all entities
+                await self._apply_slot_to_entities(
+                    slot=active_slot,
+                    entities=climate_entities,
+                    entity_overrides=active_slot.get("entity_overrides", {}),
+                )
+                entities_applied_count = len(climate_entities)
             else:
                 _LOGGER.warning(
                     "%s Forced slot ID not found: %s",
@@ -259,7 +281,7 @@ class ClimateControlEngine:
             # New architecture: Apply ALL resolved bindings, not just first!
             # Bindings already sorted by priority in binding_manager
             if resolved_bindings:
-                await self._apply_multiple_slots(
+                entities_applied_count = await self._apply_multiple_slots(
                     resolved_bindings=resolved_bindings,
                     climate_entities_pool=climate_entities,
                 )
@@ -273,6 +295,16 @@ class ClimateControlEngine:
                 LOG_PREFIX_ENGINE,
             )
 
+        # Emit evaluation complete event with summary
+        self.event_emitter.emit_evaluation_complete(
+            active_events_count=len(active_events),
+            bindings_matched=len(resolved_bindings),
+            entities_applied=entities_applied_count,
+            forced_slot_id=forced_slot_id,
+            dry_run=self.dry_run,
+            debug_mode=self.debug_mode,
+        )
+
         # New architecture: Return forced_slot_id when forced, else None (multiple slots may be active)
         active_slot_id = forced_slot_id if forced_slot_id else None
 
@@ -284,13 +316,14 @@ class ClimateControlEngine:
             "forced": forced_slot_id is not None,
             "active_events_count": len(active_events),
             "bindings_applied": len(resolved_bindings) if not forced_slot_id else 0,
+            "entities_applied": entities_applied_count,
         }
 
     async def _apply_multiple_slots(
         self,
         resolved_bindings: list[tuple[dict[str, Any], list[str] | None, int]],
         climate_entities_pool: list[str],
-    ) -> None:
+    ) -> int:
         """
         Apply multiple slots with priority-based conflict resolution.
 
@@ -300,6 +333,9 @@ class ClimateControlEngine:
         Args:
             resolved_bindings: List of (slot, target_entities, priority) tuples
             climate_entities_pool: Global climate entities pool (fallback)
+
+        Returns:
+            Number of entities that had payloads applied
         """
         # Sort by priority DESC (higher priority wins conflicts)
         sorted_bindings = sorted(
@@ -373,6 +409,9 @@ class ClimateControlEngine:
             # Mark entities as applied
             for entity_id in entities_available:
                 applied_entities[entity_id] = slot_id
+
+        # Return total count of entities that had payloads applied
+        return len(applied_entities)
 
     async def _apply_slot_to_entities(
         self,

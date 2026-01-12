@@ -15,6 +15,8 @@ from .const import (
     EVENT_DRY_RUN_EXECUTED,
     EVENT_FLAG_SET,
     EVENT_FLAG_CLEARED,
+    EVENT_BINDING_MATCHED,
+    EVENT_EVALUATION_COMPLETE,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -331,6 +333,98 @@ class EventEmitter:
             "Override flag cleared: %s | Reason: %s",
             flag_type,
             reason,
+        )
+
+    def emit_binding_matched(
+        self,
+        binding_id: str,
+        event_summary: str,
+        calendar_id: str,
+        slot_id: str,
+        slot_label: str,
+        match_type: str,
+        match_value: str,
+        priority: int,
+        target_entities: list[str] | None = None,
+    ) -> None:
+        """
+        Emit binding matched event (when calendar event matches binding pattern).
+
+        Args:
+            binding_id: Binding ID that matched
+            event_summary: Calendar event summary
+            calendar_id: Source calendar entity ID
+            slot_id: Target slot ID
+            slot_label: Target slot label
+            match_type: Match type (summary, summary_contains, regex)
+            match_value: Match pattern value
+            priority: Binding priority
+            target_entities: Specific target entities (None = global pool)
+        """
+        self._emit_event(
+            EVENT_BINDING_MATCHED,
+            {
+                "binding_id": binding_id,
+                "event_summary": event_summary,
+                "calendar_id": calendar_id,
+                "slot_id": slot_id,
+                "slot_label": slot_label,
+                "match_type": match_type,
+                "match_value": match_value,
+                "priority": priority,
+                "target_entities": target_entities or "global_pool",
+            },
+        )
+
+        _LOGGER.info(
+            "Binding matched: '%s' → Slot '%s' | Event: '%s' from %s | Priority: %d",
+            match_value,
+            slot_label,
+            event_summary,
+            calendar_id,
+            priority,
+        )
+
+    def emit_evaluation_complete(
+        self,
+        active_events_count: int,
+        bindings_matched: int,
+        entities_applied: int,
+        forced_slot_id: str | None = None,
+        dry_run: bool = True,
+        debug_mode: bool = False,
+    ) -> None:
+        """
+        Emit evaluation complete event (summary of evaluation cycle).
+
+        Args:
+            active_events_count: Number of active calendar events processed
+            bindings_matched: Number of bindings that matched
+            entities_applied: Number of entities that had payloads applied
+            forced_slot_id: Forced slot ID if force_slot flag active
+            dry_run: Dry run mode status
+            debug_mode: Debug mode status
+        """
+        self._emit_event(
+            EVENT_EVALUATION_COMPLETE,
+            {
+                "active_events_count": active_events_count,
+                "bindings_matched": bindings_matched,
+                "entities_applied": entities_applied,
+                "forced_slot_id": forced_slot_id,
+                "forced": forced_slot_id is not None,
+                "dry_run": dry_run,
+                "debug_mode": debug_mode,
+            },
+        )
+
+        _LOGGER.info(
+            "Evaluation complete: %d events → %d bindings matched → %d entities | Forced: %s | Dry run: %s",
+            active_events_count,
+            bindings_matched,
+            entities_applied,
+            forced_slot_id or "No",
+            "Yes" if dry_run else "No",
         )
 
     def reset_deduplication(self) -> None:
