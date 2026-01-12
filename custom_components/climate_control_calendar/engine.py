@@ -74,6 +74,10 @@ class ClimateControlEngine:
         self.dry_run = dry_run
         self.debug_mode = debug_mode
 
+        # Track previous state to avoid re-applying unchanged slots
+        # Format: dict[entity_id] = (slot_id, binding_id)
+        self._previous_applied_state: dict[str, tuple[str, str]] = {}
+
         _LOGGER.info(
             "%s Engine initialized | Dry Run: %s | Debug: %s | Bindings: %s | Flags: %s | Applier: %s",
             LOG_PREFIX_ENGINE,
@@ -88,18 +92,18 @@ class ClimateControlEngine:
         self,
         active_events: list[dict[str, Any]],
         available_slots: list[dict[str, Any]],
-    ) -> list[tuple[dict[str, Any], list[str] | None, int]]:
+    ) -> list[tuple[dict[str, Any], list[str] | None, int, dict[str, str], str]]:
         """
         Resolve slots for all active calendar events using binding manager.
 
-        New architecture: Returns list of (slot, target_entities, priority) tuples.
+        New architecture: Returns list of (slot, target_entities, priority, binding_metadata, event_summary) tuples.
 
         Args:
             active_events: List of active calendar events from coordinator
             available_slots: List of available slot configurations
 
         Returns:
-            List of (slot, target_entities, priority) tuples for all matched bindings
+            List of (slot, target_entities, priority, binding_metadata, event_summary) tuples for all matched bindings
         """
         if not self.binding_manager:
             _LOGGER.warning(
@@ -146,7 +150,7 @@ class ClimateControlEngine:
 
             if result:
                 slot, target_entities, priority, binding_metadata = result
-                resolved_bindings.append((slot, target_entities, priority))
+                resolved_bindings.append((slot, target_entities, priority, binding_metadata, event_summary))
 
                 _LOGGER.info(
                     "%s Event '%s' resolved to slot: %s (ID: %s), entities: %s, priority: %d",
@@ -158,18 +162,7 @@ class ClimateControlEngine:
                     priority,
                 )
 
-                # Emit binding matched event
-                self.event_emitter.emit_binding_matched(
-                    binding_id=binding_metadata["binding_id"],
-                    event_summary=event_summary,
-                    calendar_id=calendar_id,
-                    slot_id=slot.get(SLOT_ID),
-                    slot_label=slot.get(SLOT_LABEL),
-                    match_type=binding_metadata["match_type"],
-                    match_value=binding_metadata["match_value"],
-                    priority=priority,
-                    target_entities=target_entities,
-                )
+                # Note: emit_binding_matched moved to _apply_multiple_slots to fire only on changes
             else:
                 if self.debug_mode:
                     _LOGGER.debug(
@@ -321,17 +314,18 @@ class ClimateControlEngine:
 
     async def _apply_multiple_slots(
         self,
-        resolved_bindings: list[tuple[dict[str, Any], list[str] | None, int]],
+        resolved_bindings: list[tuple[dict[str, Any], list[str] | None, int, dict[str, str], str]],
         climate_entities_pool: list[str],
     ) -> int:
         """
         Apply multiple slots with priority-based conflict resolution.
+        Only applies when state has changed from previous cycle.
 
         New architecture: Multiple bindings can be active simultaneously.
         Priority determines which slot wins for entities with conflicts.
 
         Args:
-            resolved_bindings: List of (slot, target_entities, priority) tuples
+            resolved_bindings: List of (slot, target_entities, priority, binding_metadata, event_summary) tuples
             climate_entities_pool: Global climate entities pool (fallback)
 
         Returns:
@@ -344,74 +338,112 @@ class ClimateControlEngine:
             reverse=True,
         )
 
-        # Track which entities have been applied (entity_id → slot_id)
-        applied_entities: dict[str, str] = {}
+        # Build current state: which binding should be applied to which entity
+        current_state: dict[str, tuple[str, str, dict[str, Any], list[str], str, dict[str, str]]] = {}
+        # Format: entity_id → (slot_id, binding_id, slot, target_entities, event_summary, binding_metadata)
 
         _LOGGER.info(
-            "%s Applying %d bindings (sorted by priority)",
+            "%s Processing %d bindings (sorted by priority)",
             LOG_PREFIX_ENGINE,
             len(sorted_bindings),
         )
 
-        for slot, target_entities, priority in sorted_bindings:
+        # Determine current state for each entity
+        for slot, target_entities, priority, binding_metadata, event_summary in sorted_bindings:
             slot_id = slot.get("id")
-            slot_label = slot.get("label")
+            binding_id = binding_metadata.get("binding_id", "unknown")
 
             # Determine entities to apply to
             if target_entities is None:
-                # Use global pool
                 entities_for_this_binding = climate_entities_pool
             else:
-                # Use specific entities from binding
                 entities_for_this_binding = target_entities
 
             # Apply entity_overrides and excluded_entities from slot
             excluded = set(slot.get("excluded_entities", []))
+            entities_to_apply = [e for e in entities_for_this_binding if e not in excluded]
+
+            # Filter out entities already assigned by higher priority
+            entities_available = [e for e in entities_to_apply if e not in current_state]
+
+            # Assign to current state (only entities not yet assigned)
+            for entity_id in entities_available:
+                current_state[entity_id] = (slot_id, binding_id, slot, target_entities, event_summary, binding_metadata)
+
+        # Now compare current_state with _previous_applied_state and apply only changes
+        entities_to_apply_changes: list[tuple[str, str, dict[str, Any], dict[str, Any], str, dict[str, str]]] = []
+
+        # Check for new/changed bindings
+        for entity_id, (slot_id, binding_id, slot, target_entities, event_summary, binding_metadata) in current_state.items():
+            prev_state = self._previous_applied_state.get(entity_id)
+
+            if prev_state is None or prev_state != (slot_id, binding_id):
+                # State changed or new binding
+                entities_to_apply_changes.append((entity_id, slot_id, slot, binding_metadata, event_summary, {"action": "apply"}))
+                _LOGGER.info(
+                    "%s [CHANGE DETECTED] Entity %s: %s → %s (binding: %s, event: '%s')",
+                    LOG_PREFIX_ENGINE,
+                    entity_id,
+                    prev_state if prev_state else "None",
+                    (slot_id, binding_id),
+                    binding_id,
+                    event_summary,
+                )
+
+        # Check for removed bindings (entities that had binding before but not anymore)
+        for entity_id, prev_state in self._previous_applied_state.items():
+            if entity_id not in current_state:
+                _LOGGER.info(
+                    "%s [CHANGE DETECTED] Entity %s: binding removed (was: %s)",
+                    LOG_PREFIX_ENGINE,
+                    entity_id,
+                    prev_state,
+                )
+                # Note: We don't have a "clear" slot to apply here
+                # The entity will just keep its last applied state until next binding
+                # If you want to reset to default, you'd need to implement a default slot
+
+        # Apply changes
+        applied_count = 0
+        for entity_id, slot_id, slot, binding_metadata, event_summary, metadata in entities_to_apply_changes:
             entity_overrides = slot.get("entity_overrides", {})
 
-            # Filter out excluded entities
-            entities_to_apply = [
-                e for e in entities_for_this_binding
-                if e not in excluded
-            ]
-
-            # Filter out entities already applied by higher priority binding
-            entities_available = [
-                e for e in entities_to_apply
-                if e not in applied_entities
-            ]
-
-            if not entities_available:
-                _LOGGER.debug(
-                    "%s Slot '%s' (priority=%d): all entities already handled by higher priority",
-                    LOG_PREFIX_ENGINE,
-                    slot_label,
-                    priority,
-                )
-                continue
-
-            _LOGGER.info(
-                "%s Applying slot '%s' (priority=%d) to %d entities: %s",
-                LOG_PREFIX_ENGINE,
-                slot_label,
-                priority,
-                len(entities_available),
-                entities_available,
-            )
-
-            # Apply slot to available entities
+            # Apply to this specific entity
             await self._apply_slot_to_entities(
                 slot=slot,
-                entities=entities_available,
+                entities=[entity_id],
                 entity_overrides=entity_overrides,
             )
 
-            # Mark entities as applied
-            for entity_id in entities_available:
-                applied_entities[entity_id] = slot_id
+            # Emit binding matched event (only on change!)
+            self.event_emitter.emit_binding_matched(
+                binding_id=binding_metadata["binding_id"],
+                event_summary=event_summary,
+                calendar_id="",  # Not available here, could pass through if needed
+                slot_id=slot_id,
+                slot_label=slot.get("label", "Unknown"),
+                match_type=binding_metadata["match_type"],
+                match_value=binding_metadata["match_value"],
+                priority=0,  # Not available here, could pass through if needed
+                target_entities=[entity_id],
+            )
 
-        # Return total count of entities that had payloads applied
-        return len(applied_entities)
+            applied_count += 1
+
+        # Update previous state
+        self._previous_applied_state = {
+            entity_id: (slot_id, binding_id)
+            for entity_id, (slot_id, binding_id, _, _, _, _) in current_state.items()
+        }
+
+        _LOGGER.info(
+            "%s State tracking: %d entities in current state, %d changes applied",
+            LOG_PREFIX_ENGINE,
+            len(current_state),
+            applied_count,
+        )
+
+        return applied_count
 
     async def _apply_slot_to_entities(
         self,
