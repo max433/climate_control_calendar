@@ -403,32 +403,56 @@ class ClimateControlEngine:
                 # The entity will just keep its last applied state until next binding
                 # If you want to reset to default, you'd need to implement a default slot
 
-        # Apply changes
-        applied_count = 0
-        for entity_id, slot_id, slot, binding_metadata, event_summary, metadata in entities_to_apply_changes:
-            entity_overrides = slot.get("entity_overrides", {})
+        # Group entities by (slot_id, binding_id) to emit only one event per binding
+        entities_by_binding: dict[tuple[str, str], list[tuple[str, dict[str, Any], dict[str, Any], str]]] = {}
 
-            # Apply to this specific entity
+        for entity_id, slot_id, slot, binding_metadata, event_summary, metadata in entities_to_apply_changes:
+            binding_id = binding_metadata["binding_id"]
+            key = (slot_id, binding_id)
+
+            if key not in entities_by_binding:
+                entities_by_binding[key] = []
+
+            entities_by_binding[key].append((entity_id, slot, binding_metadata, event_summary))
+
+        # Apply changes grouped by binding
+        applied_count = 0
+        for (slot_id, binding_id), entities_data in entities_by_binding.items():
+            # Extract common data (same for all entities in this binding)
+            first_entity_id, first_slot, first_binding_metadata, first_event_summary = entities_data[0]
+            entity_ids = [entity_id for entity_id, _, _, _ in entities_data]
+
+            entity_overrides = first_slot.get("entity_overrides", {})
+
+            # Apply to all entities in this binding at once
             await self._apply_slot_to_entities(
-                slot=slot,
-                entities=[entity_id],
+                slot=first_slot,
+                entities=entity_ids,
                 entity_overrides=entity_overrides,
             )
 
-            # Emit binding matched event (only on change!)
+            # Emit binding matched event ONCE per binding (not per entity!)
             self.event_emitter.emit_binding_matched(
-                binding_id=binding_metadata["binding_id"],
-                event_summary=event_summary,
+                binding_id=first_binding_metadata["binding_id"],
+                event_summary=first_event_summary,
                 calendar_id="",  # Not available here, could pass through if needed
                 slot_id=slot_id,
-                slot_label=slot.get("label", "Unknown"),
-                match_type=binding_metadata["match_type"],
-                match_value=binding_metadata["match_value"],
+                slot_label=first_slot.get("label", "Unknown"),
+                match_type=first_binding_metadata["match_type"],
+                match_value=first_binding_metadata["match_value"],
                 priority=0,  # Not available here, could pass through if needed
-                target_entities=[entity_id],
+                target_entities=entity_ids,
             )
 
-            applied_count += 1
+            applied_count += len(entity_ids)
+
+            _LOGGER.info(
+                "%s Applied binding %s to %d entities: %s",
+                LOG_PREFIX_ENGINE,
+                binding_id,
+                len(entity_ids),
+                entity_ids,
+            )
 
         # Update previous state
         self._previous_applied_state = {
