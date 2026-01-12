@@ -173,6 +173,24 @@
           "binding_id": "Binding to Edit"
         }
       },
+      "edit_binding_detail": {
+        "title": "Edit: {match_pattern}",
+        "description": "Modify binding settings.\n\n**Binding ID**: {binding_id}\n\n**Note**: Changes to match pattern or calendars will affect when this binding is triggered.",
+        "data": {
+          "calendars": "Calendar Filter",
+          "match_type": "Match Type",
+          "match_value": "Match Value",
+          "slot_id": "Target Slot",
+          "priority": "Priority (0-100, optional)"
+        },
+        "data_description": {
+          "calendars": "Select specific calendar(s) or '*' for all",
+          "match_type": "How to match events: summary (exact), summary_contains, regex",
+          "match_value": "Pattern to match (e.g., 'Morning', 'Work', 'smart.*')",
+          "slot_id": "Slot to activate when pattern matches",
+          "priority": "Leave empty to use calendar's default priority"
+        }
+      },
       "delete_binding": {
         "title": "Delete Binding",
         "description": "Select a binding to remove.\n\nCurrent bindings: {binding_count}",

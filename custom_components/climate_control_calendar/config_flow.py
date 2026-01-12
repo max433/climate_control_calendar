@@ -714,8 +714,130 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
     async def async_step_edit_binding(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle binding editing (simplified - just shows abort for now)."""
-        return self.async_abort(reason="unknown")  # TODO: Implement full edit flow
+        """Handle binding editing selection."""
+        from .const import CONF_BINDINGS
+
+        bindings = self.config_entry.options.get(CONF_BINDINGS, [])
+
+        if not bindings:
+            return self.async_abort(reason="binding_not_found")
+
+        if user_input is not None:
+            self._temp_data["selected_binding_id"] = user_input.get("binding_id")
+            return await self.async_step_edit_binding_detail()
+
+        # Build binding selector
+        binding_options = {
+            b["id"]: f"{b.get('match', {}).get('value', 'Unknown')} → {b.get('slot_id', 'Unknown')}"
+            for b in bindings
+        }
+
+        schema = vol.Schema(
+            {
+                vol.Required("binding_id"): vol.In(binding_options),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="edit_binding",
+            data_schema=schema,
+            description_placeholders={
+                "binding_count": str(len(bindings)),
+            },
+        )
+
+    async def async_step_edit_binding_detail(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle binding editing details."""
+        from .const import CONF_BINDINGS, CONF_SLOTS
+        from .event_matcher import EventMatcher
+        import hashlib
+
+        binding_id = self._temp_data.get("selected_binding_id")
+        if not binding_id:
+            return await self.async_step_edit_binding()
+
+        bindings = self.config_entry.options.get(CONF_BINDINGS, [])
+        binding = next((b for b in bindings if b["id"] == binding_id), None)
+
+        if not binding:
+            return self.async_abort(reason="binding_not_found")
+
+        errors = {}
+
+        if user_input is not None:
+            calendars = user_input.get("calendars", "*")
+            match_type = user_input.get("match_type")
+            match_value = user_input.get("match_value", "").strip()
+            slot_id = user_input.get("slot_id")
+            priority = user_input.get("priority")
+
+            if not match_value:
+                errors["match_value"] = "invalid_pattern"
+            elif not slot_id:
+                errors["slot_id"] = "invalid_slot_id"
+            else:
+                # Validate match config
+                match_config = {"type": match_type, "value": match_value}
+                valid, error_msg = EventMatcher.validate_match_config(match_config)
+
+                if not valid:
+                    errors["match_value"] = "invalid_pattern"
+                    _LOGGER.error("Match config validation failed: %s", error_msg)
+                else:
+                    # Update binding
+                    binding["calendars"] = calendars
+                    binding["match"] = match_config
+                    binding["slot_id"] = slot_id
+                    binding["priority"] = priority if priority is not None else None
+
+                    # Save
+                    new_options = {**self.config_entry.options}
+                    new_options[CONF_BINDINGS] = bindings
+                    return self.async_create_entry(title="", data=new_options)
+
+        # Get available slots and calendars
+        slots = self.config_entry.options.get(CONF_SLOTS, [])
+        calendar_entities = self.config_entry.data.get(CONF_CALENDAR_ENTITIES, [])
+
+        if not slots:
+            return self.async_abort(reason="slot_not_found")
+
+        slot_options = {slot["id"]: f"{slot['label']}" for slot in slots}
+        calendar_options = {"*": "All Calendars (*)", **{cal: cal for cal in calendar_entities}}
+
+        # Get current values
+        current_calendars = binding.get("calendars", "*")
+        current_match = binding.get("match", {})
+        current_match_type = current_match.get("type", "summary_contains")
+        current_match_value = current_match.get("value", "")
+        current_slot_id = binding.get("slot_id")
+        current_priority = binding.get("priority")
+
+        schema = vol.Schema(
+            {
+                vol.Required("calendars", default=current_calendars): vol.In(calendar_options),
+                vol.Required("match_type", default=current_match_type): vol.In({
+                    "summary": "Exact Summary Match",
+                    "summary_contains": "Summary Contains",
+                    "regex": "Regular Expression",
+                }),
+                vol.Required("match_value", default=current_match_value): cv.string,
+                vol.Required("slot_id", default=current_slot_id): vol.In(slot_options),
+                vol.Optional("priority", default=current_priority): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="edit_binding_detail",
+            data_schema=schema,
+            errors=errors,
+            description_placeholders={
+                "binding_id": binding_id,
+                "match_pattern": current_match_value,
+            },
+        )
 
     async def async_step_delete_binding(
         self, user_input: dict[str, Any] | None = None
