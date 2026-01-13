@@ -8,24 +8,38 @@ A Home Assistant custom integration that manages climate devices (thermostats, v
 
 ## 🎯 Concept
 
-**Climate Control Calendar** transforms your Home Assistant calendars into intelligent climate control profiles. Instead of programming complex schedules, you simply create calendar events that represent your lifestyle:
+**Climate Control Calendar** transforms your Home Assistant calendars into intelligent climate control. Instead of rigid time-based schedules, you create calendar events that trigger climate profiles:
 
-- 📅 **"Smart Working Week"** - Warmer temperature during work hours
-- 🏖️ **"Summer Vacation"** - Energy-saving mode while away
-- 🏠 **"Weekend Home"** - Comfort settings for relaxation
-- 🌙 **"Night Mode"** - Lower temperatures for better sleep
+- 📅 **"Smart Working"** → activates comfort mode in studio
+- 🏖️ **"Summer Vacation"** → switches to energy-saving mode
+- 🏠 **"Weekend Home"** → higher comfort levels all day
+- 🌙 **"Night Mode"** → reduces temperatures for sleep
+- 🚨 **"Emergency Heat"** → instant override from your phone
 
-The integration automatically detects active calendar events and applies corresponding climate settings to your devices.
+**The power?** Manage your heating schedule from any calendar app (Google Calendar, Outlook, etc.), with changes active within 60 seconds. No restart needed!
 
 ## ✨ Key Features
 
-- **Calendar-Driven**: Control climate based on calendar events
-- **Time Slots**: Define temperature/mode profiles for different times of day
-- **Dry Run Mode**: Test configurations without actually changing device states
-- **Event System**: Full event emission for automation triggers
-- **Override Flags**: Temporarily skip or force specific behaviors
-- **GUI Configuration**: No YAML needed - everything configurable through UI
-- **Multi-Device**: Control multiple climate entities simultaneously
+### 🎯 Event-Based Architecture
+- **📅 Any Calendar Works**: Google Calendar, Local Calendar, Office 365, CalDAV
+- **🔗 Pattern Matching Bindings**: Event "Smart Working" → activates "Comfort" slot
+- **🎚️ Reusable Climate Profiles**: Define slots once, use with multiple events
+- **⚡ Priority System**: Multiple events active? Highest priority wins
+- **🏠 Per-Entity Control**: Different temperatures for different rooms in same slot
+
+### 🚀 Smart Behavior
+- **Active Event Fetching**: New events detected within 60 seconds
+- **Change Detection**: Applies climate ONLY when events start/end (not every minute)
+- **Multi-Calendar Support**: Monitor multiple calendars simultaneously
+- **Conflict Resolution**: Automatic priority-based resolution for overlapping events
+- **Target Entity Flexibility**: Global pool + per-binding overrides + per-slot exclusions
+
+### 🛠️ Developer-Friendly
+- **Dry Run Mode**: Test without touching real devices
+- **Rich Event System**: 10+ event types for automation triggers
+- **Debug Logging**: Comprehensive logs for troubleshooting
+- **GUI Configuration**: Everything configurable through UI (no YAML)
+- **Service Calls**: Manual override and control services
 
 ## 🚀 Installation
 
@@ -71,88 +85,126 @@ The integration automatically detects active calendar events and applies corresp
 
 ## 📚 How It Works
 
+### Architecture Overview
+
+```
+📅 Calendar Events  →  🔗 Bindings  →  🎚️ Slots  →  🌡️ Climate Entities
+   (your schedule)    (pattern match)  (profiles)    (your devices)
+```
+
 ### Core Concepts
 
-1. **Calendar Entity**: A Home Assistant calendar that represents your usage patterns
-2. **Time Slots**: Configured time windows (e.g., "Morning 06:00-09:00") with associated climate settings
-3. **Climate Payload**: Temperature, HVAC mode, preset, fan, and swing settings to apply when a slot is active
-4. **Engine**: The logic that evaluates active calendar, time slots, override flags, and applies settings to devices
-5. **Override Flags**: Manual controls to skip or force specific slot behaviors
+1. **📅 Calendars**: Any Home Assistant calendar becomes a control source
+   - Create events like "Smart Working", "Vacation", "Night Mode"
+   - Multiple calendars supported for different zones/purposes
 
-### Typical Workflow
+2. **🔗 Bindings**: Pattern matchers that connect events to slots
+   - Match by exact name, partial text, or regex pattern
+   - Set priorities for conflict resolution
+   - Target specific entities or use global pool
+
+3. **🎚️ Slots**: Reusable climate configuration templates
+   - Define temperature, HVAC mode, preset, etc.
+   - Per-entity overrides for room-specific settings
+   - Exclude entities that should never be controlled
+
+4. **⚡ Priority System**: When multiple events are active
+   - Higher priority binding wins for conflicting entities
+   - Different priorities for different rooms simultaneously
+   - Emergency overrides (priority 99) always win
+
+### Workflow Example
 
 ```
-Calendar Event Active → Engine Evaluates → Finds Matching Slot → Applies Climate Payload → Devices Updated
-                     ↑
-                Override Flags (optional manual control)
+1. Calendar Event "Smart Working" becomes active
+          ↓
+2. Binding matches pattern "Smart Working"
+          ↓
+3. Activates Slot "Comfort Mode" (21°C, heat)
+          ↓
+4. Applied to climate.studio (23°C override) + climate.bedroom (21°C default)
+          ↓
+5. When event ends → revert to next active binding or default state
 ```
 
-## 💡 Usage Examples
+**📖 For detailed architecture explanation, see [ARCHITECTURE.md](ARCHITECTURE.md)**
 
-### Scenario 1: Smart Working from Home
+## 💡 Quick Start Examples
 
-**Use Case**: When working from home, you want warmer temperatures during work hours and eco mode outside work hours.
+### Example 1: Simple Smart Working Schedule
 
-**Setup**:
-- **Calendar**: Create "WFH" (Work From Home) events on days you work from home
-- **Slots** (active when calendar ON):
-  - `morning_warmup`: 06:00-09:00, Mon-Fri → `{temperature: 22, hvac_mode: heat}`
-  - `work_hours`: 09:00-18:00, Mon-Fri → `{temperature: 21, preset_mode: comfort}`
-  - `evening_eco`: 18:00-23:00, Mon-Fri → `{temperature: 19, preset_mode: eco}`
-  - `night_off`: 23:00-06:00 → `{hvac_mode: off}`
+**Goal**: Warmer studio when working from home, scheduled via calendar
 
-**Behavior**: On WFH days, heating automatically adjusts throughout the day. On office days (calendar OFF), no automatic changes occur.
+**Configuration**:
+
+1. **Create Slot** "Comfort"
+   - Temperature: 21°C, HVAC Mode: heat
+   - Entity Override: climate.studio → 23°C
+
+2. **Create Binding** "WFH → Comfort"
+   - Pattern: "WFH" (summary_contains)
+   - Slot: "Comfort"
+   - Priority: 10
+
+3. **Create Calendar Events**
+   - "WFH Tuesday" (every Tuesday 9-17)
+   - "WFH Thursday" (every Thursday 9-17)
+
+**Result**: On WFH days, studio heats to 23°C and other rooms to 21°C. Non-WFH days: no changes.
 
 ---
 
-### Scenario 2: Vacation Mode
+### Example 2: Vacation + Maid Service Override
 
-**Use Case**: During vacation, minimize energy usage but prevent freezing/overheating.
+**Goal**: Energy saving during vacation, but warm for Tuesday maid visits
 
-**Setup**:
-- **Calendar**: Create "Vacation" event spanning vacation dates
-- **Slots** (active when calendar ON):
-  - `away_mode`: 00:00-23:59 → `{temperature: 15, preset_mode: away, hvac_mode: heat}`
-  - `morning_check`: 08:00-09:00 → `{temperature: 18, hvac_mode: heat}` (prevent mold)
+**Configuration**:
 
-**Behavior**: While vacation event is active, maintain minimal heating. When vacation ends (calendar OFF), normal patterns resume automatically.
+1. **Slots**:
+   - "Away": 15°C, eco mode
+   - "Comfort": 20°C, heat mode
 
----
+2. **Bindings**:
+   - "Vacation" → "Away" slot (priority 5)
+   - "Maid Service" → "Comfort" slot (priority 10)
 
-### Scenario 3: Weekend vs Weekday
+3. **Calendar**:
+   - "Summer Vacation" (2 weeks)
+   - "Maid Service" (every Tuesday 8-11, recurring)
 
-**Use Case**: Different comfort levels for weekends (more time at home) vs weekdays (out during day).
-
-**Setup**:
-- **Calendar**: Create recurring "Weekend Comfort" event for Saturdays and Sundays
-- **Slots** (active when calendar ON):
-  - `morning_comfort`: 07:00-12:00, Sat-Sun → `{temperature: 22, preset_mode: comfort}`
-  - `afternoon_active`: 12:00-22:00, Sat-Sun → `{temperature: 21, hvac_mode: heat}`
-  - `night_sleep`: 22:00-07:00, Sat-Sun → `{temperature: 18, preset_mode: sleep}`
-
-**Behavior**: On weekends, enjoy higher comfort levels all day. Weekdays follow different calendar/slots or rely on thermostat defaults.
+**Result**:
+- Most days: 15°C (away)
+- Tuesday 8-11: 20°C (maid working, priority 10 overrides vacation)
+- Tuesday 11:01+: Back to 15°C automatically
 
 ---
 
-### Scenario 4: Night Setback with Override
+### Example 3: Multi-Zone with Emergency Override
 
-**Use Case**: Automatic night temperature reduction, but ability to override when sick or cold.
+**Goal**: Different schedules for living zone vs sleeping zone, with emergency button
 
-**Setup**:
-- **Calendar**: Create "Active Heating Season" event for winter months
-- **Slots** (active when calendar ON):
-  - `day_comfort`: 06:00-22:00 → `{temperature: 21, hvac_mode: heat}`
-  - `night_setback`: 22:00-06:00 → `{temperature: 17, hvac_mode: heat}`
+**Configuration**:
 
-**Manual Override**:
-```yaml
-# Skip tonight's setback (automation or script)
-service: climate_control_calendar.set_flag
-data:
-  flag_type: skip_until_next_slot
-```
+1. **Slots**:
+   - "Living Active": 21°C
+   - "Sleeping": 18°C
+   - "Emergency Heat": 25°C
 
-**Behavior**: Normally reduces temperature at night. Use override flag when you want to maintain day temperature through the night.
+2. **Bindings**:
+   - "Living" → "Living Active" (target: [climate.living, climate.kitchen], priority 5)
+   - "Sleep" → "Sleeping" (target: [climate.bedroom], priority 5)
+   - "Emergency" → "Emergency Heat" (target: all, priority 99)
+
+3. **Calendars**:
+   - "Living Active Hours" (daily 7-22)
+   - "Sleep Hours" (daily 22-7)
+   - "Emergency" (create when needed from phone!)
+
+**Result**: Living zone and sleeping zone follow independent schedules. Create "Emergency Heat" event from phone → all zones instantly go to 25°C (priority 99 wins).
+
+---
+
+**📖 For more complex scenarios, see [ARCHITECTURE.md](ARCHITECTURE.md#-real-world-power-examples)**
 
 ---
 
