@@ -368,6 +368,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             label = user_input.get("label", "").strip()
+            excluded_entities = user_input.get("excluded_entities")
 
             if not label:
                 errors["label"] = "invalid_slot_id"
@@ -402,6 +403,10 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                         "default_climate_payload": climate_payload,
                     }
 
+                    # Add excluded_entities if provided
+                    if excluded_entities:
+                        new_slot["excluded_entities"] = excluded_entities
+
                     # Validate
                     valid, error_msg = validate_slot_data(new_slot)
                     if not valid:
@@ -422,6 +427,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional("temperature"): vol.Any(None, vol.Coerce(float)),
                 vol.Optional("hvac_mode"): vol.In(["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"]),
                 vol.Optional("preset_mode"): cv.string,
+                vol.Optional("excluded_entities"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="climate",
+                        multiple=True,
+                    ),
+                ),
             }
         )
 
@@ -484,6 +495,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         if user_input is not None:
             label = user_input.get("label", "").strip()
+            excluded_entities = user_input.get("excluded_entities")
 
             if not label:
                 errors["label"] = "invalid_slot_id"
@@ -511,6 +523,13 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     slot["label"] = label
                     slot["default_climate_payload"] = climate_payload
 
+                    # Update excluded_entities
+                    if excluded_entities:
+                        slot["excluded_entities"] = excluded_entities
+                    elif "excluded_entities" in slot:
+                        # Remove if now empty
+                        del slot["excluded_entities"]
+
                     # Validate
                     valid, error_msg = validate_slot_data(slot)
                     if not valid:
@@ -524,6 +543,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         # Get current payload
         current_payload = slot.get("default_climate_payload") or slot.get("climate_payload", {})
+        current_excluded_entities = slot.get("excluded_entities")
 
         # Count bindings using this slot
         bindings = self.config_entry.options.get(CONF_BINDINGS, [])
@@ -537,6 +557,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     ["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"]
                 ),
                 vol.Optional("preset_mode", default=current_payload.get("preset_mode")): cv.string,
+                vol.Optional("excluded_entities", default=current_excluded_entities): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="climate",
+                        multiple=True,
+                    ),
+                ),
             }
         )
 
@@ -646,6 +672,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             match_value = user_input.get("match_value", "").strip()
             slot_id = user_input.get("slot_id")
             priority = user_input.get("priority")
+            target_entities = user_input.get("target_entities")
 
             if not match_value:
                 errors["match_value"] = "invalid_pattern"
@@ -671,6 +698,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                         "match": match_config,
                         "slot_id": slot_id,
                         "priority": priority if priority is not None else None,
+                        "target_entities": target_entities if target_entities else None,
                     }
 
                     # Add to bindings
@@ -702,6 +730,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                 vol.Required("match_value"): cv.string,
                 vol.Required("slot_id"): vol.In(slot_options),
                 vol.Optional("priority"): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
+                vol.Optional("target_entities"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="climate",
+                        multiple=True,
+                    ),
+                ),
             }
         )
 
@@ -772,6 +806,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             match_value = user_input.get("match_value", "").strip()
             slot_id = user_input.get("slot_id")
             priority = user_input.get("priority")
+            target_entities = user_input.get("target_entities")
 
             if not match_value:
                 errors["match_value"] = "invalid_pattern"
@@ -791,6 +826,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     binding["match"] = match_config
                     binding["slot_id"] = slot_id
                     binding["priority"] = priority if priority is not None else None
+                    binding["target_entities"] = target_entities if target_entities else None
 
                     # Save
                     new_options = {**self.config_entry.options}
@@ -814,6 +850,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         current_match_value = current_match.get("value", "")
         current_slot_id = binding.get("slot_id")
         current_priority = binding.get("priority")
+        current_target_entities = binding.get("target_entities")
 
         schema = vol.Schema(
             {
@@ -826,6 +863,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                 vol.Required("match_value", default=current_match_value): cv.string,
                 vol.Required("slot_id", default=current_slot_id): vol.In(slot_options),
                 vol.Optional("priority", default=current_priority): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
+                vol.Optional("target_entities", default=current_target_entities): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain="climate",
+                        multiple=True,
+                    ),
+                ),
             }
         )
 
