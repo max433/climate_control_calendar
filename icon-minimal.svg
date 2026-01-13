@@ -1,0 +1,86 @@
+<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#03a9f4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0277bd;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded square background -->
+  <rect width="256" height="256" rx="48" fill="url(#bgGradient)"/>
+
+  <!-- Calendar icon (simplified) -->
+  <g transform="translate(35, 50)">
+    <!-- Calendar body -->
+    <rect width="120" height="130" rx="12" fill="#ffffff" opacity="0.95"/>
+
+    <!-- Calendar header bar -->
+    <rect width="120" height="28" rx="12" fill="#0277bd" opacity="0.3"/>
+
+    <!-- Binding rings -->
+    <circle cx="30" cy="14" r="5" fill="#0277bd"/>
+    <circle cx="60" cy="14" r="5" fill="#0277bd"/>
+    <circle cx="90" cy="14" r="5" fill="#0277bd"/>
+
+    <!-- Grid dots (minimal calendar representation) -->
+    <g fill="#0277bd" opacity="0.6">
+      <circle cx="25" cy="50" r="4"/>
+      <circle cx="60" cy="50" r="4"/>
+      <circle cx="95" cy="50" r="4"/>
+
+      <circle cx="25" cy="75" r="4"/>
+      <circle cx="60" cy="75" r="4"/>
+      <circle cx="95" cy="75" r="4"/>
+
+      <circle cx="25" cy="100" r="4"/>
+      <circle cx="60" cy="100" r="4"/>
+      <circle cx="95" cy="100" r="4"/>
+
+      <circle cx="25" cy="125" r="4"/>
+      <circle cx="60" cy="125" r="4"/>
+      <circle cx="95" cy="125" r="4"/>
+    </g>
+
+    <!-- Active day (highlighted) -->
+    <circle cx="60" cy="75" r="12" fill="#ff9800"/>
+    <circle cx="60" cy="75" r="4" fill="#ffffff"/>
+  </g>
+
+  <!-- Temperature waves (modern, abstract) -->
+  <g transform="translate(120, 90)">
+    <!-- Hot wave -->
+    <path d="M 10 20 Q 25 10, 40 20 T 70 20"
+          stroke="#ff6b6b"
+          stroke-width="8"
+          fill="none"
+          stroke-linecap="round"
+          opacity="0.85"/>
+
+    <!-- Warm wave -->
+    <path d="M 10 45 Q 25 35, 40 45 T 70 45"
+          stroke="#ffa500"
+          stroke-width="8"
+          fill="none"
+          stroke-linecap="round"
+          opacity="0.85"/>
+
+    <!-- Cool wave -->
+    <path d="M 10 70 Q 25 60, 40 70 T 70 70"
+          stroke="#4ecdc4"
+          stroke-width="8"
+          fill="none"
+          stroke-linecap="round"
+          opacity="0.85"/>
+  </g>
+
+  <!-- Connection indicator (arrow/flow) -->
+  <g transform="translate(128, 128)" opacity="0.7">
+    <circle r="6" fill="#ffffff"/>
+    <path d="M 0 -20 L 0 -10 M -4 -14 L 0 -10 L 4 -14"
+          stroke="#ffffff"
+          stroke-width="2.5"
+          fill="none"
+          stroke-linecap="round"
+          stroke-linejoin="round"/>
+  </g>
+</svg>
