@@ -96,18 +96,20 @@
       },
       "add_slot": {
         "title": "Add New Slot",
-        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Entity Overrides: Device-specific settings (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Excluded Entities: Skip certain devices (optional)\n• Entity Overrides: Device-specific settings (via YAML only)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
         "data": {
           "label": "Slot Label",
           "temperature": "Temperature (°C)",
           "hvac_mode": "HVAC Mode",
-          "preset_mode": "Preset Mode"
+          "preset_mode": "Preset Mode",
+          "excluded_entities": "Excluded Entities (optional)"
         },
         "data_description": {
           "label": "e.g., 'Comfort', 'Eco', 'Sleep'",
           "temperature": "Leave empty to not control temperature",
           "hvac_mode": "e.g., heat, cool, heat_cool, auto, off",
-          "preset_mode": "e.g., away, home, eco, boost"
+          "preset_mode": "e.g., away, home, eco, boost",
+          "excluded_entities": "Climate entities to exclude from this slot (will not be controlled)"
         }
       },
       "edit_slot": {
@@ -124,7 +126,15 @@
           "label": "Slot Label",
           "temperature": "Temperature (°C)",
           "hvac_mode": "HVAC Mode",
-          "preset_mode": "Preset Mode"
+          "preset_mode": "Preset Mode",
+          "excluded_entities": "Excluded Entities (optional)"
+        },
+        "data_description": {
+          "label": "Human-readable name for this slot",
+          "temperature": "Leave empty to not control temperature",
+          "hvac_mode": "e.g., heat, cool, heat_cool, auto, off",
+          "preset_mode": "e.g., away, home, eco, boost",
+          "excluded_entities": "Climate entities to exclude from this slot (will not be controlled)"
         }
       },
       "delete_slot": {
@@ -156,14 +166,16 @@
           "match_type": "Match Type",
           "match_value": "Match Value",
           "slot_id": "Target Slot",
-          "priority": "Priority (0-100, optional)"
+          "priority": "Priority (0-100, optional)",
+          "target_entities": "Target Entities (optional)"
         },
         "data_description": {
           "calendars": "Select specific calendar(s) or '*' for all",
           "match_type": "How to match events: summary (exact), summary_contains, regex",
           "match_value": "Pattern to match (e.g., 'Morning', 'Work', 'smart.*')",
           "slot_id": "Slot to activate when pattern matches",
-          "priority": "Leave empty to use calendar's default priority"
+          "priority": "Leave empty to use calendar's default priority",
+          "target_entities": "Limit binding to specific climate entities (empty = use global pool)"
         }
       },
       "edit_binding": {
@@ -181,14 +193,16 @@
           "match_type": "Match Type",
           "match_value": "Match Value",
           "slot_id": "Target Slot",
-          "priority": "Priority (0-100, optional)"
+          "priority": "Priority (0-100, optional)",
+          "target_entities": "Target Entities (optional)"
         },
         "data_description": {
           "calendars": "Select specific calendar(s) or '*' for all",
           "match_type": "How to match events: summary (exact), summary_contains, regex",
           "match_value": "Pattern to match (e.g., 'Morning', 'Work', 'smart.*')",
           "slot_id": "Slot to activate when pattern matches",
-          "priority": "Leave empty to use calendar's default priority"
+          "priority": "Leave empty to use calendar's default priority",
+          "target_entities": "Limit binding to specific climate entities (empty = use global pool)"
         }
       },
       "delete_binding": {

@@ -96,18 +96,20 @@
       },
       "add_slot": {
         "title": "Aggiungi Nuovo Slot",
-        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Entity Overrides: Device-specific settings (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Excluded Entities: Skip certain devices (optional)\n• Entity Overrides: Device-specific settings (via YAML only)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
         "data": {
           "label": "Etichetta Slot",
           "temperature": "Temperatura (°C)",
           "hvac_mode": "Modalità HVAC",
-          "preset_mode": "Modalità Preset"
+          "preset_mode": "Modalità Preset",
+          "excluded_entities": "Entità Escluse (opzionale)"
         },
         "data_description": {
           "label": "es. 'Comfort', 'Eco', 'Notte'",
           "temperature": "Lascia vuoto per non controllare la temperatura",
           "hvac_mode": "es. heat, cool, heat_cool, auto, off",
-          "preset_mode": "es. away, home, eco, boost"
+          "preset_mode": "es. away, home, eco, boost",
+          "excluded_entities": "Entità clima da escludere da questo slot (non saranno controllate)"
         }
       },
       "edit_slot": {
@@ -124,7 +126,15 @@
           "label": "Etichetta Slot",
           "temperature": "Temperatura (°C)",
           "hvac_mode": "Modalità HVAC",
-          "preset_mode": "Modalità Preset"
+          "preset_mode": "Modalità Preset",
+          "excluded_entities": "Entità Escluse (opzionale)"
+        },
+        "data_description": {
+          "label": "Nome leggibile per questo slot",
+          "temperature": "Lascia vuoto per non controllare la temperatura",
+          "hvac_mode": "es. heat, cool, heat_cool, auto, off",
+          "preset_mode": "es. away, home, eco, boost",
+          "excluded_entities": "Entità clima da escludere da questo slot (non saranno controllate)"
         }
       },
       "delete_slot": {
@@ -156,14 +166,16 @@
           "match_type": "Tipo di Match",
           "match_value": "Valore Match",
           "slot_id": "Slot Target",
-          "priority": "Priorità (0-100, opzionale)"
+          "priority": "Priorità (0-100, opzionale)",
+          "target_entities": "Entità Target (opzionale)"
         },
         "data_description": {
           "calendars": "Seleziona calendario/i specifico/i oppure '*' per tutti",
           "match_type": "How to match events: summary (exact), summary_contains, regex",
           "match_value": "Pattern da cercare (es. 'Mattina', 'Lavoro', 'smart.*')",
           "slot_id": "Slot da attivare quando il pattern matcha",
-          "priority": "Lascia vuoto per usare la priorità predefinita del calendario"
+          "priority": "Lascia vuoto per usare la priorità predefinita del calendario",
+          "target_entities": "Limita il binding a specifiche entità clima (vuoto = usa il pool globale)"
         }
       },
       "edit_binding": {
@@ -181,14 +193,16 @@
           "match_type": "Tipo di Match",
           "match_value": "Valore Match",
           "slot_id": "Slot Target",
-          "priority": "Priorità (0-100, opzionale)"
+          "priority": "Priorità (0-100, opzionale)",
+          "target_entities": "Entità Target (opzionale)"
         },
         "data_description": {
           "calendars": "Seleziona calendario/i specifico/i oppure '*' per tutti",
           "match_type": "How to match events: summary (exact), summary_contains, regex",
           "match_value": "Pattern da cercare (es. 'Mattina', 'Lavoro', 'smart.*')",
           "slot_id": "Slot da attivare quando il pattern matcha",
-          "priority": "Lascia vuoto per usare la priorità predefinita del calendario"
+          "priority": "Lascia vuoto per usare la priorità predefinita del calendario",
+          "target_entities": "Limita il binding a specifiche entità clima (vuoto = usa il pool globale)"
         }
       },
       "delete_binding": {
