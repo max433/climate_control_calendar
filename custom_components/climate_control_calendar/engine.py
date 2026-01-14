@@ -354,7 +354,8 @@ class ClimateControlEngine:
             binding_id = binding_metadata.get("binding_id", "unknown")
 
             # Determine entities to apply to
-            if target_entities is None:
+            # Handle both None and empty list [] as "use global pool"
+            if not target_entities:
                 entities_for_this_binding = climate_entities_pool
             else:
                 entities_for_this_binding = target_entities
