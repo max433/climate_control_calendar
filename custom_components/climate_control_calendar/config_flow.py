@@ -543,7 +543,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         # Get current payload
         current_payload = slot.get("default_climate_payload") or slot.get("climate_payload", {})
-        current_excluded_entities = slot.get("excluded_entities")
+        current_excluded_entities = slot.get("excluded_entities") or []
 
         # Count bindings using this slot
         bindings = self.config_entry.options.get(CONF_BINDINGS, [])
@@ -850,7 +850,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         current_match_value = current_match.get("value", "")
         current_slot_id = binding.get("slot_id")
         current_priority = binding.get("priority")
-        current_target_entities = binding.get("target_entities")
+        current_target_entities = binding.get("target_entities") or []
 
         schema = vol.Schema(
             {
