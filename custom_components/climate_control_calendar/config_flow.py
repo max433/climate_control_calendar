@@ -478,10 +478,10 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional("temperature"): vol.Any(None, vol.Coerce(float)),
                 vol.Optional("target_temp_high"): vol.Any(None, vol.Coerce(float)),
                 vol.Optional("target_temp_low"): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("hvac_mode"): vol.Any(None, "", vol.In(["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"])),
-                vol.Optional("preset_mode"): vol.Any(None, "", cv.string),
+                vol.Optional("hvac_mode"): vol.In(["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"]),
+                vol.Optional("preset_mode"): cv.string,
                 vol.Optional("humidity"): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
-                vol.Optional("aux_heat"): vol.Any(None, cv.boolean),
+                vol.Optional("aux_heat"): cv.boolean,
                 vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
@@ -651,12 +651,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                 vol.Optional("temperature", default=current_payload.get("temperature")): vol.Any(None, vol.Coerce(float)),
                 vol.Optional("target_temp_high", default=current_payload.get("target_temp_high")): vol.Any(None, vol.Coerce(float)),
                 vol.Optional("target_temp_low", default=current_payload.get("target_temp_low")): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("hvac_mode", default=current_payload.get("hvac_mode")): vol.Any(None, "", vol.In(
+                vol.Optional("hvac_mode", default=current_payload.get("hvac_mode")): vol.In(
                     ["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"]
-                )),
-                vol.Optional("preset_mode", default=current_payload.get("preset_mode")): vol.Any(None, "", cv.string),
+                ),
+                vol.Optional("preset_mode", default=current_payload.get("preset_mode")): cv.string,
                 vol.Optional("humidity", default=current_payload.get("humidity")): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
-                vol.Optional("aux_heat", default=current_payload.get("aux_heat")): vol.Any(None, cv.boolean),
+                vol.Optional("aux_heat", default=current_payload.get("aux_heat")): cv.boolean,
                 vol.Optional("excluded_entities", default=current_excluded_entities): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
