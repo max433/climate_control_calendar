@@ -10,17 +10,11 @@ from homeassistant.components.climate import (
     SERVICE_SET_PRESET_MODE,
     SERVICE_SET_FAN_MODE,
     SERVICE_SET_SWING_MODE,
-    SERVICE_SET_HUMIDITY,
-    SERVICE_SET_AUX_HEAT,
     ATTR_TEMPERATURE,
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
     ATTR_FAN_MODE,
     ATTR_SWING_MODE,
-    ATTR_TARGET_TEMP_HIGH,
-    ATTR_TARGET_TEMP_LOW,
-    ATTR_HUMIDITY,
-    ATTR_AUX_HEAT,
 )
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
@@ -258,8 +252,8 @@ class ClimatePayloadApplier:
                 SERVICE_SET_TEMPERATURE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_TARGET_TEMP_HIGH: payload[PAYLOAD_TARGET_TEMP_HIGH],
-                    ATTR_TARGET_TEMP_LOW: payload[PAYLOAD_TARGET_TEMP_LOW],
+                    "target_temp_high": payload[PAYLOAD_TARGET_TEMP_HIGH],
+                    "target_temp_low": payload[PAYLOAD_TARGET_TEMP_LOW],
                 },
                 blocking=True,
             )
@@ -358,10 +352,10 @@ class ClimatePayloadApplier:
         if PAYLOAD_HUMIDITY in payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
-                SERVICE_SET_HUMIDITY,
+                "set_humidity",
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_HUMIDITY: payload[PAYLOAD_HUMIDITY],
+                    "humidity": payload[PAYLOAD_HUMIDITY],
                 },
                 blocking=True,
             )
@@ -375,10 +369,10 @@ class ClimatePayloadApplier:
         if PAYLOAD_AUX_HEAT in payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
-                SERVICE_SET_AUX_HEAT,
+                "set_aux_heat",
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_AUX_HEAT: payload[PAYLOAD_AUX_HEAT],
+                    "aux_heat": payload[PAYLOAD_AUX_HEAT],
                 },
                 blocking=True,
             )
