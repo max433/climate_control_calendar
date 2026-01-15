@@ -441,10 +441,13 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     except (ValueError, TypeError):
                         errors["humidity"] = "invalid_humidity"
 
-                # Auxiliary heat (boolean: True=on, False=off, None=not configured)
-                aux_heat = user_input.get("aux_heat")
-                if aux_heat is True or aux_heat is False:
-                    climate_payload["aux_heat"] = aux_heat
+                # Auxiliary heat (string: "on"/"off"/"" from selector)
+                aux_heat = user_input.get("aux_heat", "").strip()
+                if aux_heat == "on":
+                    climate_payload["aux_heat"] = True
+                elif aux_heat == "off":
+                    climate_payload["aux_heat"] = False
+                # If aux_heat is "" (not configured), don't add to payload
 
                 if not climate_payload:
                     errors["base"] = "invalid_slot_id"  # At least one field required
@@ -486,11 +489,21 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
                         mode=selector.SelectSelectorMode.DROPDOWN,
+                        custom_value=False,
                     ),
                 ),
                 vol.Optional("preset_mode", default=""): cv.string,
                 vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-                vol.Optional("aux_heat"): selector.BooleanSelector(),
+                vol.Optional("aux_heat"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "", "label": "Not configured"},
+                            {"value": "on", "label": "On"},
+                            {"value": "off", "label": "Off"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    ),
+                ),
                 vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
@@ -622,10 +635,13 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     except (ValueError, TypeError):
                         errors["humidity"] = "invalid_humidity"
 
-                # Auxiliary heat (boolean: True=on, False=off, None=not configured)
-                aux_heat = user_input.get("aux_heat")
-                if aux_heat is True or aux_heat is False:
-                    climate_payload["aux_heat"] = aux_heat
+                # Auxiliary heat (string: "on"/"off"/"" from selector)
+                aux_heat = user_input.get("aux_heat", "").strip()
+                if aux_heat == "on":
+                    climate_payload["aux_heat"] = True
+                elif aux_heat == "off":
+                    climate_payload["aux_heat"] = False
+                # If aux_heat is "" (not configured), don't add to payload
 
                 if not errors:
                     # Update slot
@@ -659,6 +675,15 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         binding_count = sum(1 for b in bindings if b.get("slot_id") == slot_id)
 
         # Build suggested values dict for form pre-population
+        # Convert aux_heat boolean to string for SelectSelector
+        aux_heat_value = current_payload.get("aux_heat")
+        if aux_heat_value is True:
+            aux_heat_str = "on"
+        elif aux_heat_value is False:
+            aux_heat_str = "off"
+        else:
+            aux_heat_str = ""
+
         suggested_values = {
             "label": slot.get("label", ""),
             "temperature": current_payload.get("temperature"),
@@ -667,7 +692,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             "hvac_mode": current_payload.get("hvac_mode"),
             "preset_mode": current_payload.get("preset_mode", ""),
             "humidity": current_payload.get("humidity"),
-            "aux_heat": current_payload.get("aux_heat"),
+            "aux_heat": aux_heat_str,
             "excluded_entities": current_excluded_entities,
         }
 
@@ -681,11 +706,21 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
                         mode=selector.SelectSelectorMode.DROPDOWN,
+                        custom_value=False,
                     ),
                 ),
                 vol.Optional("preset_mode"): cv.string,
                 vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-                vol.Optional("aux_heat"): selector.BooleanSelector(),
+                vol.Optional("aux_heat"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "", "label": "Not configured"},
+                            {"value": "on", "label": "On"},
+                            {"value": "off", "label": "Off"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    ),
+                ),
                 vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
