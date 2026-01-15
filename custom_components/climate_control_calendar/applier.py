@@ -10,11 +10,17 @@ from homeassistant.components.climate import (
     SERVICE_SET_PRESET_MODE,
     SERVICE_SET_FAN_MODE,
     SERVICE_SET_SWING_MODE,
+    SERVICE_SET_HUMIDITY,
+    SERVICE_SET_AUX_HEAT,
     ATTR_TEMPERATURE,
     ATTR_HVAC_MODE,
     ATTR_PRESET_MODE,
     ATTR_FAN_MODE,
     ATTR_SWING_MODE,
+    ATTR_TARGET_TEMP_HIGH,
+    ATTR_TARGET_TEMP_LOW,
+    ATTR_HUMIDITY,
+    ATTR_AUX_HEAT,
 )
 from homeassistant.const import ATTR_ENTITY_ID
 from homeassistant.core import HomeAssistant
@@ -24,6 +30,12 @@ from .const import (
     PAYLOAD_TEMPERATURE,
     PAYLOAD_HVAC_MODE,
     PAYLOAD_PRESET_MODE,
+    PAYLOAD_FAN_MODE,
+    PAYLOAD_SWING_MODE,
+    PAYLOAD_TARGET_TEMP_HIGH,
+    PAYLOAD_TARGET_TEMP_LOW,
+    PAYLOAD_HUMIDITY,
+    PAYLOAD_AUX_HEAT,
 )
 from .events import EventEmitter
 
@@ -237,8 +249,28 @@ class ClimatePayloadApplier:
         Raises:
             HomeAssistantError: If service call fails
         """
-        # Apply temperature
-        if PAYLOAD_TEMPERATURE in payload:
+        # Apply temperature (range or single)
+        # Priority: target_temp_high/low > temperature (for heat_cool mode)
+        if PAYLOAD_TARGET_TEMP_HIGH in payload and PAYLOAD_TARGET_TEMP_LOW in payload:
+            # Use temperature range (for heat_cool mode)
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_TEMPERATURE,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    ATTR_TARGET_TEMP_HIGH: payload[PAYLOAD_TARGET_TEMP_HIGH],
+                    ATTR_TARGET_TEMP_LOW: payload[PAYLOAD_TARGET_TEMP_LOW],
+                },
+                blocking=True,
+            )
+            _LOGGER.debug(
+                "Set temperature range %s-%s°C on %s",
+                payload[PAYLOAD_TARGET_TEMP_LOW],
+                payload[PAYLOAD_TARGET_TEMP_HIGH],
+                entity_id,
+            )
+        elif PAYLOAD_TEMPERATURE in payload:
+            # Use single temperature
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_TEMPERATURE,
@@ -289,35 +321,69 @@ class ClimatePayloadApplier:
             )
 
         # Apply fan mode
-        if "fan_mode" in payload:
+        if PAYLOAD_FAN_MODE in payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_FAN_MODE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_FAN_MODE: payload["fan_mode"],
+                    ATTR_FAN_MODE: payload[PAYLOAD_FAN_MODE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set fan mode '%s' on %s",
-                payload["fan_mode"],
+                payload[PAYLOAD_FAN_MODE],
                 entity_id,
             )
 
         # Apply swing mode
-        if "swing_mode" in payload:
+        if PAYLOAD_SWING_MODE in payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_SWING_MODE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_SWING_MODE: payload["swing_mode"],
+                    ATTR_SWING_MODE: payload[PAYLOAD_SWING_MODE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set swing mode '%s' on %s",
-                payload["swing_mode"],
+                payload[PAYLOAD_SWING_MODE],
+                entity_id,
+            )
+
+        # Apply humidity
+        if PAYLOAD_HUMIDITY in payload:
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_HUMIDITY,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    ATTR_HUMIDITY: payload[PAYLOAD_HUMIDITY],
+                },
+                blocking=True,
+            )
+            _LOGGER.debug(
+                "Set humidity %s%% on %s",
+                payload[PAYLOAD_HUMIDITY],
+                entity_id,
+            )
+
+        # Apply auxiliary heat
+        if PAYLOAD_AUX_HEAT in payload:
+            await self.hass.services.async_call(
+                CLIMATE_DOMAIN,
+                SERVICE_SET_AUX_HEAT,
+                {
+                    ATTR_ENTITY_ID: entity_id,
+                    ATTR_AUX_HEAT: payload[PAYLOAD_AUX_HEAT],
+                },
+                blocking=True,
+            )
+            _LOGGER.debug(
+                "Set auxiliary heat %s on %s",
+                "ON" if payload[PAYLOAD_AUX_HEAT] else "OFF",
                 entity_id,
             )

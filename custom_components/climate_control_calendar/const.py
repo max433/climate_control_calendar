@@ -44,6 +44,13 @@ MATCH_VALUE: Final = "value"
 PAYLOAD_TEMPERATURE: Final = "temperature"
 PAYLOAD_HVAC_MODE: Final = "hvac_mode"
 PAYLOAD_PRESET_MODE: Final = "preset_mode"
+PAYLOAD_FAN_MODE: Final = "fan_mode"
+PAYLOAD_SWING_MODE: Final = "swing_mode"
+# Advanced climate payload keys (new)
+PAYLOAD_TARGET_TEMP_HIGH: Final = "target_temp_high"
+PAYLOAD_TARGET_TEMP_LOW: Final = "target_temp_low"
+PAYLOAD_HUMIDITY: Final = "humidity"
+PAYLOAD_AUX_HEAT: Final = "aux_heat"
 
 # Override flag types
 FLAG_SKIP_UNTIL_NEXT_SLOT: Final = "skip_until_next_slot"
