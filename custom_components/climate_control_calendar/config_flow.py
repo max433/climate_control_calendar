@@ -222,8 +222,18 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             new_options = {**self.config_entry.options}
             new_options[CONF_CLIMATE_ENTITIES] = user_input.get(CONF_CLIMATE_ENTITIES, [])
 
-            # Note: dry_run and debug_mode are in data (immutable), but we can't change them here
-            # They would require entry data migration which is more complex
+            # Update data (dry_run and debug_mode)
+            new_data = {**self.config_entry.data}
+            new_data[CONF_DRY_RUN] = user_input.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
+            new_data[CONF_DEBUG_MODE] = user_input.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
+
+            # Update both data and options
+            self.hass.config_entries.async_update_entry(
+                self.config_entry,
+                data=new_data,
+                options=new_options,
+            )
+
             return self.async_create_entry(title="", data=new_options)
 
         # Get available climate entities
