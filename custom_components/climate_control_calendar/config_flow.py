@@ -479,13 +479,18 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         schema = vol.Schema(
             {
                 vol.Required("label"): cv.string,
-                vol.Optional("temperature", default=None): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("target_temp_high", default=None): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("target_temp_low", default=None): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("hvac_mode", default=""): vol.In(["", "heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"]),
+                vol.Optional("temperature"): vol.Coerce(float),
+                vol.Optional("target_temp_high"): vol.Coerce(float),
+                vol.Optional("target_temp_low"): vol.Coerce(float),
+                vol.Optional("hvac_mode"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    ),
+                ),
                 vol.Optional("preset_mode", default=""): cv.string,
-                vol.Optional("humidity", default=None): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
-                vol.Optional("aux_heat", default=None): vol.Any(None, cv.boolean),
+                vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+                vol.Optional("aux_heat"): selector.BooleanSelector(),
                 vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
@@ -653,19 +658,35 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         bindings = self.config_entry.options.get(CONF_BINDINGS, [])
         binding_count = sum(1 for b in bindings if b.get("slot_id") == slot_id)
 
+        # Build suggested values dict for form pre-population
+        suggested_values = {
+            "label": slot.get("label", ""),
+            "temperature": current_payload.get("temperature"),
+            "target_temp_high": current_payload.get("target_temp_high"),
+            "target_temp_low": current_payload.get("target_temp_low"),
+            "hvac_mode": current_payload.get("hvac_mode"),
+            "preset_mode": current_payload.get("preset_mode", ""),
+            "humidity": current_payload.get("humidity"),
+            "aux_heat": current_payload.get("aux_heat"),
+            "excluded_entities": current_excluded_entities,
+        }
+
         schema = vol.Schema(
             {
-                vol.Required("label", default=slot.get("label", "")): cv.string,
-                vol.Optional("temperature", default=current_payload.get("temperature")): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("target_temp_high", default=current_payload.get("target_temp_high")): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("target_temp_low", default=current_payload.get("target_temp_low")): vol.Any(None, vol.Coerce(float)),
-                vol.Optional("hvac_mode", default=current_payload.get("hvac_mode", "")): vol.In(
-                    ["", "heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"]
+                vol.Required("label"): cv.string,
+                vol.Optional("temperature"): vol.Coerce(float),
+                vol.Optional("target_temp_high"): vol.Coerce(float),
+                vol.Optional("target_temp_low"): vol.Coerce(float),
+                vol.Optional("hvac_mode"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    ),
                 ),
-                vol.Optional("preset_mode", default=current_payload.get("preset_mode", "")): cv.string,
-                vol.Optional("humidity", default=current_payload.get("humidity")): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=0, max=100))),
-                vol.Optional("aux_heat", default=current_payload.get("aux_heat")): vol.Any(None, cv.boolean),
-                vol.Optional("excluded_entities", default=current_excluded_entities): selector.EntitySelector(
+                vol.Optional("preset_mode"): cv.string,
+                vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+                vol.Optional("aux_heat"): selector.BooleanSelector(),
+                vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
                         multiple=True,
@@ -676,7 +697,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
         return self.async_show_form(
             step_id="edit_slot_detail",
-            data_schema=schema,
+            data_schema=self.add_suggested_values_to_schema(schema, suggested_values),
             errors=errors,
             description_placeholders={
                 "slot_label": slot.get("label", ""),
