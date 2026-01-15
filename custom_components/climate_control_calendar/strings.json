@@ -33,6 +33,7 @@
       "invalid_binding_id": "Invalid binding ID",
       "invalid_yaml": "Invalid YAML format",
       "invalid_temperature": "Temperature must be between -50 and 50",
+      "invalid_humidity": "Humidity must be between 0 and 100",
       "slot_not_found": "Slot not found",
       "binding_not_found": "Binding not found",
       "invalid_pattern": "Invalid match pattern",
@@ -96,19 +97,27 @@
       },
       "add_slot": {
         "title": "Add New Slot",
-        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Excluded Entities: Skip certain devices (optional)\n• Entity Overrides: Device-specific settings (via YAML only)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Temperature Range: For heat_cool mode (optional)\n• Humidity: For devices with humidity control (optional)\n• Auxiliary Heat: For heat pumps with backup heating (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
         "data": {
           "label": "Slot Label",
           "temperature": "Temperature (°C)",
+          "target_temp_high": "Max Temperature (°C)",
+          "target_temp_low": "Min Temperature (°C)",
           "hvac_mode": "HVAC Mode",
           "preset_mode": "Preset Mode",
+          "humidity": "Target Humidity (%)",
+          "aux_heat": "Auxiliary Heat",
           "excluded_entities": "Excluded Entities (optional)"
         },
         "data_description": {
           "label": "e.g., 'Comfort', 'Eco', 'Sleep'",
-          "temperature": "Leave empty to not control temperature",
-          "hvac_mode": "e.g., heat, cool, heat_cool, auto, off",
+          "temperature": "Single temperature target (leave empty for range mode)",
+          "target_temp_high": "Maximum temperature for heat_cool mode (used with target_temp_low)",
+          "target_temp_low": "Minimum temperature for heat_cool mode (used with target_temp_high)",
+          "hvac_mode": "e.g., heat, cool, heat_cool, auto, off, dry",
           "preset_mode": "e.g., away, home, eco, boost",
+          "humidity": "Target humidity 0-100% (for dehumidifier-equipped devices)",
+          "aux_heat": "Enable auxiliary/backup heating (for heat pumps)",
           "excluded_entities": "Climate entities to exclude from this slot (will not be controlled)"
         }
       },
@@ -125,15 +134,23 @@
         "data": {
           "label": "Slot Label",
           "temperature": "Temperature (°C)",
+          "target_temp_high": "Max Temperature (°C)",
+          "target_temp_low": "Min Temperature (°C)",
           "hvac_mode": "HVAC Mode",
           "preset_mode": "Preset Mode",
+          "humidity": "Target Humidity (%)",
+          "aux_heat": "Auxiliary Heat",
           "excluded_entities": "Excluded Entities (optional)"
         },
         "data_description": {
           "label": "Human-readable name for this slot",
-          "temperature": "Leave empty to not control temperature",
-          "hvac_mode": "e.g., heat, cool, heat_cool, auto, off",
+          "temperature": "Single temperature target (leave empty for range mode)",
+          "target_temp_high": "Maximum temperature for heat_cool mode (used with target_temp_low)",
+          "target_temp_low": "Minimum temperature for heat_cool mode (used with target_temp_high)",
+          "hvac_mode": "e.g., heat, cool, heat_cool, auto, off, dry",
           "preset_mode": "e.g., away, home, eco, boost",
+          "humidity": "Target humidity 0-100% (for dehumidifier-equipped devices)",
+          "aux_heat": "Enable auxiliary/backup heating (for heat pumps)",
           "excluded_entities": "Climate entities to exclude from this slot (will not be controlled)"
         }
       },

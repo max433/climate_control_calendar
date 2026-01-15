@@ -33,6 +33,7 @@
       "invalid_binding_id": "ID binding non valido",
       "invalid_yaml": "Formato YAML non valido",
       "invalid_temperature": "La temperatura deve essere tra -50 e 50",
+      "invalid_humidity": "L'umidità deve essere tra 0 e 100",
       "slot_not_found": "Slot non trovato",
       "binding_not_found": "Binding non trovato",
       "invalid_pattern": "Pattern di match non valido",
@@ -96,19 +97,27 @@
       },
       "add_slot": {
         "title": "Aggiungi Nuovo Slot",
-        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Excluded Entities: Skip certain devices (optional)\n• Entity Overrides: Device-specific settings (via YAML only)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "description": "Crea un nuovo template slot clima.\n\n**Struttura Slot:**\n• Label: Nome leggibile (richiesto)\n• Payload Clima Default: Impostazioni applicate a tutti i dispositivi\n• Range Temperatura: Per modalità heat_cool (opzionale)\n• Umidità: Per dispositivi con controllo umidità (opzionale)\n• Riscaldamento Ausiliario: Per pompe di calore con riscaldamento di backup (opzionale)\n• Entità Escluse: Salta determinati dispositivi (opzionale)\n\n**Esempio**: Label='Comfort', Temperatura=22°C, Modalità HVAC=heat",
         "data": {
           "label": "Etichetta Slot",
           "temperature": "Temperatura (°C)",
+          "target_temp_high": "Temperatura Massima (°C)",
+          "target_temp_low": "Temperatura Minima (°C)",
           "hvac_mode": "Modalità HVAC",
           "preset_mode": "Modalità Preset",
+          "humidity": "Umidità Target (%)",
+          "aux_heat": "Riscaldamento Ausiliario",
           "excluded_entities": "Entità Escluse (opzionale)"
         },
         "data_description": {
           "label": "es. 'Comfort', 'Eco', 'Notte'",
-          "temperature": "Lascia vuoto per non controllare la temperatura",
-          "hvac_mode": "es. heat, cool, heat_cool, auto, off",
+          "temperature": "Temperatura singola (lascia vuoto per modalità range)",
+          "target_temp_high": "Temperatura massima per modalità heat_cool (usa con target_temp_low)",
+          "target_temp_low": "Temperatura minima per modalità heat_cool (usa con target_temp_high)",
+          "hvac_mode": "es. heat, cool, heat_cool, auto, off, dry",
           "preset_mode": "es. away, home, eco, boost",
+          "humidity": "Umidità target 0-100% (per dispositivi con deumidificatore)",
+          "aux_heat": "Abilita riscaldamento ausiliario/backup (per pompe di calore)",
           "excluded_entities": "Entità clima da escludere da questo slot (non saranno controllate)"
         }
       },
@@ -121,19 +130,27 @@
       },
       "edit_slot_detail": {
         "title": "Modifica: {slot_label}",
-        "description": "Modify slot settings.\n\n**Slot ID**: {slot_id}\n**Bindings using this slot**: {binding_count}\n\n**Warning**: Changes affect all bindings that use this slot.",
+        "description": "Modifica le impostazioni dello slot.\n\n**Slot ID**: {slot_id}\n**Binding che usano questo slot**: {binding_count}\n\n**Attenzione**: Le modifiche influenzano tutti i binding che usano questo slot.",
         "data": {
           "label": "Etichetta Slot",
           "temperature": "Temperatura (°C)",
+          "target_temp_high": "Temperatura Massima (°C)",
+          "target_temp_low": "Temperatura Minima (°C)",
           "hvac_mode": "Modalità HVAC",
           "preset_mode": "Modalità Preset",
+          "humidity": "Umidità Target (%)",
+          "aux_heat": "Riscaldamento Ausiliario",
           "excluded_entities": "Entità Escluse (opzionale)"
         },
         "data_description": {
           "label": "Nome leggibile per questo slot",
-          "temperature": "Lascia vuoto per non controllare la temperatura",
-          "hvac_mode": "es. heat, cool, heat_cool, auto, off",
+          "temperature": "Temperatura singola (lascia vuoto per modalità range)",
+          "target_temp_high": "Temperatura massima per modalità heat_cool (usa con target_temp_low)",
+          "target_temp_low": "Temperatura minima per modalità heat_cool (usa con target_temp_high)",
+          "hvac_mode": "es. heat, cool, heat_cool, auto, off, dry",
           "preset_mode": "es. away, home, eco, boost",
+          "humidity": "Umidità target 0-100% (per dispositivi con deumidificatore)",
+          "aux_heat": "Abilita riscaldamento ausiliario/backup (per pompe di calore)",
           "excluded_entities": "Entità clima da escludere da questo slot (non saranno controllate)"
         }
       },
