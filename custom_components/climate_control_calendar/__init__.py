@@ -19,7 +19,6 @@ from .const import (
     DATA_COORDINATOR,
     DATA_ENGINE,
     DATA_EVENT_EMITTER,
-    DATA_FLAG_MANAGER,
     DATA_APPLIER,
     DATA_BINDING_MANAGER,  # New: binding manager
     DATA_CONFIG,
@@ -31,7 +30,6 @@ from .const import (
 from .coordinator import ClimateControlCalendarCoordinator
 from .engine import ClimateControlEngine
 from .events import EventEmitter
-from .flag_manager import FlagManager
 from .applier import ClimatePayloadApplier
 from .binding_manager import BindingManager  # New import
 from .services import async_setup_services, async_unload_services
@@ -94,29 +92,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Load bindings from config entry
     await binding_manager.async_load(bindings=bindings)
 
-    # Create flag manager
-    flag_manager = FlagManager(
-        hass=hass,
-        entry_id=entry.entry_id,
-        event_emitter=event_emitter,
-    )
-
-    # Load flags from storage
-    await flag_manager.async_load()
-
     # Create climate payload applier
     applier = ClimatePayloadApplier(
         hass=hass,
         event_emitter=event_emitter,
     )
 
-    # Create engine (Decision D032: now with binding_manager)
+    # Create engine (Decision D032: now with binding_manager, D035: removed flag_manager)
     engine = ClimateControlEngine(
         hass=hass,
         entry_id=entry.entry_id,
         event_emitter=event_emitter,
         binding_manager=binding_manager,  # New parameter
-        flag_manager=flag_manager,
         applier=applier,
         dry_run=dry_run,
         debug_mode=debug_mode,
@@ -138,7 +125,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_COORDINATOR: coordinator,
         DATA_ENGINE: engine,
         DATA_EVENT_EMITTER: event_emitter,
-        DATA_FLAG_MANAGER: flag_manager,
         DATA_APPLIER: applier,
         DATA_BINDING_MANAGER: binding_manager,  # New: store binding manager
         DATA_CONFIG: {

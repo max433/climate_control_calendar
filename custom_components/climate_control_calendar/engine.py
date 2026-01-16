@@ -15,14 +15,12 @@ from .const import (
     SLOT_ID,
     SLOT_LABEL,
     SLOT_CLIMATE_PAYLOAD,
-    FLAG_FORCE_SLOT,
     LOG_PREFIX_ENGINE,
     LOG_PREFIX_DRY_RUN,
 )
 from .events import EventEmitter
 
 if TYPE_CHECKING:
-    from .flag_manager import FlagManager
     from .applier import ClimatePayloadApplier
     from .binding_manager import BindingManager
 
@@ -33,10 +31,9 @@ class ClimateControlEngine:
     """
     Engine for evaluating calendar events and resolving slots via bindings.
 
-    Responsibilities (Decision D032, D033):
+    Responsibilities (Decision D032, D033, D035):
     - Receive active events from multi-calendar coordinator
     - Resolve event → slot via BindingManager
-    - Handle override flags (force_slot)
     - Apply climate payloads or execute dry run
     - Emit events on state changes
     """
@@ -47,7 +44,6 @@ class ClimateControlEngine:
         entry_id: str,
         event_emitter: EventEmitter,
         binding_manager: "BindingManager | None" = None,
-        flag_manager: "FlagManager | None" = None,
         applier: "ClimatePayloadApplier | None" = None,
         dry_run: bool = True,
         debug_mode: bool = False,
@@ -60,7 +56,6 @@ class ClimateControlEngine:
             entry_id: Config entry ID
             event_emitter: Event emitter instance
             binding_manager: Binding manager for event-to-slot resolution
-            flag_manager: Override flag manager (optional)
             applier: Climate payload applier (optional)
             dry_run: Dry run mode enabled
             debug_mode: Debug logging enabled
@@ -69,7 +64,6 @@ class ClimateControlEngine:
         self.entry_id = entry_id
         self.event_emitter = event_emitter
         self.binding_manager = binding_manager
-        self.flag_manager = flag_manager
         self.applier = applier
         self.dry_run = dry_run
         self.debug_mode = debug_mode
@@ -79,12 +73,11 @@ class ClimateControlEngine:
         self._previous_applied_state: dict[str, tuple[str, str]] = {}
 
         _LOGGER.info(
-            "%s Engine initialized | Dry Run: %s | Debug: %s | Bindings: %s | Flags: %s | Applier: %s",
+            "%s Engine initialized | Dry Run: %s | Debug: %s | Bindings: %s | Applier: %s",
             LOG_PREFIX_ENGINE,
             self.dry_run,
             self.debug_mode,
             "enabled" if binding_manager else "disabled",
-            "enabled" if flag_manager else "disabled",
             "enabled" if applier else "disabled",
         )
 
@@ -228,56 +221,20 @@ class ClimateControlEngine:
                 len(climate_entities),
             )
 
-        # Check flag expiration
-        if self.flag_manager:
-            await self.flag_manager.async_check_expiration()
+        # Slot resolution via bindings (Decision D032: Event-driven architecture)
+        resolved_bindings = self.resolve_slots_for_active_events(
+            active_events=active_events,
+            available_slots=slots,
+        )
 
-        # Check for forced slot (takes precedence)
-        forced_slot_id = None
-        if self.flag_manager:
-            forced_slot_id = self.flag_manager.get_forced_slot_id()
-
-        active_slot = None
-        resolved_bindings = []  # Initialize to empty list
-        entities_applied_count = 0  # Track how many entities had payloads applied
-
-        if forced_slot_id:
-            # Force slot active regardless of events/bindings
-            active_slot = self._find_slot_by_id(slots, forced_slot_id)
-            if active_slot:
-                _LOGGER.info(
-                    "%s Forcing slot: %s (ID: %s)",
-                    LOG_PREFIX_ENGINE,
-                    active_slot.get(SLOT_LABEL),
-                    forced_slot_id,
-                )
-                # Apply forced slot to all entities
-                await self._apply_slot_to_entities(
-                    slot=active_slot,
-                    entities=climate_entities,
-                    entity_overrides=active_slot.get("entity_overrides", {}),
-                )
-                entities_applied_count = len(climate_entities)
-            else:
-                _LOGGER.warning(
-                    "%s Forced slot ID not found: %s",
-                    LOG_PREFIX_ENGINE,
-                    forced_slot_id,
-                )
-        else:
-            # Normal slot resolution via bindings (New architecture)
-            resolved_bindings = self.resolve_slots_for_active_events(
-                active_events=active_events,
-                available_slots=slots,
+        # Apply ALL resolved bindings, not just first!
+        # Bindings already sorted by priority in binding_manager
+        entities_applied_count = 0
+        if resolved_bindings:
+            entities_applied_count = await self._apply_multiple_slots(
+                resolved_bindings=resolved_bindings,
+                climate_entities_pool=climate_entities,
             )
-
-            # New architecture: Apply ALL resolved bindings, not just first!
-            # Bindings already sorted by priority in binding_manager
-            if resolved_bindings:
-                entities_applied_count = await self._apply_multiple_slots(
-                    resolved_bindings=resolved_bindings,
-                    climate_entities_pool=climate_entities,
-                )
 
         # Note: Slot activation/deactivation tracking removed in new architecture
         # Multiple slots can be active simultaneously, tracked at entity level
@@ -293,22 +250,20 @@ class ClimateControlEngine:
             active_events_count=len(active_events),
             bindings_matched=len(resolved_bindings),
             entities_applied=entities_applied_count,
-            forced_slot_id=forced_slot_id,
+            forced_slot_id=None,  # Decision D035: No more forced slots
             dry_run=self.dry_run,
             debug_mode=self.debug_mode,
         )
 
-        # New architecture: Return forced_slot_id when forced, else None (multiple slots may be active)
-        active_slot_id = forced_slot_id if forced_slot_id else None
-
+        # New architecture: Multiple slots may be active, no single "active_slot_id"
         return {
-            "active_slot": active_slot,
-            "active_slot_id": active_slot_id,
+            "active_slot": None,  # Deprecated: multiple slots can be active
+            "active_slot_id": None,  # Deprecated: multiple slots can be active
             "previous_slot_id": None,  # No longer tracked in new architecture
             "changed": False,  # Deprecated in new architecture (multiple slots)
-            "forced": forced_slot_id is not None,
+            "forced": False,  # Decision D035: No more forced slots
             "active_events_count": len(active_events),
-            "bindings_applied": len(resolved_bindings) if not forced_slot_id else 0,
+            "bindings_applied": len(resolved_bindings),
             "entities_applied": entities_applied_count,
         }
 
@@ -539,25 +494,7 @@ class ClimateControlEngine:
             payload: Climate payload to apply
             entities: Entities to apply to
         """
-        # Check if application should be skipped (flags)
-        if self.flag_manager and self.flag_manager.should_skip_application():
-            flag_type = self.flag_manager.get_active_flag_type()
-            _LOGGER.info(
-                "%s Skipping climate application due to flag: %s",
-                LOG_PREFIX_ENGINE,
-                flag_type,
-            )
-            # Emit skip events
-            for entity_id in entities:
-                self.event_emitter.emit_climate_skipped(
-                    climate_entity_id=entity_id,
-                    slot_id=slot_id,
-                    slot_label=slot_label,
-                    reason=f"override_flag_{flag_type}",
-                )
-            return
-
-        # Apply payload or dry run
+        # Apply payload or dry run (Decision D035: No flag checks)
         if self.dry_run:
             self._execute_dry_run(
                 slot_id=slot_id,
