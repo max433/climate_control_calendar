@@ -62,8 +62,9 @@
       },
       "basic": {
         "title": "Impostazioni Base",
-        "description": "Configure global climate devices and operational modes.\n\n**Global Climate Pool**: Select devices to be controlled by default. Individual bindings can override this to target specific devices.\n\n**Operational Modes**: Configure dry run and debug settings.",
+        "description": "Configura calendari, dispositivi clima globali e modalità operative.\n\n**Entità Calendario**: Aggiungi o rimuovi calendari da monitorare per gli eventi di controllo clima.\n\n**Pool Globale Clima**: Seleziona i dispositivi da controllare per impostazione predefinita. I singoli binding possono sostituire questa configurazione per puntare a dispositivi specifici.\n\n**Modalità Operative**: Configura le impostazioni dry run e debug.",
         "data": {
+          "calendar_entities": "Entità Calendario",
           "climate_entities": "Pool Globale Entità Clima",
           "dry_run": "Modalità Dry Run (simula modifiche)",
           "debug_mode": "Modalità Debug (log dettagliati)"

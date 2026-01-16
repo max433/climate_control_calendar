@@ -319,8 +319,9 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             new_options = {**self.config_entry.options}
             new_options[CONF_CLIMATE_ENTITIES] = user_input.get(CONF_CLIMATE_ENTITIES, [])
 
-            # Update data (dry_run and debug_mode)
+            # Update data (calendars, dry_run and debug_mode)
             new_data = {**self.config_entry.data}
+            new_data[CONF_CALENDAR_ENTITIES] = user_input.get(CONF_CALENDAR_ENTITIES, [])
             new_data[CONF_DRY_RUN] = user_input.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
             new_data[CONF_DEBUG_MODE] = user_input.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
 
@@ -333,18 +334,28 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
             return self.async_create_entry(title="", data=new_options)
 
+        # Get available calendar entities
+        calendar_entities = [
+            state.entity_id
+            for state in self.hass.states.async_all("calendar")
+        ]
+
         # Get available climate entities
         climate_entities = [
             state.entity_id
             for state in self.hass.states.async_all("climate")
         ]
 
+        current_calendars = self.config_entry.data.get(CONF_CALENDAR_ENTITIES, [])
         current_climate = self.config_entry.options.get(CONF_CLIMATE_ENTITIES, [])
         current_dry_run = self.config_entry.data.get(CONF_DRY_RUN, DEFAULT_DRY_RUN)
         current_debug = self.config_entry.data.get(CONF_DEBUG_MODE, DEFAULT_DEBUG_MODE)
 
         schema = vol.Schema(
             {
+                vol.Required(
+                    CONF_CALENDAR_ENTITIES, default=current_calendars
+                ): cv.multi_select({entity: entity for entity in calendar_entities}),
                 vol.Optional(
                     CONF_CLIMATE_ENTITIES, default=current_climate
                 ): cv.multi_select({entity: entity for entity in climate_entities}),
@@ -514,18 +525,53 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         schema = vol.Schema(
             {
                 vol.Required("label"): cv.string,
-                vol.Optional("temperature"): vol.Coerce(float),
-                vol.Optional("target_temp_high"): vol.Coerce(float),
-                vol.Optional("target_temp_low"): vol.Coerce(float),
+                vol.Optional("temperature"): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-50,
+                        max=50,
+                        step=0.5,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="°C",
+                    ),
+                ),
+                vol.Optional("target_temp_high"): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-50,
+                        max=50,
+                        step=0.5,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="°C",
+                    ),
+                ),
+                vol.Optional("target_temp_low"): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=-50,
+                        max=50,
+                        step=0.5,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="°C",
+                    ),
+                ),
                 vol.Optional("hvac_mode"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
                         mode=selector.SelectSelectorMode.DROPDOWN,
-                        custom_value=False,
                     ),
                 ),
-                vol.Optional("preset_mode", default=""): cv.string,
-                vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+                vol.Optional("preset_mode"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    ),
+                ),
+                vol.Optional("humidity"): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0,
+                        max=100,
+                        step=1,
+                        mode=selector.NumberSelectorMode.BOX,
+                        unit_of_measurement="%",
+                    ),
+                ),
                 vol.Optional("aux_heat"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[
