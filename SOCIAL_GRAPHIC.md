@@ -16,13 +16,15 @@ graph TB
     subgraph bind ["🔗 BINDINGS - Pattern Matching"]
         b1["Match: 'Smart Working'<br/>Priority: 10<br/>→ Slot: Comfort"]
         b2["Match: 'Vacation'<br/>Priority: 5<br/>→ Slot: Away"]
-        b3["Match: 'Emergency'<br/>Priority: 99<br/>→ Slot: Max Heat"]
+        b3["Match: 'Summer'<br/>Priority: 7<br/>→ Slot: Summer"]
+        b4["Match: 'Emergency'<br/>Priority: 99<br/>→ Slot: Emergency"]
     end
 
     subgraph slots ["🎚️ SLOTS - Climate Profiles"]
-        s1["Comfort<br/>21°C, Heat Mode<br/>Studio: 23°C<br/>Bedroom: 19°C"]
-        s2["Away<br/>15°C, Eco Mode<br/>All entities"]
-        s3["Max Heat<br/>25°C, Boost Mode<br/>Emergency only"]
+        s1["Comfort<br/>21°C, Heat Mode<br/>Studio: 23°C override<br/>Bedroom: 19°C override"]
+        s2["Away<br/>15°C, Eco Mode<br/>All entities<br/>Low humidity: 50%"]
+        s3["Summer<br/>22-25°C Range (heat_cool)<br/>Humidity: 60%<br/>Fan: Auto"]
+        s4["Emergency<br/>25°C, Max Heat<br/>Aux Heat: ON<br/>Priority 99"]
     end
 
     subgraph devices ["🌡️ YOUR CLIMATE DEVICES"]
@@ -36,7 +38,7 @@ graph TB
     bind --> slots
     slots --> devices
 
-    note1["✨ Create events in any calendar app<br/>⚡ Changes active within 60 seconds<br/>🎯 Priority system resolves conflicts<br/>🏠 Per-entity customization<br/>🔔 Notifications only on changes"]
+    note1["✨ Create events in any calendar app<br/>⚡ Changes active within 60 seconds<br/>🎯 Priority system resolves conflicts<br/>🏠 Per-entity customization<br/>🌡️ Temperature ranges for heat_cool mode<br/>💧 Humidity & aux heat control<br/>🔔 Notifications only on changes"]
 
     style cal fill:#4CAF50,stroke:#2E7D32,stroke-width:3px,color:#000
     style bind fill:#2196F3,stroke:#1565C0,stroke-width:3px,color:#fff
@@ -72,6 +74,26 @@ Applies:
 ```
 
 **Emergency override?** Create "Emergency Heat" event → priority 99 → instant activation!
+
+---
+
+## Advanced Example: Heat Pump with Humidity Control
+
+```yaml
+Calendar Event: "Summer Comfort" (Jun-Sep)
+    ↓
+Binding Matches: "Summer" pattern
+    ↓
+Activates Slot: "Summer Mode"
+    ↓
+Applies:
+  🌡️ Temperature Range: 22-25°C (heat_cool mode)
+  💧 Humidity: 60% (prevents mold)
+  🌬️ Fan Mode: Auto
+  🏠 All climate entities controlled
+```
+
+**Why temperature range?** Prevents constant on/off cycling, saves energy!
 
 ---
 
