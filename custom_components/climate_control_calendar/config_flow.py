@@ -25,6 +25,103 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
+def validate_and_build_slot_payload(user_input: dict[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
+    """
+    Validate slot input and build climate payload.
+
+    Returns:
+        tuple: (climate_payload, errors)
+    """
+    climate_payload = {}
+    errors = {}
+
+    # Temperature (single value)
+    temp_input = user_input.get("temperature")
+    if temp_input is not None and temp_input != "":
+        try:
+            temp = float(temp_input)
+            if temp < -50 or temp > 50:
+                errors["temperature"] = "invalid_temperature"
+            else:
+                climate_payload["temperature"] = temp
+        except (ValueError, TypeError):
+            errors["temperature"] = "invalid_temperature"
+
+    # Temperature range (for heat_cool mode)
+    temp_high_input = user_input.get("target_temp_high")
+    temp_low_input = user_input.get("target_temp_low")
+
+    temp_high = None
+    temp_low = None
+
+    if temp_high_input is not None and temp_high_input != "":
+        try:
+            temp_high = float(temp_high_input)
+            if temp_high < -50 or temp_high > 50:
+                errors["target_temp_high"] = "invalid_temperature"
+            else:
+                climate_payload["target_temp_high"] = temp_high
+        except (ValueError, TypeError):
+            errors["target_temp_high"] = "invalid_temperature"
+
+    if temp_low_input is not None and temp_low_input != "":
+        try:
+            temp_low = float(temp_low_input)
+            if temp_low < -50 or temp_low > 50:
+                errors["target_temp_low"] = "invalid_temperature"
+            else:
+                climate_payload["target_temp_low"] = temp_low
+        except (ValueError, TypeError):
+            errors["target_temp_low"] = "invalid_temperature"
+
+    # Cross-validation: if both range temps are set, low must be < high
+    if (temp_high is not None and temp_low is not None and
+        "target_temp_high" not in errors and "target_temp_low" not in errors):
+        if temp_low >= temp_high:
+            errors["target_temp_low"] = "temp_range_invalid"
+            errors["target_temp_high"] = "temp_range_invalid"
+
+    # Cross-validation: temperature and range are mutually exclusive
+    if "temperature" in climate_payload and ("target_temp_high" in climate_payload or "target_temp_low" in climate_payload):
+        errors["base"] = "temperature_conflict"
+
+    # HVAC mode (only save if explicitly set)
+    hvac_mode = user_input.get("hvac_mode")
+    if hvac_mode and hvac_mode.strip():
+        climate_payload["hvac_mode"] = hvac_mode
+
+    # Preset mode (only save if explicitly set)
+    preset_mode = user_input.get("preset_mode")
+    if preset_mode and preset_mode.strip():
+        climate_payload["preset_mode"] = preset_mode
+
+    # Humidity control (only if provided and not empty)
+    humidity_input = user_input.get("humidity")
+    if humidity_input is not None and humidity_input != "":
+        try:
+            humidity = int(humidity_input)
+            if humidity < 0 or humidity > 100:
+                errors["humidity"] = "invalid_humidity"
+            else:
+                climate_payload["humidity"] = humidity
+        except (ValueError, TypeError):
+            errors["humidity"] = "invalid_humidity"
+
+    # Auxiliary heat (string: "on"/"off"/"" from selector)
+    aux_heat = user_input.get("aux_heat", "").strip()
+    if aux_heat == "on":
+        climate_payload["aux_heat"] = True
+    elif aux_heat == "off":
+        climate_payload["aux_heat"] = False
+    # If aux_heat is "" (not configured), don't add to payload
+
+    # Validate at least one climate setting is configured
+    if not climate_payload and "base" not in errors:
+        errors["base"] = "no_climate_settings"
+
+    return climate_payload, errors
+
+
 class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Climate Control Calendar."""
 
@@ -383,71 +480,9 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             if not label:
                 errors["label"] = "invalid_slot_id"
             else:
-                # Build climate payload
-                climate_payload = {}
-                temp_input = user_input.get("temperature")
-                if temp_input is not None and temp_input != "":
-                    try:
-                        temp = float(temp_input)
-                        if temp < -50 or temp > 50:
-                            errors["temperature"] = "invalid_temperature"
-                        else:
-                            climate_payload["temperature"] = temp
-                    except (ValueError, TypeError):
-                        errors["temperature"] = "invalid_temperature"
-
-                # HVAC mode (only save if explicitly set)
-                hvac_mode = user_input.get("hvac_mode")
-                if hvac_mode and hvac_mode.strip():
-                    climate_payload["hvac_mode"] = hvac_mode
-
-                # Preset mode (only save if explicitly set)
-                preset_mode = user_input.get("preset_mode")
-                if preset_mode and preset_mode.strip():
-                    climate_payload["preset_mode"] = preset_mode
-
-                # Temperature range (for heat_cool mode)
-                temp_high_input = user_input.get("target_temp_high")
-                if temp_high_input is not None and temp_high_input != "":
-                    try:
-                        temp_high = float(temp_high_input)
-                        if temp_high < -50 or temp_high > 50:
-                            errors["target_temp_high"] = "invalid_temperature"
-                        else:
-                            climate_payload["target_temp_high"] = temp_high
-                    except (ValueError, TypeError):
-                        errors["target_temp_high"] = "invalid_temperature"
-
-                temp_low_input = user_input.get("target_temp_low")
-                if temp_low_input is not None and temp_low_input != "":
-                    try:
-                        temp_low = float(temp_low_input)
-                        if temp_low < -50 or temp_low > 50:
-                            errors["target_temp_low"] = "invalid_temperature"
-                        else:
-                            climate_payload["target_temp_low"] = temp_low
-                    except (ValueError, TypeError):
-                        errors["target_temp_low"] = "invalid_temperature"
-
-                # Humidity control (only if provided and not empty)
-                humidity_input = user_input.get("humidity")
-                if humidity_input is not None and humidity_input != "":
-                    try:
-                        humidity = int(humidity_input)
-                        if humidity < 0 or humidity > 100:
-                            errors["humidity"] = "invalid_humidity"
-                        else:
-                            climate_payload["humidity"] = humidity
-                    except (ValueError, TypeError):
-                        errors["humidity"] = "invalid_humidity"
-
-                # Auxiliary heat (boolean: True=on, False=off, None=not configured)
-                aux_heat = user_input.get("aux_heat")
-                if aux_heat is True or aux_heat is False:
-                    climate_payload["aux_heat"] = aux_heat
-
-                if not climate_payload:
-                    errors["base"] = "invalid_slot_id"  # At least one field required
+                # Build and validate climate payload using helper
+                climate_payload, payload_errors = validate_and_build_slot_payload(user_input)
+                errors.update(payload_errors)
 
                 if not errors:
                     # Create new slot
@@ -486,11 +521,21 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
                         mode=selector.SelectSelectorMode.DROPDOWN,
+                        custom_value=False,
                     ),
                 ),
                 vol.Optional("preset_mode", default=""): cv.string,
                 vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-                vol.Optional("aux_heat"): selector.BooleanSelector(),
+                vol.Optional("aux_heat"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "", "label": "Not configured"},
+                            {"value": "on", "label": "On"},
+                            {"value": "off", "label": "Off"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    ),
+                ),
                 vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
@@ -564,68 +609,9 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             if not label:
                 errors["label"] = "invalid_slot_id"
             else:
-                # Build climate payload
-                climate_payload = {}
-                temp_input = user_input.get("temperature")
-                if temp_input is not None and temp_input != "":
-                    try:
-                        temp = float(temp_input)
-                        if temp < -50 or temp > 50:
-                            errors["temperature"] = "invalid_temperature"
-                        else:
-                            climate_payload["temperature"] = temp
-                    except (ValueError, TypeError):
-                        errors["temperature"] = "invalid_temperature"
-
-                # HVAC mode (only save if explicitly set)
-                hvac_mode = user_input.get("hvac_mode")
-                if hvac_mode and hvac_mode.strip():
-                    climate_payload["hvac_mode"] = hvac_mode
-
-                # Preset mode (only save if explicitly set)
-                preset_mode = user_input.get("preset_mode")
-                if preset_mode and preset_mode.strip():
-                    climate_payload["preset_mode"] = preset_mode
-
-                # Temperature range (for heat_cool mode)
-                temp_high_input = user_input.get("target_temp_high")
-                if temp_high_input is not None and temp_high_input != "":
-                    try:
-                        temp_high = float(temp_high_input)
-                        if temp_high < -50 or temp_high > 50:
-                            errors["target_temp_high"] = "invalid_temperature"
-                        else:
-                            climate_payload["target_temp_high"] = temp_high
-                    except (ValueError, TypeError):
-                        errors["target_temp_high"] = "invalid_temperature"
-
-                temp_low_input = user_input.get("target_temp_low")
-                if temp_low_input is not None and temp_low_input != "":
-                    try:
-                        temp_low = float(temp_low_input)
-                        if temp_low < -50 or temp_low > 50:
-                            errors["target_temp_low"] = "invalid_temperature"
-                        else:
-                            climate_payload["target_temp_low"] = temp_low
-                    except (ValueError, TypeError):
-                        errors["target_temp_low"] = "invalid_temperature"
-
-                # Humidity control (only if provided and not empty)
-                humidity_input = user_input.get("humidity")
-                if humidity_input is not None and humidity_input != "":
-                    try:
-                        humidity = int(humidity_input)
-                        if humidity < 0 or humidity > 100:
-                            errors["humidity"] = "invalid_humidity"
-                        else:
-                            climate_payload["humidity"] = humidity
-                    except (ValueError, TypeError):
-                        errors["humidity"] = "invalid_humidity"
-
-                # Auxiliary heat (boolean: True=on, False=off, None=not configured)
-                aux_heat = user_input.get("aux_heat")
-                if aux_heat is True or aux_heat is False:
-                    climate_payload["aux_heat"] = aux_heat
+                # Build and validate climate payload using helper
+                climate_payload, payload_errors = validate_and_build_slot_payload(user_input)
+                errors.update(payload_errors)
 
                 if not errors:
                     # Update slot
@@ -659,6 +645,15 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         binding_count = sum(1 for b in bindings if b.get("slot_id") == slot_id)
 
         # Build suggested values dict for form pre-population
+        # Convert aux_heat boolean to string for SelectSelector
+        aux_heat_value = current_payload.get("aux_heat")
+        if aux_heat_value is True:
+            aux_heat_str = "on"
+        elif aux_heat_value is False:
+            aux_heat_str = "off"
+        else:
+            aux_heat_str = ""
+
         suggested_values = {
             "label": slot.get("label", ""),
             "temperature": current_payload.get("temperature"),
@@ -667,7 +662,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
             "hvac_mode": current_payload.get("hvac_mode"),
             "preset_mode": current_payload.get("preset_mode", ""),
             "humidity": current_payload.get("humidity"),
-            "aux_heat": current_payload.get("aux_heat"),
+            "aux_heat": aux_heat_str,
             "excluded_entities": current_excluded_entities,
         }
 
@@ -681,11 +676,21 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     selector.SelectSelectorConfig(
                         options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
                         mode=selector.SelectSelectorMode.DROPDOWN,
+                        custom_value=False,
                     ),
                 ),
                 vol.Optional("preset_mode"): cv.string,
                 vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
-                vol.Optional("aux_heat"): selector.BooleanSelector(),
+                vol.Optional("aux_heat"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "", "label": "Not configured"},
+                            {"value": "on", "label": "On"},
+                            {"value": "off", "label": "Off"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    ),
+                ),
                 vol.Optional("excluded_entities"): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="climate",
