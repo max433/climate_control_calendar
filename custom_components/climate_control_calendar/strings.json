@@ -62,8 +62,9 @@
       },
       "basic": {
         "title": "Basic Settings",
-        "description": "Configure global climate devices and operational modes.\n\n**Global Climate Pool**: Select devices to be controlled by default. Individual bindings can override this to target specific devices.\n\n**Operational Modes**: Configure dry run and debug settings.",
+        "description": "Configure calendars, global climate devices and operational modes.\n\n**Calendar Entities**: Add or remove calendars to monitor for climate control events.\n\n**Global Climate Pool**: Select devices to be controlled by default. Individual bindings can override this to target specific devices.\n\n**Operational Modes**: Configure dry run and debug settings.",
         "data": {
+          "calendar_entities": "Calendar Entities",
           "climate_entities": "Global Climate Entities Pool",
           "dry_run": "Dry Run Mode (simulate changes only)",
           "debug_mode": "Debug Mode (verbose logging)"
