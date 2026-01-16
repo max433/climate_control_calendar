@@ -4,6 +4,8 @@
 [![GitHub Release](https://img.shields.io/github/release/max433/climate_control_calendar.svg)](https://github.com/max433/climate_control_calendar/releases)
 [![License](https://img.shields.io/github/license/max433/climate_control_calendar.svg)](LICENSE)
 
+![Climate Control Calendar](icon.svg)
+
 A Home Assistant custom integration that manages climate devices (thermostats, valves) based on calendar events representing different usage patterns.
 
 ## 🎯 Concept
