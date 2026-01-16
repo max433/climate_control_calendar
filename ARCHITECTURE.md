@@ -115,16 +115,31 @@ Slot:
   🆔 ID: slot_comfort_123
   🏷️ Label: "Comfort Mode"
   🌡️ Default Payload:
-      temperature: 21
-      hvac_mode: heat
-      preset_mode: comfort
+      # Temperature settings (choose one approach)
+      temperature: 21              # Single temperature target
+      # OR for heat_cool mode:
+      target_temp_high: 25         # Maximum temperature
+      target_temp_low: 22          # Minimum temperature
+
+      # HVAC control
+      hvac_mode: heat              # heat, cool, heat_cool, auto, off, fan_only, dry
+      preset_mode: comfort         # away, home, eco, boost, comfort, etc.
+
+      # Advanced climate control
+      humidity: 60                 # Target humidity (0-100%)
+      aux_heat: true               # Auxiliary/backup heat (for heat pumps)
+      fan_mode: auto               # auto, low, medium, high, off
+      swing_mode: both             # off, vertical, horizontal, both
+
   🏠 Entity Overrides:
       climate.bedroom:
-        temperature: 22  # Bedroom warmer
+        temperature: 22            # Bedroom warmer
       climate.bathroom:
-        temperature: 19  # Bathroom cooler
+        temperature: 19            # Bathroom cooler
+        humidity: 55               # Lower humidity in bathroom
+
   🚫 Excluded Entities:
-      - climate.garage  # Never control garage
+      - climate.garage             # Never control garage
 ```
 
 #### Why Reusable?
@@ -292,6 +307,54 @@ Calendar Events:
 ```
 
 Different schedules, different temperatures, one integration!
+
+---
+
+### Example 5: **Advanced Climate Features for Modern HVAC**
+
+**Scenario:** Heat pump with humidity control and temperature range management.
+
+```
+Slots:
+  🎚️ Slot "Summer Comfort":
+     Temperature Range: 22-25°C (heat_cool mode)
+     Humidity: 60%
+     Fan Mode: auto
+     HVAC Mode: heat_cool
+
+  🎚️ Slot "Winter Efficient":
+     Temperature: 21°C
+     HVAC Mode: heat
+     Auxiliary Heat: ON (backup heat for cold days)
+     Fan Mode: low
+
+  🎚️ Slot "Dehumidify":
+     HVAC Mode: dry
+     Humidity: 50%
+     Fan Mode: high
+     Swing Mode: both
+
+Bindings:
+  🔗 "Summer Season" → Slot "Summer Comfort" (priority 5)
+  🔗 "Winter Season" → Slot "Winter Efficient" (priority 5)
+  🔗 "Humidity Alert" → Slot "Dehumidify" (priority 15)
+
+Calendar Events:
+  📅 "Summer" (June 1 - Sep 30, all-day)
+  📅 "Winter" (Nov 1 - Mar 31, all-day)
+  📅 "High Humidity Day" (created manually when needed)
+
+Result:
+  🌞 Summer: Maintains temperature between 22-25°C with humidity at 60%
+  ❄️ Winter: Fixed 21°C with auxiliary heat for efficient heat pump operation
+  💧 Humid Days: Dehumidify mode overrides seasonal settings (priority 15)
+```
+
+**Why this works:**
+- Temperature range prevents constant on/off cycling in heat_cool mode
+- Humidity control maintains comfort and prevents mold
+- Auxiliary heat improves efficiency on very cold days
+- Priority system allows weather-based overrides
 
 ---
 
