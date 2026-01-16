@@ -105,8 +105,12 @@ A Home Assistant custom integration that manages climate devices (thermostats, v
    - Set priorities for conflict resolution
    - Target specific entities or use global pool
 
-3. **🎚️ Slots**: Reusable climate configuration templates
+### 3. 🎚️ **Slots**: Reusable climate configuration templates
    - Define temperature, HVAC mode, preset, etc.
+   - Temperature range support for heat_cool mode
+   - Humidity control for compatible devices
+   - Auxiliary heat control for heat pumps
+   - Fan and swing mode configuration
    - Per-entity overrides for room-specific settings
    - Exclude entities that should never be controlled
 
@@ -203,6 +207,47 @@ A Home Assistant custom integration that manages climate devices (thermostats, v
    - "Emergency" (create when needed from phone!)
 
 **Result**: Living zone and sleeping zone follow independent schedules. Create "Emergency Heat" event from phone → all zones instantly go to 25°C (priority 99 wins).
+
+---
+
+### Example 4: Advanced Climate Control (Heat Pumps & Humidity)
+
+**Goal**: Full climate control with heat pump, humidity management, and temperature ranges
+
+**Configuration**:
+
+1. **Slots**:
+   - "Summer Cooling":
+     - Temperature Range: 22-25°C (heat_cool mode)
+     - Humidity: 60%
+     - Fan Mode: auto
+     - HVAC Mode: heat_cool
+
+   - "Winter Heating":
+     - Temperature: 21°C
+     - HVAC Mode: heat
+     - Auxiliary Heat: On (for heat pumps)
+     - Fan Mode: low
+
+   - "Dehumidify":
+     - HVAC Mode: dry
+     - Humidity: 50%
+     - Fan Mode: high
+
+2. **Bindings**:
+   - "Summer" → "Summer Cooling" (priority 5)
+   - "Winter" → "Winter Heating" (priority 5)
+   - "Humid Day" → "Dehumidify" (priority 10)
+
+3. **Calendar**:
+   - "Summer Season" (June-September)
+   - "Winter Season" (November-March)
+   - "High Humidity Alert" (created when needed)
+
+**Result**:
+- Summer: Maintains 22-25°C range with 60% humidity
+- Winter: 21°C with backup heat for efficient heat pump operation
+- Humid days: Dehumidify mode overrides (priority 10) even during summer/winter
 
 ---
 
