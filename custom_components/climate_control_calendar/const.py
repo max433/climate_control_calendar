@@ -12,7 +12,6 @@ CONF_DEBUG_MODE: Final = "debug_mode"
 CONF_SLOTS: Final = "slots"
 CONF_BINDINGS: Final = "bindings"  # New: Event-to-slot bindings (Decision D032)
 CONF_CALENDAR_CONFIGS: Final = "calendar_configs"  # New: Per-calendar configuration
-CONF_OVERRIDE_FLAGS: Final = "override_flags"
 
 # Slot configuration keys (New architecture: slots as reusable templates)
 SLOT_ID: Final = "id"
@@ -52,11 +51,6 @@ PAYLOAD_TARGET_TEMP_LOW: Final = "target_temp_low"
 PAYLOAD_HUMIDITY: Final = "humidity"
 PAYLOAD_AUX_HEAT: Final = "aux_heat"
 
-# Override flag types
-FLAG_SKIP_UNTIL_NEXT_SLOT: Final = "skip_until_next_slot"
-FLAG_SKIP_TODAY: Final = "skip_today"
-FLAG_FORCE_SLOT: Final = "force_slot"
-
 # Default values
 DEFAULT_DRY_RUN: Final = True
 DEFAULT_DEBUG_MODE: Final = False
@@ -67,19 +61,12 @@ EVENT_CALENDAR_CHANGED: Final = f"{DOMAIN}_calendar_changed"
 EVENT_SLOT_ACTIVATED: Final = f"{DOMAIN}_slot_activated"
 EVENT_SLOT_DEACTIVATED: Final = f"{DOMAIN}_slot_deactivated"
 EVENT_CLIMATE_APPLIED: Final = f"{DOMAIN}_climate_applied"
-EVENT_CLIMATE_SKIPPED: Final = f"{DOMAIN}_climate_skipped"
 EVENT_DRY_RUN_EXECUTED: Final = f"{DOMAIN}_dry_run_executed"
-EVENT_FLAG_SET: Final = f"{DOMAIN}_flag_set"
-EVENT_FLAG_CLEARED: Final = f"{DOMAIN}_flag_cleared"
 EVENT_BINDING_MATCHED: Final = f"{DOMAIN}_binding_matched"  # New: Binding matched event
 EVENT_EVALUATION_COMPLETE: Final = f"{DOMAIN}_evaluation_complete"  # New: Evaluation summary
 
 # Service names
-SERVICE_SET_FLAG: Final = "set_flag"
-SERVICE_CLEAR_FLAG: Final = "clear_flag"
-SERVICE_FORCE_SLOT: Final = "force_slot"
-SERVICE_REFRESH_NOW: Final = "refresh_now"
-# Slot services (kept for backward compatibility, manage slots without time/days)
+# Slot services (manage slots without time/days)
 SERVICE_ADD_SLOT: Final = "add_slot"
 SERVICE_REMOVE_SLOT: Final = "remove_slot"
 # Binding services (Decision D032: Event-to-slot binding system)
@@ -95,7 +82,6 @@ STORAGE_KEY: Final = f"{DOMAIN}_storage"
 DATA_COORDINATOR: Final = "coordinator"
 DATA_ENGINE: Final = "engine"
 DATA_EVENT_EMITTER: Final = "event_emitter"
-DATA_FLAG_MANAGER: Final = "flag_manager"
 DATA_APPLIER: Final = "applier"
 DATA_CONFIG: Final = "config"
 DATA_UNSUB: Final = "unsub"

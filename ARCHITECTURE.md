@@ -497,7 +497,7 @@ graph TB
 | **Family Sharing** | ❌ Single admin | ✅ Shared calendar |
 | **Conflicting Events** | ❌ Complex conditions | ✅ Automatic priority resolution |
 | **Vacation Mode** | Disable integration | Create vacation event |
-| **Emergency Override** | Service call | 10-second calendar event |
+| **Emergency Override** | Manual climate adjustment | 10-second calendar event |
 | **Multi-Zone** | Complex automations | Multiple bindings/calendars |
 
 ---

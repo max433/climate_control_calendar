@@ -11,10 +11,7 @@ from .const import (
     EVENT_SLOT_ACTIVATED,
     EVENT_SLOT_DEACTIVATED,
     EVENT_CLIMATE_APPLIED,
-    EVENT_CLIMATE_SKIPPED,
     EVENT_DRY_RUN_EXECUTED,
-    EVENT_FLAG_SET,
-    EVENT_FLAG_CLEARED,
     EVENT_BINDING_MATCHED,
     EVENT_EVALUATION_COMPLETE,
 )
@@ -215,38 +212,6 @@ class EventEmitter:
                 error,
             )
 
-    def emit_climate_skipped(
-        self,
-        climate_entity_id: str,
-        slot_id: str,
-        slot_label: str,
-        reason: str,
-    ) -> None:
-        """
-        Emit climate application skipped event.
-
-        Args:
-            climate_entity_id: Target climate entity
-            slot_id: Source slot ID
-            slot_label: Source slot label
-            reason: Reason for skipping
-        """
-        self._emit_event(
-            EVENT_CLIMATE_SKIPPED,
-            {
-                "climate_entity_id": climate_entity_id,
-                "slot_id": slot_id,
-                "slot_label": slot_label,
-                "reason": reason,
-            },
-        )
-
-        _LOGGER.info(
-            "Climate application skipped: %s | Reason: %s",
-            climate_entity_id,
-            reason,
-        )
-
     def emit_dry_run_executed(
         self,
         slot_id: str,
@@ -278,61 +243,6 @@ class EventEmitter:
             climate_entity_id,
             payload,
             slot_label,
-        )
-
-    def emit_flag_set(
-        self,
-        flag_type: str,
-        target_slot_id: str | None = None,
-        metadata: dict[str, Any] | None = None,
-    ) -> None:
-        """
-        Emit override flag set event.
-
-        Args:
-            flag_type: Flag type (skip_until_next_slot, skip_today, force_slot)
-            target_slot_id: Target slot ID if applicable
-            metadata: Additional flag metadata
-        """
-        self._emit_event(
-            EVENT_FLAG_SET,
-            {
-                "flag_type": flag_type,
-                "target_slot_id": target_slot_id,
-                "metadata": metadata or {},
-            },
-        )
-
-        _LOGGER.info(
-            "Override flag set: %s | Target: %s",
-            flag_type,
-            target_slot_id or "N/A",
-        )
-
-    def emit_flag_cleared(
-        self,
-        flag_type: str,
-        reason: str = "manual_clear",
-    ) -> None:
-        """
-        Emit override flag cleared event.
-
-        Args:
-            flag_type: Flag type cleared
-            reason: Reason for clearing
-        """
-        self._emit_event(
-            EVENT_FLAG_CLEARED,
-            {
-                "flag_type": flag_type,
-                "reason": reason,
-            },
-        )
-
-        _LOGGER.info(
-            "Override flag cleared: %s | Reason: %s",
-            flag_type,
-            reason,
         )
 
     def emit_binding_matched(
