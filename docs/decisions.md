@@ -949,6 +949,155 @@ Result: Slot actually forced (dry run bypassed for this manual action)
 
 ---
 
+### D032: Event-to-Slot Binding System
+
+**Date**: 2026-01-15
+**Milestone**: Post-v1.0 Refactoring
+**Status**: Active
+
+**Context**: Original implementation used time-based slot matching (slot has time_start/time_end). This created tight coupling between calendar events and time windows, limiting flexibility.
+
+**Decision**: **Refactor to event-to-slot binding system** where calendar events are matched to slots via configurable patterns (summary, description, category).
+
+**Architecture**:
+- **Bindings**: Map calendar events → slots via pattern matching
+- **Slots**: Reusable climate profiles (no time windows)
+- **Engine**: Resolves active events → bindings → slots → applies to entities
+
+**Rationale**:
+- **Flexibility**: Same slot can be triggered by different events
+- **Reusability**: Slots are templates, not tied to specific times
+- **Event-Driven**: True reactive architecture, not time-polling hybrid
+- **Multi-Calendar**: Natural support for multiple calendars
+
+**Alternatives Considered**:
+1. Keep time-based slots - Less flexible, calendar becomes just on/off switch
+2. Hybrid approach - Unnecessary complexity
+
+---
+
+### D033: Multi-Calendar Support
+
+**Date**: 2026-01-15
+**Milestone**: Post-v1.0 Refactoring
+**Status**: Active
+
+**Context**: Original implementation monitored single calendar entity. Users requested support for multiple calendars (e.g., work calendar + vacation calendar).
+
+**Decision**: **Support multiple calendar entities** with priority-based conflict resolution.
+
+**Implementation**:
+- `CONF_CALENDAR_ENTITIES` (list) replaces `CONF_CALENDAR_ENTITY` (string)
+- `MultiCalendarCoordinator` monitors all calendars simultaneously
+- Each calendar can have priority configured
+- Bindings can target specific calendars or wildcard "*"
+
+**Rationale**:
+- **Real-World Use Case**: Users have multiple calendar sources
+- **Priority Resolution**: Higher priority calendar wins conflicts
+- **Backward Compatible**: Single calendar works as before
+
+**Alternatives Considered**:
+1. Separate integration instances - Poor UX, duplicate config
+2. Calendar groups - HA doesn't support this natively
+
+---
+
+### D034: Slots as Reusable Templates
+
+**Date**: 2026-01-15
+**Milestone**: Post-v1.0 Refactoring
+**Status**: Active
+
+**Context**: After D032 (event-to-slot bindings), slots no longer need time_start/time_end fields.
+
+**Decision**: **Slots are pure climate templates** without temporal information.
+
+**Slot Structure**:
+```json
+{
+  "id": "a3f5c8d2e1b4",
+  "label": "comfort_mode",
+  "default_climate_payload": {
+    "temperature": 22.0,
+    "hvac_mode": "heat"
+  },
+  "entity_overrides": {},
+  "excluded_entities": []
+}
+```
+
+**Rationale**:
+- **Separation of Concerns**: Bindings handle "when", slots handle "what"
+- **Reusability**: Same slot can be used by multiple bindings
+- **Cleaner Data Model**: No redundant temporal data
+
+**Alternatives Considered**:
+1. Keep time fields as optional - Confusing, invites misuse
+2. Rename to "profiles" - Slot terminology already established
+
+---
+
+### D035: Removal of Override Flags and Manual Control Services
+
+**Date**: 2026-01-16
+**Milestone**: Post-v1.0 Architecture Cleanup
+**Status**: Active
+
+**Context**: After event-driven refactoring (D032), override flags (skip_today, force_slot, skip_until_next_slot) and their associated services contradict the integration's core philosophy: "control climate via calendar events".
+
+**Problem Identified**:
+- **Architectural Inconsistency**: Flags create "parallel control path" bypassing event-driven logic
+- **Hidden State**: Flag state stored internally, not visible in HA UI
+- **Legacy Code**: Flags introduced in M3 (pre-event-driven refactoring)
+- **Philosophy Violation**: "Use calendar events for control" ← → "But here are services to ignore calendar"
+
+**Decision**: **Remove flag system entirely** - Eliminate FlagManager, flag storage, and manual override services.
+
+**Services Removed**:
+- `climate_control_calendar.set_flag`
+- `climate_control_calendar.clear_flag`
+- `climate_control_calendar.force_slot`
+- `climate_control_calendar.refresh_now` (only used by flag services)
+
+**Events Removed**:
+- `climate_control_calendar_flag_set`
+- `climate_control_calendar_flag_cleared`
+- `climate_control_calendar_climate_skipped` (only emitted when flag active)
+
+**Services Retained**:
+- `add_slot` / `remove_slot` - Configuration management
+- `add_binding` / `remove_binding` - Configuration management
+- `list_bindings` - Diagnostics
+
+**Alternative Approach for Manual Override**:
+Users can achieve same functionality using native HA features:
+- **Skip today**: Temporarily disable calendar entity
+- **Force slot**: Create temporary calendar event with automation
+- **Skip specific entities**: Use `excluded_entities` in slot config
+
+**Rationale**:
+- **Architectural Purity**: Truly event-driven, no parallel control paths
+- **Simplicity**: ~500 lines of code removed (flag_manager.py + service handlers)
+- **Visibility**: All state visible in HA UI (calendar entities, events)
+- **Native Integration**: Uses standard HA patterns (entities, automations)
+- **Maintainability**: Less state = fewer bugs
+
+**Impact**:
+- ✅ Core functionality unchanged (calendar → bindings → slots → climate)
+- ✅ Event system intact (all observability events retained)
+- ✅ Configuration services retained (slot/binding management)
+- ❌ Users lose quick manual override (acceptable trade-off for cleaner architecture)
+
+**Alternatives Considered**:
+1. Keep flags but make visible as entities - Still parallel control path
+2. Keep only force_slot - Half-measure, doesn't solve architecture issue
+3. Add calendar entity automation examples - Chosen approach
+
+**Migration Path**: No breaking changes for users who don't use flag services (majority).
+
+---
+
 ## Future Decisions
 
 The following areas may require decisions in future milestones:
@@ -956,9 +1105,9 @@ The following areas may require decisions in future milestones:
 ### Post-v1.0 (v1.1+)
 - Performance optimization targets (if performance issues reported)
 - Additional language support based on community demand
-- Advanced slot features (priority levels, conditions, etc.)
+- Advanced slot features (conditional payloads, dynamic values)
 
 ---
 
-**Last Updated**: 2026-01-10 (M4 decisions added: D024-D031)
-**Next Review**: Post v1.0 release (based on user feedback)
+**Last Updated**: 2026-01-16 (D032-D035: Post-v1.0 architecture refinement)
+**Next Review**: After flag removal implementation

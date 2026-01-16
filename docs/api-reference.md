@@ -12,7 +12,7 @@ This document provides a complete reference for all events and services exposed 
 
 ## Events
 
-Climate Control Calendar emits eight event types on the Home Assistant event bus. All events can be used as automation triggers.
+Climate Control Calendar emits event types on the Home Assistant event bus. All events can be used as automation triggers for observability and integration with other systems.
 
 ### Event Structure
 
@@ -198,28 +198,6 @@ automation:
 
 ---
 
-### 5. `climate_control_calendar_climate_skipped`
-
-Emitted when climate payload application was skipped due to override flag.
-
-**Event Data**:
-```json
-{
-  "entry_id": "abc123",
-  "timestamp": "2026-01-10T08:00:47",
-  "slot_id": "a3f5c8d2e1b4",
-  "slot_label": "morning_comfort",
-  "reason": "flag_skip_today",  // Or: "flag_skip_until_next_slot"
-  "flag_type": "skip_today"
-}
-```
-
-**Use Cases**:
-- Confirm manual override is working
-- Log when and why automatic control was skipped
-
----
-
 ### 6. `climate_control_calendar_dry_run_executed`
 
 Emitted during dry run mode when climate payload would have been applied (but wasn't due to simulation mode).
@@ -261,234 +239,33 @@ automation:
 
 ---
 
-### 7. `climate_control_calendar_flag_set`
-
-Emitted when an override flag is set via service call.
-
-**Event Data**:
-```json
-{
-  "entry_id": "abc123",
-  "timestamp": "2026-01-10T14:30:00",
-  "flag_type": "skip_today",  // Or: "skip_until_next_slot", "force_slot"
-  "slot_id": null,  // Populated for force_slot
-  "set_via": "service_call"
-}
-```
-
-**Use Cases**:
-- Confirm manual override activated
-- Log manual interventions
-- Trigger UI updates (e.g., display active flag)
-
----
-
-### 8. `climate_control_calendar_flag_cleared`
-
-Emitted when an override flag is cleared (manually or auto-expired).
-
-**Event Data**:
-```json
-{
-  "entry_id": "abc123",
-  "timestamp": "2026-01-10T23:59:59",
-  "previous_flag_type": "skip_today",
-  "reason": "expired",  // Or: "manual_clear", "replaced_by_new_flag"
-  "cleared_via": "auto_expiration"  // Or: "service_call"
-}
-```
-
-**Use Cases**:
-- Confirm automatic control resumed
-- Log flag lifecycle
-- Update UI
-
-**Example Automation**:
-```yaml
-automation:
-  - alias: "Notify When Manual Skip Expires"
-    trigger:
-      - platform: event
-        event_type: climate_control_calendar_flag_cleared
-        event_data:
-          reason: expired
-    action:
-      - service: notify.mobile_app
-        data:
-          message: "Climate control override expired, resuming automatic control"
-```
-
----
-
 ## Services
 
-Climate Control Calendar provides four services for manual control. All services ignore dry run mode (manual actions always execute).
+Climate Control Calendar does not provide manual control services. All control is performed through calendar events and bindings.
 
-### 1. `climate_control_calendar.set_flag`
+**Manual Override Alternatives**:
 
-Set an override flag to temporarily alter automatic behavior.
+If you need to temporarily override automatic climate control, use native Home Assistant features:
 
-**Service Data Schema**:
-```yaml
-flag_type: skip_today | skip_until_next_slot | force_slot  # Required
-target_slot_id: string  # Required only when flag_type is force_slot
-```
+1. **Disable automation temporarily**: Turn off the calendar entity
+   ```yaml
+   service: calendar.turn_off
+   target:
+     entity_id: calendar.your_calendar
+   ```
 
-**Parameters**:
+2. **Create temporary calendar event**: Add a calendar event with automation
+   ```yaml
+   service: calendar.create_event
+   target:
+     entity_id: calendar.your_calendar
+   data:
+     summary: "Comfort Mode"
+     start_date_time: "{{ now() }}"
+     end_date_time: "{{ now() + timedelta(hours=2) }}"
+   ```
 
-- **`flag_type`** (required):
-  - `skip_today`: Skip all automatic climate changes until midnight (00:00)
-  - `skip_until_next_slot`: Skip current slot, resume at next slot transition
-  - `force_slot`: Force activation of specific slot, ignoring calendar and time
-
-- **`target_slot_id`** (conditional):
-  - Required when `flag_type` is `force_slot`
-  - Optional (ignored) for `skip_*` flags
-  - Must be a valid slot ID from your configuration
-
-**Examples**:
-
-```yaml
-# Skip all automatic changes today
-service: climate_control_calendar.set_flag
-data:
-  flag_type: skip_today
-
-# Skip current slot only
-service: climate_control_calendar.set_flag
-data:
-  flag_type: skip_until_next_slot
-
-# Force specific slot
-service: climate_control_calendar.set_flag
-data:
-  flag_type: force_slot
-  target_slot_id: a3f5c8d2e1b4
-```
-
-**Behavior**:
-- Only one flag can be active at a time (mutual exclusion)
-- Setting a new flag automatically clears any existing flag
-- Emits `climate_control_calendar_flag_set` event
-
-**Automation Example**:
-```yaml
-automation:
-  - alias: "Skip Climate Control When Away"
-    trigger:
-      - platform: state
-        entity_id: person.homeowner
-        to: "not_home"
-    action:
-      - service: climate_control_calendar.set_flag
-        data:
-          flag_type: skip_today
-```
-
----
-
-### 2. `climate_control_calendar.clear_flag`
-
-Clear the currently active override flag and resume normal automatic behavior.
-
-**Service Data Schema**: None (no parameters required)
-
-**Example**:
-```yaml
-service: climate_control_calendar.clear_flag
-```
-
-**Behavior**:
-- Clears active flag (if any)
-- If no flag active, service has no effect (safe to call)
-- Emits `climate_control_calendar_flag_cleared` event
-
-**Automation Example**:
-```yaml
-automation:
-  - alias: "Resume Climate Control When Home"
-    trigger:
-      - platform: state
-        entity_id: person.homeowner
-        to: "home"
-    action:
-      - service: climate_control_calendar.clear_flag
-```
-
----
-
-### 3. `climate_control_calendar.force_slot`
-
-Convenience service to force activation of a specific slot. This is a wrapper for `set_flag` with `flag_type: force_slot`.
-
-**Service Data Schema**:
-```yaml
-slot_id: string  # Required
-```
-
-**Parameters**:
-
-- **`slot_id`** (required): ID of the slot to force activate
-
-**Example**:
-```yaml
-service: climate_control_calendar.force_slot
-data:
-  slot_id: a3f5c8d2e1b4
-```
-
-**Behavior**:
-- Forces specified slot to activate immediately
-- Ignores calendar state and time restrictions
-- Slot remains active until flag is manually cleared
-- Equivalent to: `set_flag` with `flag_type: force_slot` and `target_slot_id: <slot_id>`
-
-**Automation Example**:
-```yaml
-automation:
-  - alias: "Force Comfort Mode on Button Press"
-    trigger:
-      - platform: state
-        entity_id: input_button.comfort_mode
-    action:
-      - service: climate_control_calendar.force_slot
-        data:
-          slot_id: "{{ state_attr('climate_control_calendar.config', 'comfort_slot_id') }}"
-```
-
----
-
-### 4. `climate_control_calendar.refresh_now`
-
-Force immediate coordinator refresh and slot evaluation. Bypasses the normal 60-second poll interval.
-
-**Service Data Schema**: None (no parameters required)
-
-**Example**:
-```yaml
-service: climate_control_calendar.refresh_now
-```
-
-**Behavior**:
-- Immediately fetches calendar state
-- Immediately evaluates slots and applies climate payload
-- Useful for testing configuration changes without waiting
-
-**Use Cases**:
-- Apply configuration changes immediately after modifying slots
-- Test slot activation manually
-- Recover from coordinator errors
-
-**Automation Example**:
-```yaml
-automation:
-  - alias: "Refresh Climate Control on Slot Config Change"
-    trigger:
-      - platform: event
-        event_type: climate_control_calendar_config_updated  # Custom event you emit
-    action:
-      - service: climate_control_calendar.refresh_now
-```
+3. **Use excluded_entities**: Configure specific entities to skip in slot settings
 
 ---
 
@@ -514,22 +291,22 @@ automation:
 
 ---
 
-### Example 2: Automatic Override When Away
+### Example 2: Disable Climate Control When Away
 
-Skip climate control when nobody is home:
+Temporarily disable climate control when nobody is home:
 
 ```yaml
 automation:
-  - alias: "Skip Climate When All Away"
+  - alias: "Disable Climate When All Away"
     trigger:
       - platform: state
         entity_id: group.family
         to: "not_home"
         for: "00:30:00"  # 30 minutes
     action:
-      - service: climate_control_calendar.set_flag
-        data:
-          flag_type: skip_today
+      - service: homeassistant.turn_off
+        target:
+          entity_id: calendar.your_climate_calendar
 
   - alias: "Resume Climate When Someone Home"
     trigger:
@@ -537,7 +314,9 @@ automation:
         entity_id: group.family
         to: "home"
     action:
-      - service: climate_control_calendar.clear_flag
+      - service: homeassistant.turn_on
+        target:
+          entity_id: calendar.your_climate_calendar
 ```
 
 ---
@@ -598,37 +377,7 @@ automation:
 
 ---
 
-### Example 5: Force Comfort Mode via Dashboard Button
-
-Create a button to force comfort mode regardless of schedule:
-
-**Input Button** (configuration.yaml):
-```yaml
-input_button:
-  force_comfort_mode:
-    name: Force Comfort Mode
-    icon: mdi:fire
-```
-
-**Automation**:
-```yaml
-automation:
-  - alias: "Force Comfort on Button Press"
-    trigger:
-      - platform: state
-        entity_id: input_button.force_comfort_mode
-    action:
-      - service: climate_control_calendar.force_slot
-        data:
-          slot_id: "a3f5c8d2e1b4"  # Your comfort slot ID
-      - service: notify.mobile_app
-        data:
-          message: "Comfort mode forced. Call clear_flag service to resume automatic control."
-```
-
----
-
-### Example 6: Log All Climate Control Actions
+### Example 5: Log All Climate Control Actions
 
 Create a comprehensive log of all climate control activity:
 
@@ -638,39 +387,18 @@ automation:
     trigger:
       - platform: event
         event_type:
+          - climate_control_calendar_calendar_changed
           - climate_control_calendar_slot_activated
           - climate_control_calendar_slot_deactivated
           - climate_control_calendar_climate_applied
-          - climate_control_calendar_flag_set
-          - climate_control_calendar_flag_cleared
+          - climate_control_calendar_dry_run_executed
+          - climate_control_calendar_binding_matched
     action:
       - service: logbook.log
         data:
           name: "Climate Control Calendar"
           message: "{{ trigger.event.event_type }}: {{ trigger.event.data }}"
           entity_id: climate.living_room  # Associate with a climate entity
-```
-
----
-
-### Example 7: Conditional Slot Forcing Based on Temperature
-
-Force heating slot if temperature drops below threshold:
-
-```yaml
-automation:
-  - alias: "Emergency Heat on Cold"
-    trigger:
-      - platform: numeric_state
-        entity_id: sensor.indoor_temperature
-        below: 16
-    action:
-      - service: climate_control_calendar.force_slot
-        data:
-          slot_id: "emergency_heat_slot_id"
-      - service: notify.mobile_app
-        data:
-          message: "Emergency heating activated due to low temperature: {{ states('sensor.indoor_temperature') }}°C"
 ```
 
 ---

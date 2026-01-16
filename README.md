@@ -253,61 +253,35 @@ A Home Assistant custom integration that manages climate devices (thermostats, v
 
 ---
 
-## 🔧 Services
+## 🔧 Manual Override
 
-The integration provides four services for manual control:
+Climate Control Calendar uses a pure event-driven architecture. All control is performed via calendar events and bindings.
 
-### `climate_control_calendar.set_flag`
+**To temporarily override automatic control, use native Home Assistant features:**
 
-Set an override flag to alter automatic behavior.
-
-**Parameters**:
-- `flag_type`: `skip_today` | `skip_until_next_slot` | `force_slot`
-- `target_slot_id`: Required when `flag_type` is `force_slot`
-
-**Examples**:
 ```yaml
-# Skip all automatic changes until midnight
-service: climate_control_calendar.set_flag
-data:
-  flag_type: skip_today
+# Disable climate control temporarily
+service: homeassistant.turn_off
+target:
+  entity_id: calendar.your_climate_calendar
 
-# Skip current slot, resume at next slot transition
-service: climate_control_calendar.set_flag
-data:
-  flag_type: skip_until_next_slot
-
-# Force specific slot (find slot ID in configuration)
-service: climate_control_calendar.set_flag
-data:
-  flag_type: force_slot
-  target_slot_id: a3f5c8d2e1b4
+# Re-enable when needed
+service: homeassistant.turn_on
+target:
+  entity_id: calendar.your_climate_calendar
 ```
 
-### `climate_control_calendar.clear_flag`
-
-Clear active override flag and resume normal operation.
+**Alternative: Create temporary calendar events**
 
 ```yaml
-service: climate_control_calendar.clear_flag
-```
-
-### `climate_control_calendar.force_slot`
-
-Convenience service to force a specific slot (wrapper for `set_flag` with `force_slot` type).
-
-```yaml
-service: climate_control_calendar.force_slot
+# Force "Comfort Mode" for next 2 hours
+service: calendar.create_event
+target:
+  entity_id: calendar.your_climate_calendar
 data:
-  slot_id: a3f5c8d2e1b4
-```
-
-### `climate_control_calendar.refresh_now`
-
-Force immediate coordinator refresh and slot evaluation (bypass 60-second poll interval).
-
-```yaml
-service: climate_control_calendar.refresh_now
+  summary: "Comfort Mode"  # Must match a binding pattern
+  start_date_time: "{{ now() }}"
+  end_date_time: "{{ now() + timedelta(hours=2) }}"
 ```
 
 ---
@@ -326,8 +300,8 @@ service: climate_control_calendar.refresh_now
 
 **✅ Milestone 3** (Device Control) - Completed:
 - Sequential climate payload application
-- Override flags with HA Storage persistence
-- Four services for manual control
+- Event-to-slot binding system
+- Multi-calendar support with priority resolution
 - Retry logic with error handling
 
 **🔄 Milestone 4** (Polish & Release) - In Progress:
