@@ -30,8 +30,8 @@ async def async_register_panel(hass: HomeAssistant) -> None:
     frontend_dir = os.path.join(integration_dir, "frontend")
     panel_js_path = os.path.join(frontend_dir, "climate-control-panel.js")
 
-    # Register panel
-    await hass.http.async_register_static_path(
+    # Register static path for panel JS file (sync method)
+    hass.http.register_static_path(
         PANEL_URL + "/climate-control-panel.js",
         panel_js_path,
         cache_headers=False,
