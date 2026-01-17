@@ -4,5 +4,5 @@
   "render_readme": true,
   "iot_class": "Local Polling",
   "homeassistant": "2024.1.0".
-  "image": "https://raw.githubusercontent.com/max433/climate_control_calendar/main/icon.png"
+  "image": "https://raw.githubusercontent.com/max433/climate_control_calendar/main/icon.png?v=2"
 }
