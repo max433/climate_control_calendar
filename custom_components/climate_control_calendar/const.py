@@ -86,7 +86,6 @@ DATA_APPLIER: Final = "applier"
 DATA_CONFIG: Final = "config"
 DATA_UNSUB: Final = "unsub"
 DATA_BINDING_MANAGER: Final = "binding_manager"  # New: Binding manager instance
-DATA_DASHBOARD_SERVICE: Final = "dashboard_service"  # New: Dashboard data service
 
 # Logging prefixes
 LOG_PREFIX_ENGINE: Final = "[Engine]"
