@@ -185,7 +185,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.info(
         "Climate Control Calendar setup complete. "
         "Calendars: %d, Dry Run: %s, Slots: %d, Bindings: %d, Climate entities: %d, "
-        "Calendar configs: %d, Flags enabled: True",
+        "Calendar configs: %d",
         len(calendar_entities),
         dry_run,
         len(slots),
