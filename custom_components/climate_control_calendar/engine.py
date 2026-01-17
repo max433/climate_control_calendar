@@ -72,6 +72,9 @@ class ClimateControlEngine:
         # Format: dict[entity_id] = (slot_id, binding_id)
         self._previous_applied_state: dict[str, tuple[str, str]] = {}
 
+        # Track last active slot for dashboard (highest priority slot currently applied)
+        self.last_active_slot: dict[str, Any] | None = None
+
         _LOGGER.info(
             "%s Engine initialized | Dry Run: %s | Debug: %s | Bindings: %s | Applier: %s",
             LOG_PREFIX_ENGINE,
@@ -325,6 +328,14 @@ class ClimateControlEngine:
             # Assign to current state (only entities not yet assigned)
             for entity_id in entities_available:
                 current_state[entity_id] = (slot_id, binding_id, slot, target_entities, event_summary, binding_metadata)
+
+        # Update last_active_slot for dashboard (highest priority slot with entities)
+        if sorted_bindings and current_state:
+            # First binding in sorted list is highest priority and has entities assigned
+            highest_priority_slot = sorted_bindings[0][0]  # [0] = slot dict
+            self.last_active_slot = highest_priority_slot
+        else:
+            self.last_active_slot = None
 
         # Now compare current_state with _previous_applied_state and apply only changes
         entities_to_apply_changes: list[tuple[str, str, dict[str, Any], dict[str, Any], str, dict[str, str]]] = []

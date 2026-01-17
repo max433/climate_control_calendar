@@ -21,6 +21,7 @@ from .const import (
     DATA_EVENT_EMITTER,
     DATA_APPLIER,
     DATA_BINDING_MANAGER,  # New: binding manager
+    DATA_DASHBOARD_SERVICE,  # New: dashboard service
     DATA_CONFIG,
     DATA_UNSUB,
     DEFAULT_UPDATE_INTERVAL,
@@ -32,7 +33,10 @@ from .engine import ClimateControlEngine
 from .events import EventEmitter
 from .applier import ClimatePayloadApplier
 from .binding_manager import BindingManager  # New import
+from .dashboard_service import DashboardDataService  # Dashboard service
 from .services import async_setup_services, async_unload_services
+from . import websocket  # WebSocket API
+from . import panel  # Frontend panel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,6 +123,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Fetch initial data
     await coordinator.async_config_entry_first_refresh()
 
+    # Create dashboard service for frontend panel
+    dashboard_service = DashboardDataService(
+        hass=hass,
+        coordinator=coordinator,
+        engine=engine,
+        binding_manager=binding_manager,
+        config_entry=entry,
+    )
+
     # Store components in hass.data
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
@@ -127,6 +140,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         DATA_EVENT_EMITTER: event_emitter,
         DATA_APPLIER: applier,
         DATA_BINDING_MANAGER: binding_manager,  # New: store binding manager
+        DATA_DASHBOARD_SERVICE: dashboard_service,  # New: store dashboard service
         DATA_CONFIG: {
             CONF_CALENDAR_ENTITIES: calendar_entities,  # Changed from singular
             CONF_DRY_RUN: dry_run,
@@ -178,9 +192,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register update listener for options changes
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
-    # Register services (M3) - only on first entry
+    # Register services, WebSocket handlers, and dashboard panel - only on first entry
     if len(hass.data[DOMAIN]) == 1:
         await async_setup_services(hass)
+        websocket.async_register_websocket_handlers(hass)
+        await panel.async_register_panel(hass)
 
     _LOGGER.info(
         "Climate Control Calendar setup complete. "
@@ -221,8 +237,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         for unsub in entry_data.get(DATA_UNSUB, []):
             unsub()
 
-        # Unload services if last entry
-        await async_unload_services(hass)
+        # Unload services and panel if last entry
+        if not hass.data[DOMAIN]:
+            await async_unload_services(hass)
+            await panel.async_unregister_panel(hass)
 
         _LOGGER.info("Climate Control Calendar unloaded successfully")
 
