@@ -36,7 +36,7 @@ from .binding_manager import BindingManager  # New import
 from .dashboard_service import DashboardDataService  # Dashboard service
 from .services import async_setup_services, async_unload_services
 from . import websocket  # WebSocket API
-from . import panel  # Frontend panel
+# from . import panel  # Frontend panel - removed, use panel_custom in configuration.yaml
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -203,8 +203,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if num_entries == 1:
         await async_setup_services(hass)
         websocket.async_register_websocket_handlers(hass)
-        await panel.async_register_panel(hass)
-        _LOGGER.info("Global components registered (services, websocket, panel)")
+        # Panel removed - use panel_custom in configuration.yaml
+        _LOGGER.info("Global components registered (services, websocket)")
     else:
         _LOGGER.warning(
             "Skipping global component registration (already %d entries exist)",
@@ -250,10 +250,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         for unsub in entry_data.get(DATA_UNSUB, []):
             unsub()
 
-        # Unload services and panel if last entry
+        # Unload services if last entry
         if not hass.data[DOMAIN]:
             await async_unload_services(hass)
-            await panel.async_unregister_panel(hass)
 
         _LOGGER.info("Climate Control Calendar unloaded successfully")
 
