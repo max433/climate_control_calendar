@@ -2,7 +2,10 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/max433/climate_control_calendar.svg)](https://github.com/max433/climate_control_calendar/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/max433/climate_control_calendar/total.svg)](https://github.com/max433/climate_control_calendar/releases)
+[![GitHub Stars](https://img.shields.io/github/stars/max433/climate_control_calendar.svg?style=social)](https://github.com/max433/climate_control_calendar/stargazers)
 [![License](https://img.shields.io/github/license/max433/climate_control_calendar.svg)](LICENSE)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.1+-blue.svg)](https://www.home-assistant.io/)
 
 ![Climate Control Calendar](icon.svg)
 

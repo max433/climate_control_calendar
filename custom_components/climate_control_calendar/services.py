@@ -353,10 +353,6 @@ async def async_unload_services(hass: HomeAssistant) -> None:
     """
     # Only unload if no more config entries
     if not hass.data.get(DOMAIN):
-        hass.services.async_remove(DOMAIN, SERVICE_SET_FLAG)
-        hass.services.async_remove(DOMAIN, SERVICE_CLEAR_FLAG)
-        hass.services.async_remove(DOMAIN, SERVICE_FORCE_SLOT)
-        hass.services.async_remove(DOMAIN, SERVICE_REFRESH_NOW)
         hass.services.async_remove(DOMAIN, SERVICE_ADD_SLOT)
         hass.services.async_remove(DOMAIN, SERVICE_REMOVE_SLOT)
         hass.services.async_remove(DOMAIN, SERVICE_ADD_BINDING)
