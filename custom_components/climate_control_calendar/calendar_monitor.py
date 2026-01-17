@@ -343,6 +343,26 @@ class MultiCalendarCoordinator(DataUpdateCoordinator):
                 )
                 return None
 
+            # Debug logging for datetime comparison
+            _LOGGER.debug(
+                "[DATETIME DEBUG] Event '%s' from %s | Raw start: %s (type: %s) | Raw end: %s (type: %s)",
+                summary,
+                calendar_id,
+                start_raw,
+                type(start_raw).__name__,
+                end_raw,
+                type(end_raw).__name__,
+            )
+            _LOGGER.debug(
+                "[DATETIME DEBUG] Parsed start_dt: %s (tzinfo: %s) | Parsed end_dt: %s (tzinfo: %s) | now: %s (tzinfo: %s)",
+                start_dt,
+                start_dt.tzinfo,
+                end_dt,
+                end_dt.tzinfo,
+                now,
+                now.tzinfo,
+            )
+
             # Determine if event is currently active
             is_active = start_dt <= now < end_dt
 
