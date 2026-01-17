@@ -220,6 +220,86 @@ class MultiCalendarCoordinator(DataUpdateCoordinator):
             "last_update": dt_util.utcnow(),
         }
 
+    def _parse_event_datetime(
+        self,
+        dt_raw: Any,
+        field_name: str,
+        event_summary: str,
+        calendar_id: str,
+    ) -> datetime | None:
+        """
+        Parse datetime from various calendar formats.
+
+        Handles:
+        - Dict format: {"dateTime": "2024-01-15T10:00:00+01:00"} (timed events)
+        - Dict format: {"date": "2024-01-15"} (all-day events)
+        - String format: "2024-01-15T10:00:00+01:00" (direct datetime string)
+        - String format: "2024-01-15" (direct date string, all-day)
+
+        Args:
+            dt_raw: Raw date/datetime value from calendar
+            field_name: Field name for logging (start/end)
+            event_summary: Event summary for logging
+            calendar_id: Calendar ID for logging
+
+        Returns:
+            Timezone-aware datetime or None if parsing fails
+        """
+        try:
+            dt_value = None
+
+            # Case 1: Dict format (Google Calendar, CalDAV)
+            if isinstance(dt_raw, dict):
+                # Try dateTime first (timed events)
+                if "dateTime" in dt_raw:
+                    dt_value = dt_util.parse_datetime(dt_raw["dateTime"])
+                # Try date (all-day events)
+                elif "date" in dt_raw:
+                    # Date-only format, parse as date then convert to datetime
+                    date_str = dt_raw["date"]
+                    dt_value = dt_util.parse_date(date_str)
+                    if dt_value:
+                        # Convert date to datetime at midnight local time
+                        dt_value = datetime.combine(dt_value, datetime.min.time())
+
+            # Case 2: String format (direct string)
+            elif isinstance(dt_raw, str):
+                # Try parsing as full datetime first
+                dt_value = dt_util.parse_datetime(dt_raw)
+                # If that fails, try parsing as date-only
+                if not dt_value:
+                    date_only = dt_util.parse_date(dt_raw)
+                    if date_only:
+                        dt_value = datetime.combine(date_only, datetime.min.time())
+
+            if not dt_value:
+                _LOGGER.warning(
+                    "Could not parse %s for event '%s' from %s: %s",
+                    field_name,
+                    event_summary,
+                    calendar_id,
+                    dt_raw,
+                )
+                return None
+
+            # Ensure timezone-aware (needed for comparison with 'now')
+            # All-day events and some date formats are naive, need to add local timezone
+            if dt_value.tzinfo is None:
+                dt_value = dt_util.as_local(dt_value)
+
+            return dt_value
+
+        except Exception as err:
+            _LOGGER.error(
+                "Error parsing %s datetime for event '%s' from %s: %s - Raw: %s",
+                field_name,
+                event_summary,
+                calendar_id,
+                err,
+                dt_raw,
+            )
+            return None
+
     def _parse_event_from_service(
         self,
         calendar_id: str,
@@ -239,8 +319,8 @@ class MultiCalendarCoordinator(DataUpdateCoordinator):
         """
         try:
             summary = event_raw.get("summary", "")
-            start_str = event_raw.get("start")
-            end_str = event_raw.get("end")
+            start_raw = event_raw.get("start")
+            end_raw = event_raw.get("end")
 
             if not summary:
                 _LOGGER.warning(
@@ -249,9 +329,11 @@ class MultiCalendarCoordinator(DataUpdateCoordinator):
                 )
                 return None
 
-            # Parse start/end times
-            start_dt = dt_util.parse_datetime(start_str) if start_str else None
-            end_dt = dt_util.parse_datetime(end_str) if end_str else None
+            # Parse start/end - handle both datetime strings and date-only formats
+            # All-day events may come as: {"date": "2024-01-15"} or "2024-01-15"
+            # Timed events come as: {"dateTime": "2024-01-15T10:00:00+01:00"} or full datetime string
+            start_dt = self._parse_event_datetime(start_raw, "start", summary, calendar_id)
+            end_dt = self._parse_event_datetime(end_raw, "end", summary, calendar_id)
 
             if not start_dt or not end_dt:
                 _LOGGER.warning(
@@ -261,21 +343,14 @@ class MultiCalendarCoordinator(DataUpdateCoordinator):
                 )
                 return None
 
-            # Convert naive datetimes to aware (needed for all-day events)
-            # All-day events come as naive dates, need timezone for comparison
-            if start_dt.tzinfo is None:
-                start_dt = dt_util.as_local(start_dt)
-            if end_dt.tzinfo is None:
-                end_dt = dt_util.as_local(end_dt)
-
             # Determine if event is currently active
             is_active = start_dt <= now < end_dt
 
             event = {
                 "calendar_id": calendar_id,
                 "summary": summary,
-                "start": start_str,
-                "end": end_str,
+                "start": str(start_raw),
+                "end": str(end_raw),
                 "description": event_raw.get("description", ""),
                 "location": event_raw.get("location", ""),
                 "is_active": is_active,
