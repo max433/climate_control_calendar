@@ -2,58 +2,51 @@
 Frontend panel registration for Climate Control Calendar.
 
 Registers custom dashboard panel in Home Assistant sidebar.
+Uses iframe panel approach for HACS custom integrations.
 """
 from __future__ import annotations
 
 import logging
-import os
 
-from homeassistant.components import panel_custom
+from homeassistant.components.frontend import async_register_built_in_panel
 from homeassistant.core import HomeAssistant
+
+from .http_views import DashboardView
 
 _LOGGER = logging.getLogger(__name__)
 
 PANEL_TITLE = "Climate Control"
 PANEL_ICON = "mdi:calendar-clock"
 PANEL_URL_PATH = "climate_control_calendar"
-PANEL_COMPONENT_NAME = "climate-control-panel"
 
 
 async def async_register_panel(hass: HomeAssistant) -> None:
     """
     Register climate control calendar dashboard panel.
 
-    Creates a custom panel in Home Assistant sidebar with icon.
+    Creates an iframe panel in Home Assistant sidebar that points to
+    a custom HTTP endpoint serving the dashboard HTML.
+
+    This approach works for HACS custom integrations.
     """
-    # Get path to frontend directory
-    integration_dir = os.path.dirname(__file__)
-    frontend_dir = os.path.join(integration_dir, "frontend")
+    # Register HTTP view to serve dashboard HTML
+    hass.http.register_view(DashboardView)
 
-    # Register frontend directory as static path
-    # This serves all files from frontend/ at /_ccc_static/
-    hass.http.register_static_path(
-        "/_ccc_static",
-        frontend_dir,
-        cache_headers=False,
-    )
-
-    # Register as custom panel using panel_custom component
-    await panel_custom.async_register_panel(
-        hass=hass,
-        frontend_url_path=PANEL_URL_PATH,
-        webcomponent_name=PANEL_COMPONENT_NAME,
+    # Register iframe panel in sidebar
+    async_register_built_in_panel(
+        hass,
+        component_name="iframe",
         sidebar_title=PANEL_TITLE,
         sidebar_icon=PANEL_ICON,
-        js_url="/_ccc_static/climate-control-panel.js",
-        module_url=None,
-        embed_iframe=False,
+        frontend_url_path=PANEL_URL_PATH,
+        config={"url": DashboardView.url},
         require_admin=False,
-        config=None,
     )
 
     _LOGGER.info(
-        "Climate Control Calendar dashboard panel registered at: /%s",
+        "Climate Control Calendar dashboard panel registered at: /%s (iframe → %s)",
         PANEL_URL_PATH,
+        DashboardView.url,
     )
 
 
