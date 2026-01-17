@@ -261,6 +261,13 @@ class MultiCalendarCoordinator(DataUpdateCoordinator):
                 )
                 return None
 
+            # Convert naive datetimes to aware (needed for all-day events)
+            # All-day events come as naive dates, need timezone for comparison
+            if start_dt.tzinfo is None:
+                start_dt = dt_util.as_local(start_dt)
+            if end_dt.tzinfo is None:
+                end_dt = dt_util.as_local(end_dt)
+
             # Determine if event is currently active
             is_active = start_dt <= now < end_dt
 
