@@ -29,22 +29,39 @@ async def async_register_panel(hass: HomeAssistant) -> None:
 
     This approach works for HACS custom integrations.
     """
+    _LOGGER.info("Starting panel registration...")
+
     # Register HTTP view to serve dashboard HTML
-    hass.http.register_view(DashboardView)
+    try:
+        hass.http.register_view(DashboardView)
+        _LOGGER.info("HTTP view registered at: %s", DashboardView.url)
+    except Exception as err:
+        _LOGGER.error("Failed to register HTTP view: %s", err, exc_info=True)
+        raise
 
     # Register iframe panel in sidebar
-    async_register_built_in_panel(
-        hass,
-        component_name="iframe",
-        sidebar_title=PANEL_TITLE,
-        sidebar_icon=PANEL_ICON,
-        frontend_url_path=PANEL_URL_PATH,
-        config={"url": DashboardView.url},
-        require_admin=False,
-    )
+    try:
+        async_register_built_in_panel(
+            hass,
+            component_name="iframe",
+            sidebar_title=PANEL_TITLE,
+            sidebar_icon=PANEL_ICON,
+            frontend_url_path=PANEL_URL_PATH,
+            config={"url": DashboardView.url},
+            require_admin=False,
+        )
+        _LOGGER.info(
+            "Iframe panel registered: sidebar_title=%s, frontend_url_path=%s, iframe_url=%s",
+            PANEL_TITLE,
+            PANEL_URL_PATH,
+            DashboardView.url,
+        )
+    except Exception as err:
+        _LOGGER.error("Failed to register iframe panel: %s", err, exc_info=True)
+        raise
 
     _LOGGER.info(
-        "Climate Control Calendar dashboard panel registered at: /%s (iframe → %s)",
+        "✅ Climate Control Calendar dashboard panel fully registered at: /%s (iframe → %s)",
         PANEL_URL_PATH,
         DashboardView.url,
     )

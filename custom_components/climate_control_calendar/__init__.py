@@ -193,10 +193,23 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     entry.async_on_unload(entry.add_update_listener(async_reload_entry))
 
     # Register services, WebSocket handlers, and dashboard panel - only on first entry
-    if len(hass.data[DOMAIN]) == 1:
+    num_entries = len(hass.data[DOMAIN])
+    _LOGGER.info(
+        "Setup: %d total entries in hass.data[DOMAIN], registering global components: %s",
+        num_entries,
+        num_entries == 1,
+    )
+
+    if num_entries == 1:
         await async_setup_services(hass)
         websocket.async_register_websocket_handlers(hass)
         await panel.async_register_panel(hass)
+        _LOGGER.info("Global components registered (services, websocket, panel)")
+    else:
+        _LOGGER.warning(
+            "Skipping global component registration (already %d entries exist)",
+            num_entries,
+        )
 
     _LOGGER.info(
         "Climate Control Calendar setup complete. "
