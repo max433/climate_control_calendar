@@ -276,15 +276,15 @@ class ClimateControlCalendarConfigFlow(config_entries.ConfigFlow, domain=DOMAIN)
         config_entry: config_entries.ConfigEntry,
     ) -> ClimateControlCalendarOptionsFlow:
         """Get the options flow handler."""
-        return ClimateControlCalendarOptionsFlow(config_entry)
+        return ClimateControlCalendarOptionsFlow()
 
 
 class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
     """Handle options flow for Climate Control Calendar."""
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+    def __init__(self) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+        # config_entry is now auto-set by HA (2025.12+ breaking change)
         self._temp_data: dict[str, Any] = {}
 
     async def async_step_init(
