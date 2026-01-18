@@ -86,7 +86,7 @@ class ClimateControlEngine:
             "enabled" if applier else "disabled",
         )
 
-    def resolve_slots_for_active_events(
+    async def resolve_slots_for_active_events(
         self,
         active_events: list[dict[str, Any]],
         available_slots: list[dict[str, Any]],
@@ -140,7 +140,7 @@ class ClimateControlEngine:
                 )
 
             # Resolve slot for this event via binding manager (returns 4-tuple or None)
-            result = self.binding_manager.resolve_slot_for_event(
+            result = await self.binding_manager.resolve_slot_for_event(
                 event=event,
                 calendar_id=calendar_id,
                 available_slots=available_slots,
@@ -227,7 +227,7 @@ class ClimateControlEngine:
             )
 
         # Slot resolution via bindings (Decision D032: Event-driven architecture)
-        resolved_bindings = self.resolve_slots_for_active_events(
+        resolved_bindings = await self.resolve_slots_for_active_events(
             active_events=active_events,
             available_slots=slots,
         )

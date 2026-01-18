@@ -29,6 +29,7 @@ BINDING_MATCH: Final = "match"
 BINDING_SLOT_ID: Final = "slot_id"
 BINDING_TARGET_ENTITIES: Final = "target_entities"  # New: Specific entities for this binding
 BINDING_PRIORITY: Final = "priority"
+BINDING_CONDITIONS: Final = "conditions"  # New: Conditions for binding activation
 
 # Calendar configuration keys
 CALENDAR_CONFIG_ENABLED: Final = "enabled"
@@ -38,6 +39,23 @@ CALENDAR_CONFIG_DESCRIPTION: Final = "description"
 # Match configuration keys
 MATCH_TYPE: Final = "type"
 MATCH_VALUE: Final = "value"
+
+# Condition configuration keys
+CONDITION_TYPE: Final = "type"  # Also accepts "condition" key for HA compatibility
+CONDITION_ENTITY_ID: Final = "entity_id"
+CONDITION_STATE: Final = "state"
+CONDITION_ABOVE: Final = "above"
+CONDITION_BELOW: Final = "below"
+CONDITION_AFTER: Final = "after"
+CONDITION_BEFORE: Final = "before"
+CONDITION_WEEKDAY: Final = "weekday"
+CONDITION_VALUE_TEMPLATE: Final = "value_template"
+
+# Condition types
+CONDITION_TYPE_STATE: Final = "state"
+CONDITION_TYPE_NUMERIC_STATE: Final = "numeric_state"
+CONDITION_TYPE_TIME: Final = "time"
+CONDITION_TYPE_TEMPLATE: Final = "template"
 
 # Climate payload keys
 PAYLOAD_TEMPERATURE: Final = "temperature"

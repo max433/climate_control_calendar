@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
 from .event_matcher import EventMatcher, matches_calendar
+from .condition_validator import check_conditions
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -126,7 +127,7 @@ class BindingManager:
 
         return self._calendar_configs[calendar_id].get("default_priority", 0)
 
-    def resolve_slot_for_event(
+    async def resolve_slot_for_event(
         self,
         event: dict[str, Any],
         calendar_id: str,
@@ -139,9 +140,10 @@ class BindingManager:
         0. Check if calendar is enabled
         1. Filter bindings that match the calendar
         2. Filter bindings that match the event
-        3. Sort by priority (DESC)
-        4. At same priority, last defined wins
-        5. Return (slot, target_entities, priority, binding_metadata)
+        3. Filter bindings that meet conditions (NEW)
+        4. Sort by priority (DESC)
+        5. At same priority, last defined wins
+        6. Return (slot, target_entities, priority, binding_metadata)
 
         Args:
             event: Calendar event with 'summary' and other attributes
@@ -239,7 +241,59 @@ class BindingManager:
             )
             return None
 
-        # Step 3: Sort by priority DESC (resolve priorities first)
+        # Step 3: Filter bindings that meet conditions
+        _LOGGER.warning(
+            "[BINDING DEBUG] Step 3: Checking conditions for %d matching bindings",
+            len(matching_bindings),
+        )
+
+        condition_passed_bindings = []
+        for binding in matching_bindings:
+            binding_conditions = binding.get("conditions", [])
+
+            # No conditions = always pass
+            if not binding_conditions:
+                _LOGGER.warning(
+                    "[BINDING DEBUG] Step 3: Binding %s has no conditions, passing",
+                    binding.get("id"),
+                )
+                condition_passed_bindings.append(binding)
+                continue
+
+            # Check conditions
+            _LOGGER.warning(
+                "[BINDING DEBUG] Step 3: Checking %d conditions for binding %s",
+                len(binding_conditions),
+                binding.get("id"),
+            )
+
+            conditions_met = await check_conditions(self.hass, binding_conditions)
+
+            if conditions_met:
+                _LOGGER.warning(
+                    "[BINDING DEBUG] ✅ CONDITIONS PASS: Binding %s met all conditions",
+                    binding.get("id"),
+                )
+                condition_passed_bindings.append(binding)
+            else:
+                _LOGGER.warning(
+                    "[BINDING DEBUG] ❌ CONDITIONS FAIL: Binding %s did not meet conditions",
+                    binding.get("id"),
+                )
+
+        if not condition_passed_bindings:
+            _LOGGER.warning(
+                "[BINDING DEBUG] Step 3 Result: No bindings passed condition checks for event '%s'",
+                event.get("summary", "Unknown"),
+            )
+            return None
+
+        _LOGGER.warning(
+            "[BINDING DEBUG] Step 3 Result: %d bindings passed condition checks",
+            len(condition_passed_bindings),
+        )
+
+        # Step 4: Sort by priority DESC (resolve priorities first)
         # Priority resolution: binding.priority or calendar_config.default_priority or 0
         def get_binding_priority(binding: dict[str, Any]) -> int:
             binding_priority = binding.get("priority")
@@ -251,12 +305,12 @@ class BindingManager:
         # Python's sort is stable, so equal priorities maintain insertion order
         # To make "last defined wins", we rely on stable sort
         sorted_bindings = sorted(
-            matching_bindings,
+            condition_passed_bindings,
             key=get_binding_priority,
             reverse=True,
         )
 
-        # Step 4: Take first (highest priority, or last inserted if tie)
+        # Step 5: Take first (highest priority, or last inserted if tie)
         winner = sorted_bindings[0]
         binding_id = winner.get("id", "unknown")
         slot_id = winner.get("slot_id")
@@ -273,7 +327,7 @@ class BindingManager:
             target_entities or "global pool",
         )
 
-        # Step 5: Find and return (slot, target_entities, priority, binding_metadata)
+        # Step 6: Find and return (slot, target_entities, priority, binding_metadata)
         slot = self._find_slot_by_id(available_slots, slot_id)
         if not slot:
             _LOGGER.warning(
