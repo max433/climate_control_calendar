@@ -284,8 +284,9 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
 
     def __init__(self) -> None:
         """Initialize options flow."""
-        # config_entry is now auto-set by HA (2025.12+ breaking change)
-        _LOGGER.debug("OptionsFlow.__init__() called - config_entry will be auto-set by HA")
+        # CRITICAL: Call parent __init__ to let HA auto-set config_entry (HA 2025.12+ requirement)
+        super().__init__()
+        _LOGGER.debug("OptionsFlow.__init__() called - config_entry auto-set by parent class")
         self._temp_data: dict[str, Any] = {}
 
     async def async_step_init(
