@@ -29,53 +29,64 @@ def validate_and_build_slot_payload(user_input: dict[str, Any]) -> tuple[dict[st
     """
     Validate slot input and build climate payload.
 
+    Supports both static values and Jinja2 templates.
+    Templates (recognized by {{ and }}) are stored as strings and skip numeric validation.
+
     Returns:
         tuple: (climate_payload, errors)
     """
+    from .template_helper import is_template
+
     climate_payload = {}
     errors = {}
 
+    def process_temperature_field(field_name: str, value: Any) -> float | str | None:
+        """Process temperature field: handle template or numeric value."""
+        if value is None or value == "":
+            return None
+
+        value_str = str(value).strip()
+        if not value_str:
+            return None
+
+        # Check if it's a template
+        if is_template(value_str):
+            # Template - store as string, skip validation
+            return value_str
+
+        # Not a template - validate as numeric
+        try:
+            temp = float(value_str)
+            if temp < -50 or temp > 50:
+                errors[field_name] = "invalid_temperature"
+                return None
+            return temp
+        except (ValueError, TypeError):
+            errors[field_name] = "invalid_temperature"
+            return None
+
     # Temperature (single value)
     temp_input = user_input.get("temperature")
-    if temp_input is not None and temp_input != "":
-        try:
-            temp = float(temp_input)
-            if temp < -50 or temp > 50:
-                errors["temperature"] = "invalid_temperature"
-            else:
-                climate_payload["temperature"] = temp
-        except (ValueError, TypeError):
-            errors["temperature"] = "invalid_temperature"
+    temp_value = process_temperature_field("temperature", temp_input)
+    if temp_value is not None:
+        climate_payload["temperature"] = temp_value
 
     # Temperature range (for heat_cool mode)
     temp_high_input = user_input.get("target_temp_high")
     temp_low_input = user_input.get("target_temp_low")
 
-    temp_high = None
-    temp_low = None
+    temp_high = process_temperature_field("target_temp_high", temp_high_input)
+    temp_low = process_temperature_field("target_temp_low", temp_low_input)
 
-    if temp_high_input is not None and temp_high_input != "":
-        try:
-            temp_high = float(temp_high_input)
-            if temp_high < -50 or temp_high > 50:
-                errors["target_temp_high"] = "invalid_temperature"
-            else:
-                climate_payload["target_temp_high"] = temp_high
-        except (ValueError, TypeError):
-            errors["target_temp_high"] = "invalid_temperature"
-
-    if temp_low_input is not None and temp_low_input != "":
-        try:
-            temp_low = float(temp_low_input)
-            if temp_low < -50 or temp_low > 50:
-                errors["target_temp_low"] = "invalid_temperature"
-            else:
-                climate_payload["target_temp_low"] = temp_low
-        except (ValueError, TypeError):
-            errors["target_temp_low"] = "invalid_temperature"
+    if temp_high is not None:
+        climate_payload["target_temp_high"] = temp_high
+    if temp_low is not None:
+        climate_payload["target_temp_low"] = temp_low
 
     # Cross-validation: if both range temps are set, low must be < high
+    # Skip this check if either is a template (can't compare at config time)
     if (temp_high is not None and temp_low is not None and
+        not is_template(str(temp_high)) and not is_template(str(temp_low)) and
         "target_temp_high" not in errors and "target_temp_low" not in errors):
         if temp_low >= temp_high:
             errors["target_temp_low"] = "temp_range_invalid"
@@ -98,14 +109,22 @@ def validate_and_build_slot_payload(user_input: dict[str, Any]) -> tuple[dict[st
     # Humidity control (only if provided and not empty)
     humidity_input = user_input.get("humidity")
     if humidity_input is not None and humidity_input != "":
-        try:
-            humidity = int(humidity_input)
-            if humidity < 0 or humidity > 100:
-                errors["humidity"] = "invalid_humidity"
+        humidity_str = str(humidity_input).strip()
+        if humidity_str:
+            # Check if it's a template
+            if is_template(humidity_str):
+                # Template - store as string, skip validation
+                climate_payload["humidity"] = humidity_str
             else:
-                climate_payload["humidity"] = humidity
-        except (ValueError, TypeError):
-            errors["humidity"] = "invalid_humidity"
+                # Not a template - validate as numeric
+                try:
+                    humidity = int(humidity_str)
+                    if humidity < 0 or humidity > 100:
+                        errors["humidity"] = "invalid_humidity"
+                    else:
+                        climate_payload["humidity"] = humidity
+                except (ValueError, TypeError):
+                    errors["humidity"] = "invalid_humidity"
 
     # Auxiliary heat (string: "on"/"off"/"" from selector)
     aux_heat = user_input.get("aux_heat", "").strip()
@@ -539,31 +558,19 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         schema = vol.Schema(
             {
                 vol.Required("label"): cv.string,
-                vol.Optional("temperature"): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=-50,
-                        max=50,
-                        step=0.5,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
+                vol.Optional("temperature"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
                     ),
                 ),
-                vol.Optional("target_temp_high"): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=-50,
-                        max=50,
-                        step=0.5,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
+                vol.Optional("target_temp_high"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
                     ),
                 ),
-                vol.Optional("target_temp_low"): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=-50,
-                        max=50,
-                        step=0.5,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="°C",
+                vol.Optional("target_temp_low"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
                     ),
                 ),
                 vol.Optional("hvac_mode"): selector.SelectSelector(
@@ -577,13 +584,9 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                         type=selector.TextSelectorType.TEXT,
                     ),
                 ),
-                vol.Optional("humidity"): selector.NumberSelector(
-                    selector.NumberSelectorConfig(
-                        min=0,
-                        max=100,
-                        step=1,
-                        mode=selector.NumberSelectorMode.BOX,
-                        unit_of_measurement="%",
+                vol.Optional("humidity"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
                     ),
                 ),
                 vol.Optional("aux_heat"): selector.SelectSelector(
@@ -714,14 +717,23 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         else:
             aux_heat_str = ""
 
+        # Convert numeric values to strings for TextSelector (templates stay as-is)
+        def to_text_value(value):
+            """Convert value to string for TextSelector (keep templates as-is)."""
+            if value is None:
+                return None
+            if isinstance(value, str):
+                return value  # Template or already string
+            return str(value)  # Convert number to string
+
         suggested_values = {
             "label": slot.get("label", ""),
-            "temperature": current_payload.get("temperature"),
-            "target_temp_high": current_payload.get("target_temp_high"),
-            "target_temp_low": current_payload.get("target_temp_low"),
+            "temperature": to_text_value(current_payload.get("temperature")),
+            "target_temp_high": to_text_value(current_payload.get("target_temp_high")),
+            "target_temp_low": to_text_value(current_payload.get("target_temp_low")),
             "hvac_mode": current_payload.get("hvac_mode"),
             "preset_mode": current_payload.get("preset_mode", ""),
-            "humidity": current_payload.get("humidity"),
+            "humidity": to_text_value(current_payload.get("humidity")),
             "aux_heat": aux_heat_str,
             "excluded_entities": current_excluded_entities,
         }
@@ -729,9 +741,21 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
         schema = vol.Schema(
             {
                 vol.Required("label"): cv.string,
-                vol.Optional("temperature"): vol.Coerce(float),
-                vol.Optional("target_temp_high"): vol.Coerce(float),
-                vol.Optional("target_temp_low"): vol.Coerce(float),
+                vol.Optional("temperature"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    ),
+                ),
+                vol.Optional("target_temp_high"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    ),
+                ),
+                vol.Optional("target_temp_low"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    ),
+                ),
                 vol.Optional("hvac_mode"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=["heat", "cool", "heat_cool", "auto", "off", "fan_only", "dry"],
@@ -740,7 +764,11 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     ),
                 ),
                 vol.Optional("preset_mode"): cv.string,
-                vol.Optional("humidity"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+                vol.Optional("humidity"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        type=selector.TextSelectorType.TEXT,
+                    ),
+                ),
                 vol.Optional("aux_heat"): selector.SelectSelector(
                     selector.SelectSelectorConfig(
                         options=[

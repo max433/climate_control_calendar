@@ -101,7 +101,7 @@
       },
       "add_slot": {
         "title": "Aggiungi Nuovo Slot",
-        "description": "Crea un nuovo template slot clima.\n\n**Struttura Slot:**\n• Label: Nome leggibile (richiesto)\n• Payload Clima Default: Impostazioni applicate a tutti i dispositivi\n• Range Temperatura: Per modalità heat_cool (opzionale)\n• Umidità: Per dispositivi con controllo umidità (opzionale)\n• Riscaldamento Ausiliario: Per pompe di calore con riscaldamento di backup (opzionale)\n• Entità Escluse: Salta determinati dispositivi (opzionale)\n\n**Esempio**: Label='Comfort', Temperatura=22°C, Modalità HVAC=heat",
+        "description": "Crea un nuovo template slot clima.\n\n**Struttura Slot:**\n• Label: Nome leggibile (richiesto)\n• Payload Clima Default: Impostazioni applicate a tutti i dispositivi\n• Range Temperatura: Per modalità heat_cool (opzionale)\n• Umidità: Per dispositivi con controllo umidità (opzionale)\n• Riscaldamento Ausiliario: Per pompe di calore con riscaldamento di backup (opzionale)\n• Entità Escluse: Salta determinati dispositivi (opzionale)\n\n**Supporto Template**: I campi temperatura e umidità supportano template Jinja2 per valori dinamici.\n\n**Esempio**: Label='Comfort', Temperatura=22 o {{ states('input_number.target') | float }}",
         "data": {
           "label": "Etichetta Slot",
           "temperature": "Temperatura (°C)",
@@ -115,12 +115,12 @@
         },
         "data_description": {
           "label": "es. 'Comfort', 'Eco', 'Notte'",
-          "temperature": "Temperatura singola (lascia vuoto per modalità range)",
-          "target_temp_high": "Temperatura massima per modalità heat_cool (usa con target_temp_low)",
-          "target_temp_low": "Temperatura minima per modalità heat_cool (usa con target_temp_high)",
+          "temperature": "Valore statico (21.5) o template ({{ states('sensor.temp') | float + 2 }})",
+          "target_temp_high": "Valore statico o template per modalità heat_cool (limite superiore)",
+          "target_temp_low": "Valore statico o template per modalità heat_cool (limite inferiore)",
           "hvac_mode": "es. heat, cool, heat_cool, auto, off, dry",
           "preset_mode": "es. away, home, eco, boost",
-          "humidity": "Umidità target 0-100% (per dispositivi con deumidificatore)",
+          "humidity": "Valore statico (60) o template ({{ states('input_number.humidity') | int }})",
           "aux_heat": "Abilita riscaldamento ausiliario/backup (per pompe di calore)",
           "excluded_entities": "Entità clima da escludere da questo slot (non saranno controllate)"
         }
@@ -134,7 +134,7 @@
       },
       "edit_slot_detail": {
         "title": "Modifica: {slot_label}",
-        "description": "Modifica le impostazioni dello slot.\n\n**Slot ID**: {slot_id}\n**Binding che usano questo slot**: {binding_count}\n\n**Attenzione**: Le modifiche influenzano tutti i binding che usano questo slot.",
+        "description": "Modifica le impostazioni dello slot.\n\n**Slot ID**: {slot_id}\n**Binding che usano questo slot**: {binding_count}\n\n**Supporto Template**: I campi temperatura e umidità supportano sia valori statici che template Jinja2.\n\n**Attenzione**: Le modifiche influenzano tutti i binding che usano questo slot.",
         "data": {
           "label": "Etichetta Slot",
           "temperature": "Temperatura (°C)",
@@ -148,12 +148,12 @@
         },
         "data_description": {
           "label": "Nome leggibile per questo slot",
-          "temperature": "Temperatura singola (lascia vuoto per modalità range)",
-          "target_temp_high": "Temperatura massima per modalità heat_cool (usa con target_temp_low)",
-          "target_temp_low": "Temperatura minima per modalità heat_cool (usa con target_temp_high)",
+          "temperature": "Valore statico (21.5) o template ({{ states('sensor.temp') | float + 2 }})",
+          "target_temp_high": "Valore statico o template per modalità heat_cool (limite superiore)",
+          "target_temp_low": "Valore statico o template per modalità heat_cool (limite inferiore)",
+          "humidity": "Valore statico (60) o template ({{ states('input_number.humidity') | int }})",
           "hvac_mode": "es. heat, cool, heat_cool, auto, off, dry",
           "preset_mode": "es. away, home, eco, boost",
-          "humidity": "Umidità target 0-100% (per dispositivi con deumidificatore)",
           "aux_heat": "Abilita riscaldamento ausiliario/backup (per pompe di calore)",
           "excluded_entities": "Entità clima da escludere da questo slot (non saranno controllate)"
         }

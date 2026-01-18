@@ -16,6 +16,7 @@ from .const import (
     PAYLOAD_HVAC_MODE,
     PAYLOAD_PRESET_MODE,
 )
+from .template_helper import is_template
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -154,6 +155,10 @@ def validate_climate_payload(payload: dict[str, Any]) -> tuple[bool, str | None]
     Validate climate payload structure.
 
     Decision D012: All fields optional, at least one must be present.
+    Supports both static values and Jinja2 templates.
+
+    Templates are recognized by presence of {{ and }} markers and skip
+    type/range validation (validated at runtime during rendering).
 
     Args:
         payload: Climate payload dictionary
@@ -171,6 +176,10 @@ def validate_climate_payload(payload: dict[str, Any]) -> tuple[bool, str | None]
         PAYLOAD_PRESET_MODE,
         "fan_mode",
         "swing_mode",
+        "humidity",
+        "aux_heat",
+        "target_temp_high",
+        "target_temp_low",
     ]
 
     # Check at least one valid key present
@@ -178,13 +187,35 @@ def validate_climate_payload(payload: dict[str, Any]) -> tuple[bool, str | None]
     if not has_valid_key:
         return False, f"Climate payload must contain at least one valid field: {valid_keys}"
 
-    # Validate temperature if present
-    if PAYLOAD_TEMPERATURE in payload:
-        temp = payload[PAYLOAD_TEMPERATURE]
-        if not isinstance(temp, (int, float)):
-            return False, f"Temperature must be numeric, got: {type(temp).__name__}"
-        if temp < -50 or temp > 50:
-            return False, f"Temperature out of range (-50 to 50): {temp}"
+    # Validate temperature fields if present (skip for templates)
+    temp_fields = [PAYLOAD_TEMPERATURE, "target_temp_high", "target_temp_low"]
+    for field in temp_fields:
+        if field not in payload:
+            continue
+
+        value = payload[field]
+        if value is None:
+            continue
+
+        # Skip validation for templates (will be validated at runtime)
+        if is_template(value):
+            _LOGGER.debug("Field %s is a template, skipping static validation", field)
+            continue
+
+        # Validate static numeric values
+        if not isinstance(value, (int, float)):
+            return False, f"{field} must be numeric or a template, got: {type(value).__name__}"
+        if value < -50 or value > 50:
+            return False, f"{field} out of range (-50 to 50): {value}"
+
+    # Validate humidity if present (skip for templates)
+    if "humidity" in payload:
+        humidity = payload["humidity"]
+        if humidity is not None and not is_template(humidity):
+            if not isinstance(humidity, int):
+                return False, f"humidity must be integer or a template, got: {type(humidity).__name__}"
+            if humidity < 0 or humidity > 100:
+                return False, f"humidity out of range (0 to 100): {humidity}"
 
     return True, None
 

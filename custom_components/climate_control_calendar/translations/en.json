@@ -96,18 +96,25 @@
       },
       "add_slot": {
         "title": "Add New Slot",
-        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Entity Overrides: Device-specific settings (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Example**: Label='Comfort', Temperature=22°C, HVAC Mode=heat",
+        "description": "Create a new climate slot template.\n\n**Slot Structure:**\n• Label: Human-readable name (required)\n• Default Climate Payload: Settings applied to all devices\n• Entity Overrides: Device-specific settings (optional)\n• Excluded Entities: Skip certain devices (optional)\n\n**Template Support**: Temperature and humidity fields support Jinja2 templates for dynamic values.\n\n**Example**: Label='Comfort', Temperature=22 or {{ states('input_number.target') | float }}",
         "data": {
           "label": "Slot Label",
           "temperature": "Temperature (°C)",
+          "target_temp_high": "Temperature High (heat_cool mode)",
+          "target_temp_low": "Temperature Low (heat_cool mode)",
           "hvac_mode": "HVAC Mode",
-          "preset_mode": "Preset Mode"
+          "preset_mode": "Preset Mode",
+          "humidity": "Humidity (%)",
+          "aux_heat": "Auxiliary Heat"
         },
         "data_description": {
           "label": "e.g., 'Comfort', 'Eco', 'Sleep'",
-          "temperature": "Leave empty to not control temperature",
+          "temperature": "Static value (21.5) or template ({{ states('sensor.temp') | float + 2 }})",
+          "target_temp_high": "Static value or template for heat_cool mode upper limit",
+          "target_temp_low": "Static value or template for heat_cool mode lower limit",
           "hvac_mode": "e.g., heat, cool, heat_cool, auto, off",
-          "preset_mode": "e.g., away, home, eco, boost"
+          "preset_mode": "e.g., away, home, eco, boost",
+          "humidity": "Static value (60) or template ({{ states('input_number.humidity') | int }})"
         }
       },
       "edit_slot": {
@@ -119,12 +126,22 @@
       },
       "edit_slot_detail": {
         "title": "Edit: {slot_label}",
-        "description": "Modify slot settings.\n\n**Slot ID**: {slot_id}\n**Bindings using this slot**: {binding_count}\n\n**Warning**: Changes affect all bindings that use this slot.",
+        "description": "Modify slot settings.\n\n**Slot ID**: {slot_id}\n**Bindings using this slot**: {binding_count}\n\n**Template Support**: Temperature and humidity fields support both static values and Jinja2 templates.\n\n**Warning**: Changes affect all bindings that use this slot.",
         "data": {
           "label": "Slot Label",
           "temperature": "Temperature (°C)",
+          "target_temp_high": "Temperature High (heat_cool mode)",
+          "target_temp_low": "Temperature Low (heat_cool mode)",
           "hvac_mode": "HVAC Mode",
-          "preset_mode": "Preset Mode"
+          "preset_mode": "Preset Mode",
+          "humidity": "Humidity (%)",
+          "aux_heat": "Auxiliary Heat"
+        },
+        "data_description": {
+          "temperature": "Static value (21.5) or template ({{ states('sensor.temp') | float + 2 }})",
+          "target_temp_high": "Static value or template for heat_cool mode upper limit",
+          "target_temp_low": "Static value or template for heat_cool mode lower limit",
+          "humidity": "Static value (60) or template ({{ states('input_number.humidity') | int }})"
         }
       },
       "delete_slot": {

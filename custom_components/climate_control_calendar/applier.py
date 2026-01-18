@@ -32,6 +32,7 @@ from .const import (
     PAYLOAD_AUX_HEAT,
 )
 from .events import EventEmitter
+from .template_helper import render_climate_payload
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -236,148 +237,160 @@ class ClimatePayloadApplier:
         """
         Execute climate payload by calling appropriate services.
 
+        Renders any Jinja2 templates in payload values before applying.
+
         Args:
             entity_id: Climate entity ID
-            payload: Climate payload
+            payload: Climate payload (may contain templates)
 
         Raises:
             HomeAssistantError: If service call fails
         """
+        # Render templates in payload (if any)
+        rendered_payload = render_climate_payload(self.hass, payload)
+
+        _LOGGER.debug(
+            "Applying payload to %s: original=%s, rendered=%s",
+            entity_id,
+            payload,
+            rendered_payload,
+        )
+
         # Apply temperature (range or single)
         # Priority: target_temp_high/low > temperature (for heat_cool mode)
-        if PAYLOAD_TARGET_TEMP_HIGH in payload and PAYLOAD_TARGET_TEMP_LOW in payload:
+        if PAYLOAD_TARGET_TEMP_HIGH in rendered_payload and PAYLOAD_TARGET_TEMP_LOW in rendered_payload:
             # Use temperature range (for heat_cool mode)
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_TEMPERATURE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    "target_temp_high": payload[PAYLOAD_TARGET_TEMP_HIGH],
-                    "target_temp_low": payload[PAYLOAD_TARGET_TEMP_LOW],
+                    "target_temp_high": rendered_payload[PAYLOAD_TARGET_TEMP_HIGH],
+                    "target_temp_low": rendered_payload[PAYLOAD_TARGET_TEMP_LOW],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set temperature range %s-%s°C on %s",
-                payload[PAYLOAD_TARGET_TEMP_LOW],
-                payload[PAYLOAD_TARGET_TEMP_HIGH],
+                rendered_payload[PAYLOAD_TARGET_TEMP_LOW],
+                rendered_payload[PAYLOAD_TARGET_TEMP_HIGH],
                 entity_id,
             )
-        elif PAYLOAD_TEMPERATURE in payload:
+        elif PAYLOAD_TEMPERATURE in rendered_payload:
             # Use single temperature
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_TEMPERATURE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_TEMPERATURE: payload[PAYLOAD_TEMPERATURE],
+                    ATTR_TEMPERATURE: rendered_payload[PAYLOAD_TEMPERATURE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set temperature %s°C on %s",
-                payload[PAYLOAD_TEMPERATURE],
+                rendered_payload[PAYLOAD_TEMPERATURE],
                 entity_id,
             )
 
         # Apply HVAC mode
-        if PAYLOAD_HVAC_MODE in payload:
+        if PAYLOAD_HVAC_MODE in rendered_payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_HVAC_MODE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_HVAC_MODE: payload[PAYLOAD_HVAC_MODE],
+                    ATTR_HVAC_MODE: rendered_payload[PAYLOAD_HVAC_MODE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set HVAC mode '%s' on %s",
-                payload[PAYLOAD_HVAC_MODE],
+                rendered_payload[PAYLOAD_HVAC_MODE],
                 entity_id,
             )
 
         # Apply preset mode
-        if PAYLOAD_PRESET_MODE in payload:
+        if PAYLOAD_PRESET_MODE in rendered_payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_PRESET_MODE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_PRESET_MODE: payload[PAYLOAD_PRESET_MODE],
+                    ATTR_PRESET_MODE: rendered_payload[PAYLOAD_PRESET_MODE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set preset mode '%s' on %s",
-                payload[PAYLOAD_PRESET_MODE],
+                rendered_payload[PAYLOAD_PRESET_MODE],
                 entity_id,
             )
 
         # Apply fan mode
-        if PAYLOAD_FAN_MODE in payload:
+        if PAYLOAD_FAN_MODE in rendered_payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_FAN_MODE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_FAN_MODE: payload[PAYLOAD_FAN_MODE],
+                    ATTR_FAN_MODE: rendered_payload[PAYLOAD_FAN_MODE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set fan mode '%s' on %s",
-                payload[PAYLOAD_FAN_MODE],
+                rendered_payload[PAYLOAD_FAN_MODE],
                 entity_id,
             )
 
         # Apply swing mode
-        if PAYLOAD_SWING_MODE in payload:
+        if PAYLOAD_SWING_MODE in rendered_payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 SERVICE_SET_SWING_MODE,
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    ATTR_SWING_MODE: payload[PAYLOAD_SWING_MODE],
+                    ATTR_SWING_MODE: rendered_payload[PAYLOAD_SWING_MODE],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set swing mode '%s' on %s",
-                payload[PAYLOAD_SWING_MODE],
+                rendered_payload[PAYLOAD_SWING_MODE],
                 entity_id,
             )
 
         # Apply humidity
-        if PAYLOAD_HUMIDITY in payload:
+        if PAYLOAD_HUMIDITY in rendered_payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 "set_humidity",
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    "humidity": payload[PAYLOAD_HUMIDITY],
+                    "humidity": rendered_payload[PAYLOAD_HUMIDITY],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set humidity %s%% on %s",
-                payload[PAYLOAD_HUMIDITY],
+                rendered_payload[PAYLOAD_HUMIDITY],
                 entity_id,
             )
 
         # Apply auxiliary heat
-        if PAYLOAD_AUX_HEAT in payload:
+        if PAYLOAD_AUX_HEAT in rendered_payload:
             await self.hass.services.async_call(
                 CLIMATE_DOMAIN,
                 "set_aux_heat",
                 {
                     ATTR_ENTITY_ID: entity_id,
-                    "aux_heat": payload[PAYLOAD_AUX_HEAT],
+                    "aux_heat": rendered_payload[PAYLOAD_AUX_HEAT],
                 },
                 blocking=True,
             )
             _LOGGER.debug(
                 "Set auxiliary heat %s on %s",
-                "ON" if payload[PAYLOAD_AUX_HEAT] else "OFF",
+                "ON" if rendered_payload[PAYLOAD_AUX_HEAT] else "OFF",
                 entity_id,
             )
