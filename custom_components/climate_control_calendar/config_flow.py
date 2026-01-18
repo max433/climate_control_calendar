@@ -285,19 +285,32 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
     def __init__(self) -> None:
         """Initialize options flow."""
         # config_entry is now auto-set by HA (2025.12+ breaking change)
+        _LOGGER.debug("OptionsFlow.__init__() called - config_entry will be auto-set by HA")
         self._temp_data: dict[str, Any] = {}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Show main configuration menu."""
-        from .const import CONF_SLOTS, CONF_BINDINGS
+        _LOGGER.debug("OptionsFlow.async_step_init() called")
 
-        # Get current stats
-        calendar_entities = self.config_entry.data.get(CONF_CALENDAR_ENTITIES, [])
-        climate_entities = self.config_entry.options.get(CONF_CLIMATE_ENTITIES, [])
-        slots = self.config_entry.options.get(CONF_SLOTS, [])
-        bindings = self.config_entry.options.get(CONF_BINDINGS, [])
+        try:
+            from .const import CONF_SLOTS, CONF_BINDINGS
+            _LOGGER.debug("Successfully imported CONF_SLOTS and CONF_BINDINGS")
+
+            # Get current stats
+            _LOGGER.debug("Accessing self.config_entry (should be auto-set by HA)")
+            calendar_entities = self.config_entry.data.get(CONF_CALENDAR_ENTITIES, [])
+            climate_entities = self.config_entry.options.get(CONF_CLIMATE_ENTITIES, [])
+            slots = self.config_entry.options.get(CONF_SLOTS, [])
+            bindings = self.config_entry.options.get(CONF_BINDINGS, [])
+            _LOGGER.debug("Successfully accessed config_entry data and options")
+        except AttributeError as err:
+            _LOGGER.error("AttributeError in async_step_init: %s - config_entry may not be set", err, exc_info=True)
+            raise
+        except Exception as err:
+            _LOGGER.error("Unexpected error in async_step_init: %s", err, exc_info=True)
+            raise
 
         return self.async_show_menu(
             step_id="init",
