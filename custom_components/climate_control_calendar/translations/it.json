@@ -40,6 +40,10 @@
       "slot_not_found": "Slot non trovato",
       "binding_not_found": "Binding non trovato",
       "invalid_pattern": "Pattern di match non valido",
+      "required": "Questo campo è obbligatorio",
+      "above_or_below_required": "Almeno uno tra 'above' o 'below' deve essere specificato",
+      "invalid_time_format": "L'orario deve essere nel formato HH:MM (es. 08:00)",
+      "invalid_template": "Il template deve contenere i marcatori {{ }}",
       "unknown": "Errore imprevisto"
     },
     "abort": {
@@ -265,6 +269,77 @@
         "description": "**Configurazione Calendari Attuale:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
         "data": {
           "yaml_content": "Configurazione YAML Calendari"
+        }
+      },
+      "binding_conditions_choice": {
+        "title": "Aggiungi Condizioni (Opzionale)",
+        "description": "**Le Condizioni** permettono l'attivazione smart del binding basata su sensori, orari o logica personalizzata.\n\n**Stato Attuale:** {condition_count} condizione/i configurata/e.\n\nLe condizioni vengono valutate ogni 60 secondi. Tutte le condizioni devono essere soddisfatte (logica AND) perché il binding si attivi.\n\n**Casi d'uso:**\n• Attiva riscaldamento solo se temp esterna < 15°C\n• Abilita slot solo quando le finestre sono chiuse\n• Attivazione basata su orario (ore lavorative, giorni della settimana)\n• Logica complessa via template\n\n**Limite GUI:** Fino a 5 condizioni. Per scenari più complessi, usa l'editor YAML.",
+        "data": {
+          "add_conditions": "Configurare Condizioni?"
+        }
+      },
+      "select_condition_type": {
+        "title": "Seleziona Tipo Condizione",
+        "description": "Scegli il tipo di condizione da aggiungere.\n\n**Tipi Disponibili:**\n\n• **State**: Verifica se un'entità ha uno stato specifico (es. finestra = 'off')\n• **Numeric State**: Confronta valori numerici di sensori (es. temp < 15)\n• **Time**: Filtri su range orario e giorni della settimana (es. 08:00-18:00, Lun-Ven)\n• **Template**: Logica Jinja2 personalizzata per condizioni complesse",
+        "data": {
+          "condition_type": "Tipo Condizione"
+        }
+      },
+      "configure_state_condition": {
+        "title": "Configura Condizione State",
+        "description": "Verifica se un'entità ha uno stato specifico.\n\n**Esempi:**\n• Finestra chiusa: entity = binary_sensor.window, state = 'off'\n• Presenza rilevata: entity = binary_sensor.motion, state = 'on'\n• Modalità attiva: entity = input_boolean.vacation_mode, state = 'off'",
+        "data": {
+          "entity_id": "Entità",
+          "state": "Stato Richiesto"
+        },
+        "data_description": {
+          "entity_id": "Entità da verificare (qualsiasi dominio)",
+          "state": "Valore stato atteso (es. 'on', 'off', 'home')"
+        }
+      },
+      "configure_numeric_state_condition": {
+        "title": "Configura Condizione Numeric State",
+        "description": "Confronta il valore numerico di un'entità con soglie.\n\n**Esempi:**\n• Temp esterna < 15°C: entity = sensor.outdoor_temp, below = 15\n• Batteria scarica: entity = sensor.battery, below = 20\n• Range umidità: entity = sensor.humidity, above = 30, below = 70\n\n**Nota:** È richiesto almeno uno tra 'above' o 'below'.",
+        "data": {
+          "entity_id": "Entità Sensore",
+          "above": "Superiore a (opzionale)",
+          "below": "Inferiore a (opzionale)"
+        },
+        "data_description": {
+          "entity_id": "Sensore numerico da verificare",
+          "above": "Il valore deve essere maggiore di questo (lascia vuoto se non necessario)",
+          "below": "Il valore deve essere minore di questo (lascia vuoto se non necessario)"
+        }
+      },
+      "configure_time_condition": {
+        "title": "Configura Condizione Time",
+        "description": "Attiva solo durante specifici range orari e/o giorni della settimana.\n\n**Esempi:**\n• Ore lavorative: after = 08:00, before = 18:00, weekday = [mon, tue, wed, thu, fri]\n• Solo notte: after = 22:00, before = 07:00\n• Weekend: weekday = [sat, sun]\n\n**Formato Orario:** HH:MM (formato 24 ore)",
+        "data": {
+          "after": "Dopo (HH:MM, opzionale)",
+          "before": "Prima (HH:MM, opzionale)",
+          "weekday": "Giorni della Settimana (opzionale)"
+        },
+        "data_description": {
+          "after": "Orario inizio (es. 08:00)",
+          "before": "Orario fine (es. 18:00)",
+          "weekday": "Attivo solo in questi giorni della settimana"
+        }
+      },
+      "configure_template_condition": {
+        "title": "Configura Condizione Template",
+        "description": "Usa template Jinja2 per logica personalizzata complessa.\n\n**Esempi:**\n\n**Sensori multipli:**\n```\n{{ states('sensor.outdoor_temp')|float < 15 and\n   states('binary_sensor.window')|string == 'off' }}\n```\n\n**Delta temperatura:**\n```\n{{ (states('sensor.indoor_temp')|float - states('sensor.outdoor_temp')|float) < 5 }}\n```\n\n**Conteggio entità:**\n```\n{{ states.binary_sensor\n   | selectattr('state', 'eq', 'on')\n   | selectattr('entity_id', 'search', 'window')\n   | list | count == 0 }}\n```\n\n**Il template deve restituire True/False**",
+        "data": {
+          "value_template": "Template Jinja2"
+        },
+        "data_description": {
+          "value_template": "Template che restituisce True/False"
+        }
+      },
+      "conditions_summary": {
+        "title": "Riepilogo Condizioni",
+        "description": "**Condizioni Configurate ({condition_count}):**\n\n{summary}\n\n**Promemoria:** Tutte le condizioni devono essere soddisfatte (logica AND) perché il binding si attivi.\n\n**Prossimi Passi:**\n• Aggiungi altre condizioni (fino a 5 via GUI)\n• Rimuovi ultima condizione se necessario\n• Salva binding con condizioni attuali\n• Usa editor YAML per >5 condizioni",
+        "data": {
+          "action": "Cosa vuoi fare?"
         }
       }
     }

@@ -913,7 +913,7 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     source = f"binding_{calendars}_{match_type}:{match_value}_{slot_id}"
                     binding_id = hashlib.sha256(source.encode()).hexdigest()[:12]
 
-                    # Create binding
+                    # Create binding (without conditions yet)
                     new_binding = {
                         "id": binding_id,
                         "calendars": calendars,
@@ -923,13 +923,12 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                         "target_entities": target_entities if target_entities else None,
                     }
 
-                    # Add to bindings
-                    new_options = {**self.config_entry.options}
-                    bindings = new_options.get(CONF_BINDINGS, [])
-                    bindings.append(new_binding)
-                    new_options[CONF_BINDINGS] = bindings
+                    # Save to temp data and redirect to conditions wizard
+                    self._temp_data["temp_binding"] = new_binding
+                    self._temp_data["temp_conditions"] = []
+                    self._temp_data["is_editing_binding"] = False  # Adding new binding
 
-                    return self.async_create_entry(title="", data=new_options)
+                    return await self.async_step_binding_conditions_choice()
 
         # Get available slots and calendars
         slots = self.config_entry.options.get(CONF_SLOTS, [])
@@ -1043,17 +1042,20 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                     errors["match_value"] = "invalid_pattern"
                     _LOGGER.error("Match config validation failed: %s", error_msg)
                 else:
-                    # Update binding
+                    # Update binding basic fields
                     binding["calendars"] = calendars
                     binding["match"] = match_config
                     binding["slot_id"] = slot_id
                     binding["priority"] = priority if priority is not None else None
                     binding["target_entities"] = target_entities if target_entities else None
 
-                    # Save
-                    new_options = {**self.config_entry.options}
-                    new_options[CONF_BINDINGS] = bindings
-                    return self.async_create_entry(title="", data=new_options)
+                    # Save to temp data and redirect to conditions wizard
+                    self._temp_data["temp_binding"] = binding
+                    self._temp_data["temp_conditions"] = binding.get("conditions", []).copy()
+                    self._temp_data["is_editing_binding"] = True  # Editing existing binding
+                    self._temp_data["original_bindings"] = bindings
+
+                    return await self.async_step_binding_conditions_choice()
 
         # Get available slots and calendars
         slots = self.config_entry.options.get(CONF_SLOTS, [])
@@ -1366,3 +1368,420 @@ class ClimateControlCalendarOptionsFlow(config_entries.OptionsFlow):
                 "current_yaml": current_yaml,
             },
         )
+
+    # ============================================================================
+    # Conditions Wizard Steps (for add/edit binding)
+    # ============================================================================
+
+    async def async_step_binding_conditions_choice(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Ask if user wants to add/edit conditions to the binding."""
+        from .const import CONF_BINDINGS
+
+        if user_input is not None:
+            choice = user_input.get("add_conditions")
+
+            if choice == "yes":
+                # User wants to add/edit conditions
+                return await self.async_step_select_condition_type()
+            elif choice == "no":
+                # User doesn't want conditions, save binding as-is
+                return await self._save_binding_with_conditions()
+            elif choice == "yaml":
+                # Redirect to YAML editor for advanced configuration
+                return await self.async_step_edit_bindings_yaml()
+
+        # Show choice form
+        temp_conditions = self._temp_data.get("temp_conditions", [])
+        condition_count = len(temp_conditions)
+
+        # Build description based on current state
+        if condition_count == 0:
+            description_key = "no_conditions"
+        else:
+            description_key = "has_conditions"
+
+        schema = vol.Schema(
+            {
+                vol.Required("add_conditions", default="no"): vol.In({
+                    "yes": "Yes, add/edit conditions",
+                    "no": "No, save without conditions" if condition_count == 0 else f"No, save with {condition_count} condition(s)",
+                    "yaml": "Use YAML editor for advanced configuration",
+                }),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="binding_conditions_choice",
+            data_schema=schema,
+            description_placeholders={
+                "condition_count": str(condition_count),
+                "description_key": description_key,
+            },
+        )
+
+    async def async_step_select_condition_type(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Select the type of condition to add."""
+        if user_input is not None:
+            condition_type = user_input.get("condition_type")
+
+            # Save selected type and redirect to appropriate configuration step
+            self._temp_data["current_condition_type"] = condition_type
+
+            if condition_type == "state":
+                return await self.async_step_configure_state_condition()
+            elif condition_type == "numeric_state":
+                return await self.async_step_configure_numeric_state_condition()
+            elif condition_type == "time":
+                return await self.async_step_configure_time_condition()
+            elif condition_type == "template":
+                return await self.async_step_configure_template_condition()
+
+        # Show condition type selection
+        schema = vol.Schema(
+            {
+                vol.Required("condition_type"): vol.In({
+                    "state": "State - Check entity state (e.g., window closed)",
+                    "numeric_state": "Numeric State - Compare numeric values (e.g., temp < 15°C)",
+                    "time": "Time - Time range and weekday filters",
+                    "template": "Template - Custom Jinja2 logic",
+                }),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="select_condition_type",
+            data_schema=schema,
+        )
+
+    async def async_step_configure_state_condition(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a state condition."""
+        errors = {}
+
+        if user_input is not None:
+            entity_id = user_input.get("entity_id")
+            state = user_input.get("state", "").strip()
+
+            if not entity_id:
+                errors["entity_id"] = "required"
+            elif not state:
+                errors["state"] = "required"
+            else:
+                # Create condition
+                condition = {
+                    "type": "state",
+                    "entity_id": entity_id,
+                    "state": state,
+                }
+
+                # Add to temp conditions
+                temp_conditions = self._temp_data.get("temp_conditions", [])
+                temp_conditions.append(condition)
+                self._temp_data["temp_conditions"] = temp_conditions
+
+                # Redirect to summary
+                return await self.async_step_conditions_summary()
+
+        # Show configuration form
+        schema = vol.Schema(
+            {
+                vol.Required("entity_id"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(multiple=False)
+                ),
+                vol.Required("state"): cv.string,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="configure_state_condition",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_configure_numeric_state_condition(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a numeric_state condition."""
+        errors = {}
+
+        if user_input is not None:
+            entity_id = user_input.get("entity_id")
+            above = user_input.get("above")
+            below = user_input.get("below")
+
+            if not entity_id:
+                errors["entity_id"] = "required"
+            elif above is None and below is None:
+                errors["base"] = "above_or_below_required"
+            else:
+                # Create condition
+                condition = {
+                    "type": "numeric_state",
+                    "entity_id": entity_id,
+                }
+
+                if above is not None:
+                    condition["above"] = above
+                if below is not None:
+                    condition["below"] = below
+
+                # Add to temp conditions
+                temp_conditions = self._temp_data.get("temp_conditions", [])
+                temp_conditions.append(condition)
+                self._temp_data["temp_conditions"] = temp_conditions
+
+                # Redirect to summary
+                return await self.async_step_conditions_summary()
+
+        # Show configuration form
+        schema = vol.Schema(
+            {
+                vol.Required("entity_id"): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "input_number", "number"],
+                        multiple=False,
+                    )
+                ),
+                vol.Optional("above"): vol.Coerce(float),
+                vol.Optional("below"): vol.Coerce(float),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="configure_numeric_state_condition",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_configure_time_condition(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a time condition."""
+        errors = {}
+
+        if user_input is not None:
+            after = user_input.get("after", "").strip()
+            before = user_input.get("before", "").strip()
+            weekday = user_input.get("weekday", [])
+
+            # Validate time format (HH:MM)
+            import re
+            time_pattern = re.compile(r"^([01]?[0-9]|2[0-3]):[0-5][0-9]$")
+
+            if after and not time_pattern.match(after):
+                errors["after"] = "invalid_time_format"
+            if before and not time_pattern.match(before):
+                errors["before"] = "invalid_time_format"
+
+            if not errors:
+                # Create condition
+                condition = {
+                    "type": "time",
+                }
+
+                if after:
+                    condition["after"] = after
+                if before:
+                    condition["before"] = before
+                if weekday:
+                    condition["weekday"] = weekday
+
+                # Add to temp conditions
+                temp_conditions = self._temp_data.get("temp_conditions", [])
+                temp_conditions.append(condition)
+                self._temp_data["temp_conditions"] = temp_conditions
+
+                # Redirect to summary
+                return await self.async_step_conditions_summary()
+
+        # Show configuration form
+        schema = vol.Schema(
+            {
+                vol.Optional("after"): cv.string,
+                vol.Optional("before"): cv.string,
+                vol.Optional("weekday"): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["mon", "tue", "wed", "thu", "fri", "sat", "sun"],
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="configure_time_condition",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_configure_template_condition(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure a template condition."""
+        errors = {}
+
+        if user_input is not None:
+            value_template = user_input.get("value_template", "").strip()
+
+            if not value_template:
+                errors["value_template"] = "required"
+            elif "{{" not in value_template or "}}" not in value_template:
+                errors["value_template"] = "invalid_template"
+            else:
+                # Create condition
+                condition = {
+                    "type": "template",
+                    "value_template": value_template,
+                }
+
+                # Add to temp conditions
+                temp_conditions = self._temp_data.get("temp_conditions", [])
+                temp_conditions.append(condition)
+                self._temp_data["temp_conditions"] = temp_conditions
+
+                # Redirect to summary
+                return await self.async_step_conditions_summary()
+
+        # Show configuration form
+        schema = vol.Schema(
+            {
+                vol.Required("value_template"): selector.TextSelector(
+                    selector.TextSelectorConfig(
+                        multiline=True,
+                        type=selector.TextSelectorType.TEXT,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="configure_template_condition",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_conditions_summary(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Show summary of configured conditions and ask if user wants to add more."""
+        temp_conditions = self._temp_data.get("temp_conditions", [])
+        condition_count = len(temp_conditions)
+
+        if user_input is not None:
+            action = user_input.get("action")
+
+            if action == "add_more" and condition_count < 5:
+                # Add another condition
+                return await self.async_step_select_condition_type()
+            elif action == "remove_last" and condition_count > 0:
+                # Remove last condition
+                temp_conditions.pop()
+                self._temp_data["temp_conditions"] = temp_conditions
+                return await self.async_step_conditions_summary()
+            elif action == "save":
+                # Save binding with conditions
+                return await self._save_binding_with_conditions()
+            elif action == "yaml":
+                # Too many conditions, suggest YAML editor
+                return await self.async_step_edit_bindings_yaml()
+
+        # Build summary text
+        summary_lines = []
+        for i, cond in enumerate(temp_conditions, 1):
+            cond_type = cond.get("type")
+            if cond_type == "state":
+                summary_lines.append(f"{i}. State: {cond.get('entity_id')} = '{cond.get('state')}'")
+            elif cond_type == "numeric_state":
+                entity = cond.get("entity_id")
+                parts = []
+                if "above" in cond:
+                    parts.append(f"> {cond['above']}")
+                if "below" in cond:
+                    parts.append(f"< {cond['below']}")
+                summary_lines.append(f"{i}. Numeric: {entity} {' and '.join(parts)}")
+            elif cond_type == "time":
+                parts = []
+                if "after" in cond:
+                    parts.append(f"after {cond['after']}")
+                if "before" in cond:
+                    parts.append(f"before {cond['before']}")
+                if "weekday" in cond:
+                    parts.append(f"weekdays: {', '.join(cond['weekday'])}")
+                summary_lines.append(f"{i}. Time: {', '.join(parts)}")
+            elif cond_type == "template":
+                template_preview = cond.get("value_template", "")[:50]
+                summary_lines.append(f"{i}. Template: {template_preview}...")
+
+        summary = "\n".join(summary_lines) if summary_lines else "No conditions yet"
+
+        # Build action options based on condition count
+        action_options = {}
+
+        if condition_count < 5:
+            action_options["add_more"] = f"Add another condition ({condition_count}/5)"
+        else:
+            action_options["yaml"] = "Too many conditions - use YAML editor"
+
+        if condition_count > 0:
+            action_options["remove_last"] = "Remove last condition"
+            action_options["save"] = f"Save binding with {condition_count} condition(s)"
+        else:
+            action_options["save"] = "Save binding without conditions"
+
+        schema = vol.Schema(
+            {
+                vol.Required("action"): vol.In(action_options),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="conditions_summary",
+            data_schema=schema,
+            description_placeholders={
+                "summary": summary,
+                "condition_count": str(condition_count),
+            },
+        )
+
+    async def _save_binding_with_conditions(self) -> FlowResult:
+        """Save the binding with configured conditions."""
+        from .const import CONF_BINDINGS
+
+        temp_binding = self._temp_data.get("temp_binding")
+        temp_conditions = self._temp_data.get("temp_conditions", [])
+        is_editing = self._temp_data.get("is_editing_binding", False)
+
+        if not temp_binding:
+            return self.async_abort(reason="binding_not_found")
+
+        # Add conditions to binding (only if there are any)
+        if temp_conditions:
+            temp_binding["conditions"] = temp_conditions
+        else:
+            # Remove conditions key if no conditions (keep binding clean)
+            temp_binding.pop("conditions", None)
+
+        # Save binding
+        new_options = {**self.config_entry.options}
+
+        if is_editing:
+            # Editing existing binding - temp_binding is a reference to the binding in the list
+            # No need to re-add it, just use the updated bindings list
+            original_bindings = self._temp_data.get("original_bindings", [])
+            new_options[CONF_BINDINGS] = original_bindings
+        else:
+            # Adding new binding
+            bindings = new_options.get(CONF_BINDINGS, [])
+            bindings.append(temp_binding)
+            new_options[CONF_BINDINGS] = bindings
+
+        # Clear temp data
+        self._temp_data.clear()
+
+        return self.async_create_entry(title="", data=new_options)

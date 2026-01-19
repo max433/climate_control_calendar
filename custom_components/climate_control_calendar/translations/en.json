@@ -36,6 +36,10 @@
       "slot_not_found": "Slot not found",
       "binding_not_found": "Binding not found",
       "invalid_pattern": "Invalid match pattern",
+      "required": "This field is required",
+      "above_or_below_required": "At least one of 'above' or 'below' must be specified",
+      "invalid_time_format": "Time must be in HH:MM format (e.g., 08:00)",
+      "invalid_template": "Template must contain {{ }} markers",
       "unknown": "Unexpected error occurred"
     },
     "abort": {
@@ -247,6 +251,77 @@
         "description": "**Current Calendar Configs:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
         "data": {
           "yaml_content": "Calendar Configs YAML Configuration"
+        }
+      },
+      "binding_conditions_choice": {
+        "title": "Add Conditions (Optional)",
+        "description": "**Conditions** allow smart binding activation based on sensors, time, or custom logic.\n\n**Current Status:** {condition_count} condition(s) configured.\n\nConditions are evaluated every 60 seconds. All conditions must pass (AND logic) for the binding to activate.\n\n**Use Cases:**\n• Activate heating only if outdoor temp < 15°C\n• Enable slot only when windows are closed\n• Time-based activation (work hours, weekdays)\n• Complex sensor logic via templates\n\n**GUI Limit:** Up to 5 conditions. For more complex scenarios, use YAML editor.",
+        "data": {
+          "add_conditions": "Configure Conditions?"
+        }
+      },
+      "select_condition_type": {
+        "title": "Select Condition Type",
+        "description": "Choose the type of condition to add.\n\n**Available Types:**\n\n• **State**: Check if an entity has a specific state (e.g., window = 'off')\n• **Numeric State**: Compare numeric sensor values (e.g., temp < 15)\n• **Time**: Time range and weekday filters (e.g., 08:00-18:00, Mon-Fri)\n• **Template**: Custom Jinja2 logic for complex conditions",
+        "data": {
+          "condition_type": "Condition Type"
+        }
+      },
+      "configure_state_condition": {
+        "title": "Configure State Condition",
+        "description": "Check if an entity has a specific state.\n\n**Examples:**\n• Window closed: entity = binary_sensor.window, state = 'off'\n• Presence detected: entity = binary_sensor.motion, state = 'on'\n• Mode active: entity = input_boolean.vacation_mode, state = 'off'",
+        "data": {
+          "entity_id": "Entity",
+          "state": "Required State"
+        },
+        "data_description": {
+          "entity_id": "Entity to check (any domain)",
+          "state": "Expected state value (e.g., 'on', 'off', 'home')"
+        }
+      },
+      "configure_numeric_state_condition": {
+        "title": "Configure Numeric State Condition",
+        "description": "Compare a numeric entity value with thresholds.\n\n**Examples:**\n• Outdoor temp < 15°C: entity = sensor.outdoor_temp, below = 15\n• Battery low: entity = sensor.battery, below = 20\n• Humidity range: entity = sensor.humidity, above = 30, below = 70\n\n**Note:** At least one of 'above' or 'below' is required.",
+        "data": {
+          "entity_id": "Sensor Entity",
+          "above": "Above (optional)",
+          "below": "Below (optional)"
+        },
+        "data_description": {
+          "entity_id": "Numeric sensor to check",
+          "above": "Value must be greater than this (leave empty if not needed)",
+          "below": "Value must be less than this (leave empty if not needed)"
+        }
+      },
+      "configure_time_condition": {
+        "title": "Configure Time Condition",
+        "description": "Activate only during specific time ranges and/or weekdays.\n\n**Examples:**\n• Work hours: after = 08:00, before = 18:00, weekday = [mon, tue, wed, thu, fri]\n• Night only: after = 22:00, before = 07:00\n• Weekends: weekday = [sat, sun]\n\n**Time Format:** HH:MM (24-hour format)",
+        "data": {
+          "after": "After (HH:MM, optional)",
+          "before": "Before (HH:MM, optional)",
+          "weekday": "Weekdays (optional)"
+        },
+        "data_description": {
+          "after": "Start time (e.g., 08:00)",
+          "before": "End time (e.g., 18:00)",
+          "weekday": "Active on these weekdays only"
+        }
+      },
+      "configure_template_condition": {
+        "title": "Configure Template Condition",
+        "description": "Use Jinja2 templates for complex custom logic.\n\n**Examples:**\n\n**Multiple sensors:**\n```\n{{ states('sensor.outdoor_temp')|float < 15 and\n   states('binary_sensor.window')|string == 'off' }}\n```\n\n**Delta temperature:**\n```\n{{ (states('sensor.indoor_temp')|float - states('sensor.outdoor_temp')|float) < 5 }}\n```\n\n**Counting entities:**\n```\n{{ states.binary_sensor\n   | selectattr('state', 'eq', 'on')\n   | selectattr('entity_id', 'search', 'window')\n   | list | count == 0 }}\n```\n\n**Template must return True/False**",
+        "data": {
+          "value_template": "Jinja2 Template"
+        },
+        "data_description": {
+          "value_template": "Template that evaluates to True/False"
+        }
+      },
+      "conditions_summary": {
+        "title": "Conditions Summary",
+        "description": "**Configured Conditions ({condition_count}):**\n\n{summary}\n\n**Reminder:** All conditions must pass (AND logic) for binding to activate.\n\n**Next Steps:**\n• Add more conditions (up to 5 via GUI)\n• Remove last condition if needed\n• Save binding with current conditions\n• Use YAML editor for >5 conditions",
+        "data": {
+          "action": "What do you want to do?"
         }
       }
     }
