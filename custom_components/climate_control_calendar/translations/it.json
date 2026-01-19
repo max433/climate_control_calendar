@@ -255,7 +255,7 @@
       },
       "edit_bindings_yaml": {
         "title": "Modifica Binding (YAML)",
-        "description": "**Configurazione Binding Attuale:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "description": "**Configurazione Binding Attuale:**\n\n```yaml\n{current_yaml}\n```\n\n**Istruzioni:**\n1. Copia il YAML sopra\n2. Modifica con attenzione (mantieni la struttura)\n3. Incolla e invia\n4. La validazione verrà eseguita prima del salvataggio\n\n**Supporto Condizioni** (Opzionale):\nAggiungi il campo `conditions` ai binding per attivazione intelligente. Tutte le condizioni devono passare (logica AND).\n\n**Tipi Supportati:**\n• `state`: Verifica stato entità\n• `numeric_state`: Confronto numerico (above/below)\n• `time`: Fascia oraria e giorni settimana\n• `template`: Logica personalizzata Jinja2\n\n**Esempio con Condizioni:**\n```yaml\n- id: binding123\n  calendars: '*'\n  match:\n    type: summary_contains\n    value: WFH\n  conditions:\n    - type: numeric_state\n      entity_id: sensor.external_temp\n      below: 15\n    - type: state\n      entity_id: binary_sensor.window\n      state: 'off'\n    - type: time\n      after: '08:00'\n      before: '18:00'\n      weekday: [mon, tue, wed, thu, fri]\n  slot_id: comfort_slot\n  priority: 10\n```\n\n**Nota**: Errori di sintassi impediranno il salvataggio.",
         "data": {
           "yaml_content": "Configurazione YAML Binding"
         }

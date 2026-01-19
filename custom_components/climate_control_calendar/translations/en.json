@@ -237,7 +237,7 @@
       },
       "edit_bindings_yaml": {
         "title": "Edit Bindings (YAML)",
-        "description": "**Current Bindings Configuration:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Note**: Syntax errors will prevent saving.",
+        "description": "**Current Bindings Configuration:**\n\n```yaml\n{current_yaml}\n```\n\n**Instructions:**\n1. Copy the YAML above\n2. Edit carefully (maintain structure)\n3. Paste back and submit\n4. Validation will run before saving\n\n**Conditions Support** (Optional):\nAdd `conditions` field to bindings for smart activation. All conditions must pass (AND logic).\n\n**Supported Types:**\n• `state`: Check entity state\n• `numeric_state`: Numeric comparison (above/below)\n• `time`: Time range and weekday\n• `template`: Custom Jinja2 logic\n\n**Example with Conditions:**\n```yaml\n- id: binding123\n  calendars: '*'\n  match:\n    type: summary_contains\n    value: WFH\n  conditions:\n    - type: numeric_state\n      entity_id: sensor.external_temp\n      below: 15\n    - type: state\n      entity_id: binary_sensor.window\n      state: 'off'\n    - type: time\n      after: '08:00'\n      before: '18:00'\n      weekday: [mon, tue, wed, thu, fri]\n  slot_id: comfort_slot\n  priority: 10\n```\n\n**Note**: Syntax errors will prevent saving.",
         "data": {
           "yaml_content": "Bindings YAML Configuration"
         }
