@@ -291,29 +291,99 @@ data:
 
 ---
 
-## 🛠️ Development Status
+## 🧠 Decision Engine
 
-**✅ Milestone 1** (Foundation) - Completed:
-- Integration structure with config flow
-- Calendar monitoring with DataUpdateCoordinator
-- Base infrastructure and helpers
+Climate Control Calendar uses an intelligent decision engine that evaluates calendar events, conditions, and templates to determine the optimal climate settings.
 
-**✅ Milestone 2** (Slot Engine) - Completed:
-- Slot resolution engine with overnight support
-- Event emission system (8 event types)
-- Dry run mode with comprehensive logging
+### Resolution Flow
 
-**✅ Milestone 3** (Device Control) - Completed:
-- Sequential climate payload application
-- Event-to-slot binding system
-- Multi-calendar support with priority resolution
-- Retry logic with error handling
+```
+1. 📅 Active Events Detection (every 60s)
+   ↓
+2. 🔗 Pattern Matching (bindings)
+   ↓
+3. ✅ Condition Evaluation (optional smart filters)
+   ↓
+4. ⚡ Priority Resolution (highest wins)
+   ↓
+5. 🎚️ Slot Activation (climate profile)
+   ↓
+6. 🌡️ Template Rendering (dynamic values)
+   ↓
+7. 🔄 Change Detection (apply only if different)
+   ↓
+8. 🎯 Entity Application (control devices)
+```
 
-**🔄 Milestone 4** (Polish & Release) - In Progress:
-- Italian translations ✅
-- Documentation (README, debugging guide, API reference)
-- Unit tests for critical paths
-- v1.0.0 release preparation
+### 🎨 Template Support
+
+**Make climate values dynamic with Jinja2 templates:**
+
+```yaml
+# Static value
+temperature: 21.5
+
+# Dynamic template
+temperature: "{{ states('input_number.target_temp') | float }}"
+
+# Complex logic
+temperature: "{{ states('sensor.outdoor_temp') | float + 2 }}"
+humidity: "{{ 60 if states('sensor.outdoor_humidity') | int > 70 else 50 }}"
+```
+
+**Supported fields:** temperature, target_temp_high, target_temp_low, humidity
+
+**Benefits:**
+- Adapt to outdoor temperature sensors
+- Use input helpers for user-adjustable targets
+- Calculate relative temperatures (outdoor + offset)
+- Smooth transitions based on conditions
+
+**Change Detection:** Templates are re-evaluated every 60 seconds. If the rendered value changes, settings are re-applied automatically.
+
+### 🎯 Condition Support
+
+**Add smart activation logic to bindings:**
+
+Conditions allow bindings to activate only when specific criteria are met. All conditions must pass (AND logic).
+
+**Example - Heating only if cold outside + window closed:**
+
+```yaml
+bindings:
+  - id: smart_heating
+    match:
+      type: summary_contains
+      value: "WFH"
+    conditions:
+      - type: numeric_state
+        entity_id: sensor.external_temp
+        below: 15
+      - type: state
+        entity_id: binary_sensor.window
+        state: 'off'
+    slot_id: comfort_slot
+    priority: 10
+```
+
+**Supported Condition Types:**
+
+| Type | Description | Example Use Case |
+|------|-------------|------------------|
+| `state` | Check entity state | Window closed, presence detected |
+| `numeric_state` | Numeric comparison (above/below) | Temperature thresholds, battery levels |
+| `time` | Time range + weekday filter | Work hours only, weekend schedules |
+| `template` | Custom Jinja2 logic | Complex multi-sensor conditions |
+
+**Behavior Notes:**
+- Conditions are evaluated every 60 seconds (same as template rendering)
+- When conditions become false, entities keep their last applied state
+- Use multiple bindings with different priorities to handle state transitions
+- Conditions can contain templates for dynamic threshold logic
+
+**Configuration:** Conditions are configured via YAML editor (GUI wizard planned for future release).
+
+---
 
 ## 📖 Documentation
 
@@ -342,4 +412,4 @@ For questions and support, please use [GitHub Discussions](https://github.com/ma
 
 ---
 
-**Note**: This integration is in early development. Features are being added incrementally following a milestone-based approach. Always test with **Dry Run Mode** enabled first!
+**Note**: Always test new configurations with **Dry Run Mode** enabled first!

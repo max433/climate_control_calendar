@@ -358,6 +358,562 @@ Result:
 
 ---
 
+## 🧠 Decision Engine: The Brain Behind Climate Control
+
+The Decision Engine is the intelligent core that transforms calendar events into climate actions. It evaluates events, conditions, and templates through a multi-step resolution process.
+
+### 📊 Resolution Flow
+
+```mermaid
+graph TD
+    A[⏰ Coordinator Tick<br/>Every 60s] --> B[📅 Fetch Active Events<br/>calendar.get_events]
+    B --> C{🔗 Pattern Matching<br/>Bindings Check}
+    C -->|Match Found| D{✅ Condition Evaluation<br/>All Must Pass}
+    C -->|No Match| END1[❌ Skip Event]
+    D -->|Conditions Pass| E[⚡ Priority Resolution<br/>Highest Wins]
+    D -->|Conditions Fail| END2[❌ Skip Binding]
+    E --> F[🎚️ Slot Activation<br/>Get Climate Profile]
+    F --> G[🌡️ Template Rendering<br/>Resolve Dynamic Values]
+    G --> H{🔄 Change Detection<br/>Different from Last?}
+    H -->|Changed| I[🎯 Apply to Entities<br/>climate.set_*]
+    H -->|Same| END3[✅ Skip Apply]
+    I --> END4[✅ Done]
+
+    style A fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    style E fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    style G fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    style I fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
+```
+
+### 🔍 Step-by-Step Breakdown
+
+#### Step 1: 📅 Active Events Detection
+
+**When:** Every 60 seconds (coordinator polling)
+
+**What:** Fetch events from all monitored calendars
+
+```python
+# Service call to calendar integration
+events = await hass.services.async_call(
+    "calendar",
+    "get_events",
+    {
+        "entity_id": "calendar.work",
+        "start_date_time": now - 1h,
+        "end_date_time": now + 24h,
+    }
+)
+```
+
+**Output:** List of active calendar events
+
+---
+
+#### Step 2: 🔗 Pattern Matching
+
+**What:** Each active event is tested against all bindings
+
+**Match Types:**
+
+| Type | Logic | Example |
+|------|-------|---------|
+| `summary` | Exact match | Event "WFH" matches binding pattern "WFH" |
+| `summary_contains` | Partial match | Event "WFH Tuesday" matches pattern "WFH" |
+| `regex` | Regex pattern | Event "smart_work_2024" matches `smart.*` |
+
+**Code:**
+```python
+for binding in bindings:
+    if binding["calendars"] != "*":
+        if event.calendar_id not in binding["calendars"]:
+            continue  # Skip - wrong calendar
+
+    match_type = binding["match"]["type"]
+    pattern = binding["match"]["value"]
+
+    if match_type == "summary" and event.summary == pattern:
+        matched_bindings.append(binding)
+    elif match_type == "summary_contains" and pattern in event.summary:
+        matched_bindings.append(binding)
+    elif match_type == "regex" and re.match(pattern, event.summary):
+        matched_bindings.append(binding)
+```
+
+**Output:** List of bindings that matched the event
+
+---
+
+#### Step 3: ✅ Condition Evaluation (NEW)
+
+**What:** Filter bindings based on smart conditions
+
+**When:** After pattern matching, before priority resolution
+
+**Logic:** ALL conditions must pass (AND logic)
+
+**Example:**
+```yaml
+conditions:
+  - type: numeric_state
+    entity_id: sensor.external_temp
+    below: 15                      # ✅ Pass if temp < 15°C
+  - type: state
+    entity_id: binary_sensor.window
+    state: 'off'                   # ✅ Pass if window closed
+  - type: time
+    after: '08:00'
+    before: '18:00'
+    weekday: [mon, tue, wed, thu, fri]  # ✅ Pass if work hours
+```
+
+**Supported Condition Types:**
+
+##### 🔵 State Condition
+Check if entity has specific state:
+```yaml
+- type: state
+  entity_id: binary_sensor.window_living
+  state: 'off'                    # Window must be closed
+```
+
+##### 🔵 Numeric State Condition
+Compare numeric entity values:
+```yaml
+- type: numeric_state
+  entity_id: sensor.outdoor_temp
+  below: 15                       # Outdoor temp < 15°C
+  above: 5                        # AND > 5°C (optional)
+```
+
+##### 🔵 Time Condition
+Time range and weekday filters:
+```yaml
+- type: time
+  after: '08:00'                  # After 8 AM
+  before: '18:00'                 # Before 6 PM
+  weekday: [mon, tue, wed, thu, fri]  # Weekdays only
+```
+
+##### 🔵 Template Condition
+Custom Jinja2 logic:
+```yaml
+- type: template
+  value_template: >
+    {{ states('sensor.outdoor_temp')|float < 15 and
+       states('binary_sensor.window')|string == 'off' }}
+```
+
+**Code:**
+```python
+async def check_conditions(hass, conditions):
+    if not conditions:
+        return True  # No conditions = always pass
+
+    for condition in conditions:
+        result = await condition.async_from_config(hass, condition)
+        if not result(hass):
+            return False  # One failed = binding skipped
+
+    return True  # All passed
+```
+
+**Behavior Notes:**
+- Conditions re-evaluated every 60 seconds (same as coordinator cycle)
+- If conditions become false, entity keeps last applied state
+- Use multiple bindings with priority to handle state transitions
+- Templates in conditions support dynamic threshold logic
+
+**Output:** List of bindings that passed conditions
+
+---
+
+#### Step 4: ⚡ Priority Resolution
+
+**What:** Handle conflicts when multiple bindings target same entities
+
+**Logic:** For each entity, the highest-priority binding wins
+
+**Example:**
+```yaml
+# Active bindings after pattern match + conditions
+Binding A: priority 5,  target: [climate.living, climate.studio]
+Binding B: priority 10, target: [climate.studio]
+Binding C: priority 7,  target: [climate.bedroom]
+
+# Resolution per entity:
+climate.living:  Binding A (priority 5, no conflict)
+climate.studio:  Binding B (priority 10, wins over A)
+climate.bedroom: Binding C (priority 7, no conflict)
+```
+
+**Code:**
+```python
+entity_to_binding = {}
+
+for entity_id in all_entities:
+    best_binding = None
+    best_priority = -1
+
+    for binding in condition_passed_bindings:
+        if entity_id in binding_target_entities(binding):
+            if binding["priority"] > best_priority:
+                best_binding = binding
+                best_priority = binding["priority"]
+
+    if best_binding:
+        entity_to_binding[entity_id] = best_binding
+```
+
+**Output:** Dictionary mapping each entity to winning binding
+
+---
+
+#### Step 5: 🎚️ Slot Activation
+
+**What:** Retrieve climate profile from winning binding's slot
+
+**Structure:**
+```yaml
+slot:
+  id: comfort_slot
+  label: "Comfort Mode"
+  default_climate_payload:
+    temperature: 21              # Static value
+    hvac_mode: heat
+    humidity: 60
+  entity_overrides:
+    climate.studio:
+      temperature: 23            # Studio warmer
+```
+
+**Output:** Slot configuration for each entity
+
+---
+
+#### Step 6: 🌡️ Template Rendering (NEW)
+
+**What:** Resolve dynamic template values in climate payloads
+
+**When:** After slot activation, before applying to entities
+
+**Supported Fields:**
+- `temperature`
+- `target_temp_high`
+- `target_temp_low`
+- `humidity`
+
+**Examples:**
+
+##### Static Value (No Template)
+```yaml
+temperature: 21.5
+# ↓ Rendering
+temperature: 21.5              # No change
+```
+
+##### Simple Template
+```yaml
+temperature: "{{ states('input_number.target_temp') | float }}"
+# ↓ Rendering (input_number.target_temp = 22.5)
+temperature: 22.5
+```
+
+##### Complex Template with Logic
+```yaml
+temperature: "{{ states('sensor.outdoor_temp') | float + 2 }}"
+# ↓ Rendering (sensor.outdoor_temp = 10)
+temperature: 12.0
+
+humidity: "{{ 60 if states('sensor.outdoor_humidity')|int > 70 else 50 }}"
+# ↓ Rendering (sensor.outdoor_humidity = 75)
+humidity: 60
+```
+
+##### Multi-Sensor Template
+```yaml
+temperature: >
+  {% set outdoor = states('sensor.outdoor_temp')|float %}
+  {% set delta = states('input_number.temp_offset')|float %}
+  {{ (outdoor + delta) | round(1) }}
+# ↓ Rendering (outdoor = 10, offset = 3)
+temperature: 13.0
+```
+
+**Code:**
+```python
+def render_climate_payload(hass, payload):
+    rendered = {}
+
+    for key, value in payload.items():
+        if is_template(value):  # Contains {{ }}
+            try:
+                template = Template(value, hass)
+                rendered_value = template.async_render()
+
+                # Convert to expected type
+                if key in ["temperature", "target_temp_high", "target_temp_low"]:
+                    rendered[key] = float(rendered_value)
+                elif key == "humidity":
+                    rendered[key] = int(rendered_value)
+                else:
+                    rendered[key] = rendered_value
+            except Exception as err:
+                _LOGGER.error(f"Template render failed for {key}: {err}")
+                rendered[key] = None
+        else:
+            rendered[key] = value  # Static value
+
+    return rendered
+```
+
+**Benefits:**
+- Adapt to outdoor temperature sensors
+- Use input helpers for user-adjustable targets
+- Calculate relative temperatures (outdoor + offset)
+- Dynamic humidity based on weather conditions
+- Smooth transitions without multiple bindings
+
+**Output:** Climate payload with all templates resolved to concrete values
+
+---
+
+#### Step 7: 🔄 Change Detection (Payload-Aware)
+
+**What:** Compare rendered payload with previous to avoid redundant applications
+
+**Why:** Reduce entity updates, cleaner history, less system load
+
+**Logic:**
+
+```python
+# Track previous rendered payloads (not just binding IDs)
+_previous_applied_payloads = {}
+
+for entity_id, slot in resolved_entities.items():
+    # Build current payload (default + overrides)
+    current_payload = slot["default_climate_payload"].copy()
+    if entity_id in slot["entity_overrides"]:
+        current_payload.update(slot["entity_overrides"][entity_id])
+
+    # Render templates in current payload
+    rendered_current = render_climate_payload(hass, current_payload)
+
+    # Compare with previous rendered payload
+    prev_rendered = _previous_applied_payloads.get(entity_id)
+
+    # Detect change
+    if prev_rendered != rendered_current:
+        # Apply to entity
+        await apply_climate_payload(entity_id, rendered_current)
+
+        # Update tracking
+        _previous_applied_payloads[entity_id] = rendered_current
+    else:
+        # No change - skip application
+        _LOGGER.debug(f"No change for {entity_id}, skipping")
+```
+
+**Example Scenario:**
+
+```yaml
+# First cycle (10:00:00)
+Template: "{{ states('sensor.outdoor_temp')|float + 2 }}"
+Rendered: 12.0 (outdoor = 10)
+Action: APPLY (first time)
+
+# Second cycle (10:01:00)
+Template: "{{ states('sensor.outdoor_temp')|float + 2 }}"
+Rendered: 12.0 (outdoor still 10)
+Action: SKIP (no change)
+
+# Third cycle (10:02:00)
+Template: "{{ states('sensor.outdoor_temp')|float + 2 }}"
+Rendered: 13.0 (outdoor changed to 11)
+Action: APPLY (value changed)
+```
+
+**Output:** Decision to apply or skip for each entity
+
+---
+
+#### Step 8: 🎯 Entity Application
+
+**What:** Apply climate settings to physical devices
+
+**Services Used:**
+
+```python
+# Single temperature target
+await hass.services.async_call(
+    "climate",
+    "set_temperature",
+    {
+        "entity_id": "climate.living",
+        "temperature": 21.5,
+        "hvac_mode": "heat",
+    }
+)
+
+# Temperature range (heat_cool mode)
+await hass.services.async_call(
+    "climate",
+    "set_temperature",
+    {
+        "entity_id": "climate.bedroom",
+        "target_temp_high": 25,
+        "target_temp_low": 22,
+        "hvac_mode": "heat_cool",
+    }
+)
+
+# Humidity
+await hass.services.async_call(
+    "climate",
+    "set_humidity",
+    {
+        "entity_id": "climate.studio",
+        "humidity": 60,
+    }
+)
+
+# Other settings
+await hass.services.async_call(
+    "climate",
+    "set_hvac_mode",
+    {"entity_id": "climate.living", "hvac_mode": "heat"}
+)
+```
+
+**Output:** Climate entities updated with new settings
+
+---
+
+### 🎯 Complete Example: Smart Heating with All Features
+
+**Scenario:** Activate heating only if outdoor temp < 15°C, window closed, work hours, with dynamic indoor target.
+
+**Configuration:**
+
+```yaml
+bindings:
+  - id: smart_wfh_heating
+    calendars: calendar.work
+    match:
+      type: summary_contains
+      value: "WFH"
+    conditions:
+      # Only if cold outside
+      - type: numeric_state
+        entity_id: sensor.outdoor_temp
+        below: 15
+      # Only if window closed
+      - type: state
+        entity_id: binary_sensor.window_living
+        state: 'off'
+      # Only during work hours
+      - type: time
+        after: '08:00'
+        before: '18:00'
+        weekday: [mon, tue, wed, thu, fri]
+    slot_id: dynamic_comfort
+    priority: 10
+
+slots:
+  - id: dynamic_comfort
+    label: "Dynamic Comfort"
+    default_climate_payload:
+      # Dynamic: outdoor temp + 5°C offset
+      temperature: "{{ states('sensor.outdoor_temp')|float + 5 }}"
+      hvac_mode: heat
+      # Dynamic: higher humidity if dry outside
+      humidity: "{{ 60 if states('sensor.outdoor_humidity')|int < 40 else 50 }}"
+    entity_overrides:
+      climate.studio:
+        # Studio: outdoor temp + 7°C (warmer for working)
+        temperature: "{{ states('sensor.outdoor_temp')|float + 7 }}"
+```
+
+**Execution Timeline:**
+
+```
+⏰ 08:00 - Calendar event "WFH Tuesday" starts
+  ↓
+📅 Event fetched: "WFH Tuesday" active
+  ↓
+🔗 Pattern match: "WFH" in "WFH Tuesday" ✅
+  ↓
+✅ Condition 1: outdoor_temp = 12°C (< 15) ✅
+✅ Condition 2: window = 'off' ✅
+✅ Condition 3: time = 08:00 (within 08:00-18:00) ✅
+✅ Condition 4: weekday = Tuesday (in mon-fri) ✅
+  ↓
+⚡ Priority resolution: binding priority 10 (no conflicts)
+  ↓
+🎚️ Slot activated: "Dynamic Comfort"
+  ↓
+🌡️ Template rendering:
+    climate.living:
+      temperature: "{{ 12 + 5 }}" → 17.0°C
+      humidity: "{{ 60 if 35 < 40 else 50 }}" → 60%
+    climate.studio:
+      temperature: "{{ 12 + 7 }}" → 19.0°C
+      humidity: 60%
+  ↓
+🔄 Change detection: First time → APPLY
+  ↓
+🎯 Entity application:
+    climate.living: 17°C, 60% humidity
+    climate.studio: 19°C, 60% humidity
+
+⏰ 10:00 - Outdoor temp rises to 14°C, humidity to 45%
+  ↓
+✅ All conditions still pass
+  ↓
+🌡️ Template re-render:
+    climate.living: 19.0°C (14+5), 50% humidity (45 not < 40)
+    climate.studio: 21.0°C (14+7), 50% humidity
+  ↓
+🔄 Change detection: Different from previous → APPLY
+  ↓
+🎯 Update entities with new values
+
+⏰ 12:00 - Window opened
+  ↓
+✅ Condition 2 FAILS: window = 'on' ❌
+  ↓
+❌ Binding skipped (conditions not met)
+  ↓
+🏠 Entities keep last applied state (21°C / 19°C)
+     (Use another binding with priority to revert, or wait for window close)
+
+⏰ 12:15 - Window closed again
+  ↓
+✅ All conditions pass again ✅
+  ↓
+🌡️ Templates re-render with current outdoor temp
+  ↓
+🔄 Change detection determines if values changed
+  ↓
+🎯 Apply if different from current state
+
+⏰ 18:00 - Event ends
+  ↓
+📅 No active events
+  ↓
+🏠 Entities remain in last state
+     (Configure default binding or off-hours slot if needed)
+```
+
+**Key Takeaways:**
+1. **Conditions filter when bindings activate** (not just pattern match)
+2. **Templates make values dynamic** (adapt to sensors)
+3. **Change detection prevents redundant updates** (only when values change)
+4. **Priority handles conflicts** (highest wins)
+5. **When conditions fail, state persists** (use multiple bindings for fallbacks)
+
+---
+
 ## 🔄 Event-Driven Architecture Benefits
 
 ### ✅ Change Detection
