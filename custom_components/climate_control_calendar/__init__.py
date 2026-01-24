@@ -183,7 +183,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     if len(hass.data[DOMAIN]) == 1:
         await async_setup_services(hass)
         # Register frontend panel - only on first entry
+        _LOGGER.warning("🎨 About to register panel - this should show in logs!")
         await async_register_panel(hass)
+        _LOGGER.warning("🎨 Panel registration call completed")
 
     _LOGGER.info(
         "Climate Control Calendar setup complete. "

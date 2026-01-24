@@ -17,13 +17,16 @@ async def async_register_panel(hass: HomeAssistant) -> None:
     This creates a custom panel accessible from the sidebar that displays
     the test HTML interface for the integration.
     """
+    # Use WARNING to ensure it shows up in logs
+    _LOGGER.warning("🚀 PANEL REGISTRATION STARTING - Climate Control Calendar")
+
     try:
         # Get the path to our www directory
         integration_path = Path(__file__).parent
         www_path = integration_path / "www"
 
-        _LOGGER.info(
-            "Registering Climate Control Calendar panel. WWW path: %s",
+        _LOGGER.warning(
+            "📁 Registering Climate Control Calendar panel. WWW path: %s",
             www_path
         )
 
@@ -36,9 +39,10 @@ async def async_register_panel(hass: HomeAssistant) -> None:
                 cache_headers=False,  # Disable caching for easier development
             )
         ])
-        _LOGGER.debug("Static path registered: /%s/static -> %s", DOMAIN, www_path)
+        _LOGGER.warning("✅ Static path registered: /%s/static -> %s", DOMAIN, www_path)
 
         # Step 2: Register the panel in the sidebar
+        _LOGGER.warning("📋 Calling async_register_built_in_panel...")
         async_register_built_in_panel(
             hass,
             component_name="custom",  # Use 'custom' for custom panels
@@ -57,8 +61,8 @@ async def async_register_panel(hass: HomeAssistant) -> None:
             require_admin=False,  # Allow non-admin users to see the panel
         )
 
-        _LOGGER.info(
-            "Climate Control Calendar panel registered successfully at /%s",
+        _LOGGER.warning(
+            "✅ Climate Control Calendar panel registered successfully at /%s",
             DOMAIN
         )
 
