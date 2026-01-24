@@ -148,7 +148,7 @@ class ClimatePanelCard extends HTMLElement {
         'climate_control_calendar',
         'get_config',
         {},
-        true  // return_response = true
+        { return_response: true }  // Request response from service
       );
 
       this.log('📦', 'Service response received', {
