@@ -33,6 +33,7 @@ from .events import EventEmitter
 from .applier import ClimatePayloadApplier
 from .binding_manager import BindingManager  # New import
 from .services import async_setup_services, async_unload_services
+from .panel import async_register_panel, async_unregister_panel
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -181,6 +182,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Register services - only on first entry
     if len(hass.data[DOMAIN]) == 1:
         await async_setup_services(hass)
+        # Register frontend panel - only on first entry
+        await async_register_panel(hass)
 
     _LOGGER.info(
         "Climate Control Calendar setup complete. "
@@ -224,6 +227,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         # Unload services if last entry
         if not hass.data[DOMAIN]:
             await async_unload_services(hass)
+            # Unregister panel if last entry
+            await async_unregister_panel(hass)
 
         _LOGGER.info("Climate Control Calendar unloaded successfully")
 
