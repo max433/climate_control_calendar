@@ -144,22 +144,28 @@ class ClimatePanelCard extends HTMLElement {
       // Call our custom service to get configuration
       this.log('🔍', 'Calling climate_control_calendar.get_config service...');
 
-      const response = await this.hass.callService(
-        'climate_control_calendar',
-        'get_config',
-        {},
-        { return_response: true }  // Request response from service
-      );
+      // Use WebSocket call_service with return_response
+      const response = await this.hass.callWS({
+        type: 'call_service',
+        domain: 'climate_control_calendar',
+        service: 'get_config',
+        service_data: {},
+        return_response: true
+      });
 
       this.log('📦', 'Service response received', {
         hasResponse: !!response,
-        responseType: typeof response
+        responseType: typeof response,
+        responseKeys: response ? Object.keys(response) : []
       });
 
+      // The response is nested in 'response' field
+      const data = response?.response || response;
+
       // Extract data from service response
-      this.slots = response?.slots || [];
-      this.bindings = response?.bindings || [];
-      this.calendars = response?.calendars || [];
+      this.slots = data?.slots || [];
+      this.bindings = data?.bindings || [];
+      this.calendars = data?.calendars || [];
 
       this.log('✅', 'Data extracted successfully', {
         slots: this.slots.length,
