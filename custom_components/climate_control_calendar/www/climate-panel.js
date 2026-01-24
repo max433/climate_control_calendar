@@ -11,35 +11,68 @@ class ClimatePanelCard extends HTMLElement {
     this.slots = [];
     this.bindings = [];
     this.calendars = [];
+    this.updateInterval = null;
   }
 
   // Called when element is connected to the page
   connectedCallback() {
-    console.log('🎨 Climate Control Panel - Initializing...');
+    console.log('🎨 Climate Control Panel - connectedCallback');
     this.render();
 
+    // Start update interval for time
+    this.updateInterval = setInterval(() => this.updateTime(), 1000);
+
     // Wait for hass object to be set
-    setTimeout(() => this.init(), 100);
+    setTimeout(() => {
+      console.log('⏰ Timeout check - hass:', this.hass ? 'EXISTS' : 'NULL');
+      this.init();
+    }, 500);
   }
 
-  // Called when hass object is set
+  disconnectedCallback() {
+    console.log('🎨 Climate Control Panel - disconnectedCallback');
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+    }
+  }
+
+  // Called when hass object is set by Home Assistant
   set panel(panel) {
+    console.log('🔧 set panel() called with:', panel);
     this._panel = panel;
-    this.hass = panel.hass;
-    console.log('✅ Panel hass object received:', this.hass ? 'OK' : 'MISSING');
-    this.init();
+    this.hass = panel?.hass;
+    console.log('✅ Panel hass object:', this.hass ? 'SET' : 'NULL');
+    if (this.hass) {
+      console.log('📋 Hass object keys:', Object.keys(this.hass).slice(0, 10));
+      this.init();
+    }
+  }
+
+  updateTime() {
+    const timeElement = this.shadowRoot.querySelector('.live-time');
+    if (timeElement) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      timeElement.textContent = timeStr;
+    }
   }
 
   async init() {
     if (!this.hass) {
-      console.warn('⚠️ Waiting for hass object...');
+      console.warn('⚠️ init() called but hass is null');
       return;
     }
 
     console.log('🚀 Initializing panel with hass connection');
+    console.log('🔍 Hass user:', this.hass.user);
+    console.log('🔍 Hass states count:', Object.keys(this.hass.states || {}).length);
 
     try {
-      // Fetch integration config entries
+      // Try to load data
       await this.loadIntegrationData();
 
       // Subscribe to state changes
@@ -55,50 +88,95 @@ class ClimatePanelCard extends HTMLElement {
     console.log('📥 Loading Climate Control Calendar data...');
 
     try {
-      // Get all config entries for our integration
+      // METHOD 1: Try config_entries API
+      console.log('🔍 Attempting config_entries/get...');
       const entries = await this.hass.callWS({
         type: 'config_entries/get',
-        domain: 'climate_control_calendar'
       });
 
-      console.log('📦 Config entries received:', entries);
+      console.log('📦 All config entries received:', entries?.length || 0);
 
-      if (entries && entries.length > 0) {
-        const entry = entries[0];
+      // Filter for our integration
+      const ourEntries = entries?.filter(e => e.domain === 'climate_control_calendar') || [];
+      console.log('📦 Our integration entries:', ourEntries.length);
 
-        // Extract data from options
+      if (ourEntries.length > 0) {
+        const entry = ourEntries[0];
+        console.log('✅ Found entry:', {
+          entry_id: entry.entry_id,
+          title: entry.title,
+          hasData: !!entry.data,
+          hasOptions: !!entry.options
+        });
+
+        // Extract data
         this.slots = entry.options?.slots || [];
         this.bindings = entry.options?.bindings || [];
         this.calendars = entry.data?.calendar_entities || [];
 
-        console.log('✅ Data loaded:', {
+        console.log('✅ Data extracted:', {
           slots: this.slots.length,
           bindings: this.bindings.length,
           calendars: this.calendars.length
         });
 
+        if (this.slots.length > 0) {
+          console.log('📊 Sample slot:', this.slots[0]);
+        }
+        if (this.bindings.length > 0) {
+          console.log('🔗 Sample binding:', this.bindings[0]);
+        }
+
         this.render();
       } else {
-        console.warn('⚠️ No config entries found');
+        console.warn('⚠️ No config entries found for climate_control_calendar');
+
+        // Try METHOD 2: Check states for any related entities
+        console.log('🔍 Checking hass.states for climate_control_calendar entities...');
+        const relatedStates = Object.keys(this.hass.states)
+          .filter(key => key.includes('climate_control'))
+          .map(key => ({ entity_id: key, state: this.hass.states[key] }));
+
+        console.log('📊 Related states:', relatedStates.length, relatedStates);
       }
 
     } catch (error) {
       console.error('❌ Failed to load data:', error);
+      console.error('❌ Error details:', {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   }
 
   subscribeToUpdates() {
-    // Subscribe to config entry updates
-    this.hass.connection.subscribeEvents((event) => {
-      console.log('🔄 Config entry updated, reloading data...');
-      this.loadIntegrationData();
-    }, 'config_entry_changed');
+    if (!this.hass?.connection) {
+      console.warn('⚠️ No connection available for subscriptions');
+      return;
+    }
+
+    try {
+      // Subscribe to config entry updates
+      this.hass.connection.subscribeEvents((event) => {
+        console.log('🔄 Config entry changed event:', event);
+        this.loadIntegrationData();
+      }, 'config_entry_changed');
+
+      console.log('✅ Subscribed to config_entry_changed events');
+    } catch (error) {
+      console.error('❌ Failed to subscribe:', error);
+    }
   }
 
   render() {
     const now = new Date();
-    const timeStr = now.toLocaleTimeString('it-IT');
+    const timeStr = now.toLocaleTimeString('it-IT', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -226,13 +304,15 @@ class ClimatePanelCard extends HTMLElement {
           opacity: 0.3;
         }
 
-        .error {
-          background: rgba(255, 68, 68, 0.2);
-          border: 1px solid rgba(255, 68, 68, 0.5);
-          color: #ff4444;
-          padding: 20px;
-          border-radius: 12px;
-          margin: 20px 0;
+        .debug-info {
+          background: rgba(0, 0, 0, 0.5);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          padding: 15px;
+          border-radius: 8px;
+          margin-top: 20px;
+          font-family: monospace;
+          font-size: 0.9em;
+          color: #aaa;
         }
 
         code {
@@ -246,12 +326,12 @@ class ClimatePanelCard extends HTMLElement {
 
       <div class="container">
         <h1>🌡️ Climate Control Calendar</h1>
-        <p class="subtitle">Web Interface - Connected to Home Assistant</p>
+        <p class="subtitle">Web Interface - ${this.hass ? 'Connected ✅' : 'Waiting for connection...'}</p>
 
         <div class="status-bar">
           <div class="status-badge">
             <div class="status-dot"></div>
-            <span>Live: ${timeStr}</span>
+            <span class="live-time">${timeStr}</span>
           </div>
           <div class="status-badge">
             📊 ${this.slots.length} Slots
@@ -267,6 +347,7 @@ class ClimatePanelCard extends HTMLElement {
         ${this.renderSlots()}
         ${this.renderBindings()}
         ${this.renderCalendars()}
+        ${this.renderDebugInfo()}
       </div>
     `;
   }
@@ -385,6 +466,19 @@ class ClimatePanelCard extends HTMLElement {
     `;
   }
 
+  renderDebugInfo() {
+    return `
+      <div class="card">
+        <h2>🐛 Debug Info</h2>
+        <div class="debug-info">
+          Hass object: ${this.hass ? '✅ Connected' : '❌ Not connected'}<br>
+          Console: Open browser console (F12) for detailed logs<br>
+          Data loaded: slots=${this.slots.length}, bindings=${this.bindings.length}, calendars=${this.calendars.length}
+        </div>
+      </div>
+    `;
+  }
+
   showError(message) {
     this.shadowRoot.innerHTML = `
       <style>
@@ -407,6 +501,7 @@ class ClimatePanelCard extends HTMLElement {
         <div class="error">
           <h1>⚠️ Error</h1>
           <p>${message}</p>
+          <p style="margin-top: 20px; color: #888;">Check browser console (F12) for details</p>
         </div>
       </div>
     `;
