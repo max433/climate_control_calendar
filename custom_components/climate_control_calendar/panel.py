@@ -50,12 +50,12 @@ async def async_register_panel(hass: HomeAssistant) -> None:
             sidebar_icon="mdi:thermometer-lines",  # Icon in sidebar
             frontend_url_path=DOMAIN,  # URL path: /climate_control_calendar
             config={
-                "name": "climate-control-panel",
+                "name": "climate-panel-card",  # Must match custom element name
                 "_panel_custom": {
-                    "name": "climate-control-panel",
+                    "name": "climate-panel-card",  # Custom element tag name
                     "embed_iframe": True,  # CRITICAL: Embed in iframe to avoid conflicts
                     "trust": False,  # Don't trust external content
-                    "js_url": f"/{DOMAIN}/static/test-panel.html",  # Path to our HTML file
+                    "js_url": f"/{DOMAIN}/static/climate-panel.js",  # Path to JS file
                 }
             },
             require_admin=False,  # Allow non-admin users to see the panel
