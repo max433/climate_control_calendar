@@ -13,6 +13,7 @@ class ClimatePanelCard extends HTMLElement {
     this.bindings = [];
     this.calendars = [];
     this.climate_entities = [];
+    this.calendar_configs = {};
     this.dry_run = true;
     this.debug_mode = false;
     this.updateInterval = null;
@@ -204,6 +205,7 @@ class ClimatePanelCard extends HTMLElement {
       this.bindings = data?.bindings || [];
       this.calendars = data?.calendars || [];
       this.climate_entities = data?.climate_entities || [];
+      this.calendar_configs = data?.calendar_configs || {};
       this.dry_run = data?.dry_run ?? true;
       this.debug_mode = data?.debug_mode ?? false;
 
@@ -551,6 +553,9 @@ class ClimatePanelCard extends HTMLElement {
       switch (action) {
         case 'edit-basic-config':
           await this.editBasicConfig();
+          break;
+        case 'edit-calendar':
+          await this.editCalendar(id);
           break;
         case 'add-slot':
           await this.addSlot();
@@ -947,6 +952,170 @@ class ClimatePanelCard extends HTMLElement {
     `;
   }
 
+  async editCalendar(calendarId) {
+    this.log('✏️', `Edit calendar: ${calendarId}`);
+
+    // Get current config for this calendar
+    const currentConfig = this.calendar_configs[calendarId] || {
+      enabled: true,
+      default_priority: 0,
+      description: '',
+    };
+
+    // Count bindings using this calendar
+    const bindingCount = this.bindings.filter(b =>
+      b.calendars === '*' || (Array.isArray(b.calendars) && b.calendars.includes(calendarId)) || b.calendars === calendarId
+    ).length;
+
+    // Create a modal dialog
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 500px;
+        width: 90%;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      ">
+        <h2 style="margin-top: 0; color: #00d4ff;">📅 Edit Calendar</h2>
+        <p style="color: #888; margin-bottom: 20px;">${calendarId}</p>
+
+        <div style="margin: 20px 0;">
+          <label style="display: block; margin-bottom: 15px;">
+            <input type="checkbox" id="enabled" ${currentConfig.enabled ? 'checked' : ''}>
+            <strong>Enable this calendar</strong>
+            <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+              When disabled, events from this calendar will be ignored
+            </div>
+          </label>
+
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>Default Priority (0-100)</strong>
+            <input type="number" id="priority" min="0" max="100" value="${currentConfig.default_priority || 0}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+              Higher priority calendars take precedence in conflicts
+            </div>
+          </label>
+
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>Description (optional)</strong>
+            <textarea id="description" rows="3"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            >${currentConfig.description || ''}</textarea>
+            <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+              A note to help you remember what this calendar is for
+            </div>
+          </label>
+
+          <div style="background: rgba(0,212,255,0.1); padding: 10px; border-radius: 8px; border-left: 3px solid #00d4ff;">
+            <strong>📊 Stats:</strong> ${bindingCount} binding${bindingCount !== 1 ? 's' : ''} using this calendar
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button id="save-btn" style="
+            flex: 1;
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+          ">💾 Save</button>
+          <button id="cancel-btn" style="
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+          ">❌ Cancel</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle save
+    modal.querySelector('#save-btn').addEventListener('click', async () => {
+      try {
+        const enabled = modal.querySelector('#enabled').checked;
+        const priority = parseInt(modal.querySelector('#priority').value, 10);
+        const description = modal.querySelector('#description').value.trim();
+
+        this.log('💾', `Saving calendar config for ${calendarId}...`, { enabled, priority, description });
+
+        // Update calendar_configs
+        const updatedConfigs = {...this.calendar_configs};
+        updatedConfigs[calendarId] = {
+          enabled,
+          default_priority: priority,
+          description,
+        };
+
+        // Send to API
+        const response = await fetch('/api/climate_control_calendar/config', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.hass.auth.data.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            calendar_configs: updatedConfigs,
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        this.log('✅', 'Calendar configuration saved successfully', result);
+
+        // Close modal
+        document.body.removeChild(modal);
+
+        // WebSocket will handle refresh
+        this.log('🔄', 'Waiting for config update via WebSocket...');
+
+      } catch (error) {
+        this.log('❌', 'Failed to save calendar config', { error: error.message });
+        alert(`Error saving calendar configuration: ${error.message}`);
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  }
+
   renderCalendars() {
     if (this.calendars.length === 0) {
       return `
@@ -960,11 +1129,39 @@ class ClimatePanelCard extends HTMLElement {
       `;
     }
 
-    const calendarsList = this.calendars.map(cal => `
-      <div class="list-item"><h3>${cal}</h3></div>
-    `).join('');
+    const calendarsList = this.calendars.map(cal => {
+      const config = this.calendar_configs[cal] || {};
+      const enabled = config.enabled !== false; // Default to true
+      const priority = config.default_priority || 0;
+      const description = config.description || '';
+      const bindingCount = this.bindings.filter(b =>
+        b.calendars === '*' || (Array.isArray(b.calendars) && b.calendars.includes(cal)) || b.calendars === cal
+      ).length;
 
-    return `<div class="card"><h2>📅 Calendars (${this.calendars.length})</h2>${calendarsList}</div>`;
+      return `
+        <div class="list-item">
+          <h3>${cal} ${!enabled ? '(Disabled)' : ''}</h3>
+          <div>
+            <span class="badge">${enabled ? '✅ Enabled' : '❌ Disabled'}</span>
+            <span class="badge">⚡ Priority: ${priority}</span>
+            <span class="badge">🔗 ${bindingCount} binding${bindingCount !== 1 ? 's' : ''}</span>
+          </div>
+          ${description ? `<div style="margin-top: 8px; color: #888; font-style: italic;">${description}</div>` : ''}
+          <div class="actions">
+            <button class="btn btn-small" data-action="edit-calendar" data-id="${cal}">✏️ Edit</button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h2>📅 Calendars (${this.calendars.length})</h2>
+        </div>
+        ${calendarsList}
+      </div>
+    `;
   }
 
   showError(message) {

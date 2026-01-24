@@ -45,6 +45,7 @@ class ClimateControlConfigView(HomeAssistantView):
                 bindings = config.get(CONF_BINDINGS, [])
                 calendars = config.get(CONF_CALENDAR_ENTITIES, [])
                 climate_entities = config.get("climate_entities", [])
+                calendar_configs = config.get("calendar_configs", {})
                 dry_run = config.get("dry_run", True)
                 debug_mode = config.get("debug_mode", False)
 
@@ -60,6 +61,7 @@ class ClimateControlConfigView(HomeAssistantView):
                     "bindings": bindings,
                     "calendars": calendars,
                     "climate_entities": climate_entities,
+                    "calendar_configs": calendar_configs,
                     "dry_run": dry_run,
                     "debug_mode": debug_mode,
                 })
@@ -109,10 +111,12 @@ class ClimateControlConfigView(HomeAssistantView):
             if "debug_mode" in data:
                 new_data["debug_mode"] = data["debug_mode"]
 
-            # Update options (mutable fields: climate_entities)
+            # Update options (mutable fields: climate_entities, calendar_configs)
             new_options = {**config_entry.options}
             if "climate_entities" in data:
                 new_options["climate_entities"] = data["climate_entities"]
+            if "calendar_configs" in data:
+                new_options["calendar_configs"] = data["calendar_configs"]
 
             # Apply updates
             self.hass.config_entries.async_update_entry(
