@@ -12,6 +12,9 @@ class ClimatePanelCard extends HTMLElement {
     this.slots = [];
     this.bindings = [];
     this.calendars = [];
+    this.climate_entities = [];
+    this.dry_run = true;
+    this.debug_mode = false;
     this.updateInterval = null;
     this.refreshInterval = null;
     this.logs = []; // Visual debug logs
@@ -200,11 +203,17 @@ class ClimatePanelCard extends HTMLElement {
       this.slots = data?.slots || [];
       this.bindings = data?.bindings || [];
       this.calendars = data?.calendars || [];
+      this.climate_entities = data?.climate_entities || [];
+      this.dry_run = data?.dry_run ?? true;
+      this.debug_mode = data?.debug_mode ?? false;
 
       this.log('✅', 'Data extracted successfully', {
         slots: this.slots.length,
         bindings: this.bindings.length,
-        calendars: this.calendars.length
+        calendars: this.calendars.length,
+        climate_entities: this.climate_entities.length,
+        dry_run: this.dry_run,
+        debug_mode: this.debug_mode
       });
 
       if (this.slots.length > 0) {
@@ -486,6 +495,7 @@ class ClimatePanelCard extends HTMLElement {
           <div class="status-badge">📊 ${this.slots.length} Slots</div>
           <div class="status-badge">🔗 ${this.bindings.length} Bindings</div>
           <div class="status-badge">📅 ${this.calendars.length} Calendars</div>
+          <div class="status-badge">🌡️ ${this.climate_entities.length} Climate Entities</div>
           <div class="status-badge" style="cursor: pointer;" id="refresh-btn">
             🔄 Refresh
           </div>
@@ -503,6 +513,7 @@ class ClimatePanelCard extends HTMLElement {
         </div>
         ` : ''}
 
+        ${this.renderBasicConfig()}
         ${this.renderSlots()}
         ${this.renderBindings()}
         ${this.renderCalendars()}
@@ -538,6 +549,9 @@ class ClimatePanelCard extends HTMLElement {
 
     try {
       switch (action) {
+        case 'edit-basic-config':
+          await this.editBasicConfig();
+          break;
         case 'add-slot':
           await this.addSlot();
           break;
@@ -627,6 +641,229 @@ class ClimatePanelCard extends HTMLElement {
     // For now, just navigate to HA config
     this.log('✏️', 'Edit binding - redirecting to HA config...');
     alert('Please use Home Assistant Configuration UI to edit bindings for now.\n\nFull UI editor coming soon!');
+  }
+
+  async editBasicConfig() {
+    this.log('✏️', 'Edit basic configuration...');
+
+    // Get all available entities
+    const allCalendars = Object.keys(this.hass.states)
+      .filter(id => id.startsWith('calendar.'))
+      .sort();
+
+    const allClimateEntities = Object.keys(this.hass.states)
+      .filter(id => id.startsWith('climate.'))
+      .sort();
+
+    // Build form HTML with checkboxes
+    const calendarCheckboxes = allCalendars.map(cal => {
+      const checked = this.calendars.includes(cal) ? 'checked' : '';
+      return `
+        <label style="display: block; margin: 5px 0;">
+          <input type="checkbox" name="calendars" value="${cal}" ${checked}>
+          ${cal}
+        </label>
+      `;
+    }).join('');
+
+    const climateCheckboxes = allClimateEntities.map(ent => {
+      const checked = this.climate_entities.includes(ent) ? 'checked' : '';
+      return `
+        <label style="display: block; margin: 5px 0;">
+          <input type="checkbox" name="climate_entities" value="${ent}" ${checked}>
+          ${ent}
+        </label>
+      `;
+    }).join('');
+
+    // Create a modal dialog
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+
+    modal.innerHTML = `
+      <div style="
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        color: white;
+        padding: 30px;
+        border-radius: 12px;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      ">
+        <h2 style="margin-top: 0; color: #00d4ff;">⚙️ Edit Basic Configuration</h2>
+
+        <div style="margin: 20px 0;">
+          <h3 style="color: #00d4ff; margin-bottom: 10px;">📅 Calendar Entities</h3>
+          <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+            ${calendarCheckboxes || '<p style="color: #888;">No calendar entities found</p>'}
+          </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+          <h3 style="color: #00d4ff; margin-bottom: 10px;">🌡️ Climate Entities</h3>
+          <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px;">
+            ${climateCheckboxes || '<p style="color: #888;">No climate entities found</p>'}
+          </div>
+        </div>
+
+        <div style="margin: 20px 0;">
+          <h3 style="color: #00d4ff; margin-bottom: 10px;">🔧 Options</h3>
+          <label style="display: block; margin: 10px 0;">
+            <input type="checkbox" id="dry_run" ${this.dry_run ? 'checked' : ''}>
+            Dry Run Mode (test without applying changes)
+          </label>
+          <label style="display: block; margin: 10px 0;">
+            <input type="checkbox" id="debug_mode" ${this.debug_mode ? 'checked' : ''}>
+            Debug Mode (verbose logging)
+          </label>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button id="save-btn" style="
+            flex: 1;
+            background: rgba(0, 212, 255, 0.2);
+            color: #00d4ff;
+            border: 1px solid #00d4ff;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+          ">💾 Save</button>
+          <button id="cancel-btn" style="
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+          ">❌ Cancel</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Handle save
+    modal.querySelector('#save-btn').addEventListener('click', async () => {
+      try {
+        // Collect selected calendars
+        const selectedCalendars = Array.from(modal.querySelectorAll('input[name="calendars"]:checked'))
+          .map(cb => cb.value);
+
+        // Collect selected climate entities
+        const selectedClimate = Array.from(modal.querySelectorAll('input[name="climate_entities"]:checked'))
+          .map(cb => cb.value);
+
+        const dryRun = modal.querySelector('#dry_run').checked;
+        const debugMode = modal.querySelector('#debug_mode').checked;
+
+        this.log('💾', 'Saving basic config...', {
+          calendars: selectedCalendars.length,
+          climate: selectedClimate.length,
+          dry_run: dryRun,
+          debug_mode: debugMode
+        });
+
+        // Send to API
+        const response = await fetch('/api/climate_control_calendar/config', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.hass.auth.data.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            calendar_entities: selectedCalendars,
+            climate_entities: selectedClimate,
+            dry_run: dryRun,
+            debug_mode: debugMode,
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
+        this.log('✅', 'Configuration saved successfully', result);
+
+        // Close modal
+        document.body.removeChild(modal);
+
+        // Reload data - WebSocket will handle it
+        this.log('🔄', 'Waiting for config update via WebSocket...');
+
+      } catch (error) {
+        this.log('❌', 'Failed to save config', { error: error.message });
+        alert(`Error saving configuration: ${error.message}`);
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  }
+
+  renderBasicConfig() {
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h2>⚙️ Basic Configuration</h2>
+          <button class="btn" data-action="edit-basic-config">✏️ Edit</button>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+          <div class="list-item">
+            <h3>📅 Calendar Entities</h3>
+            <div style="margin-top: 10px;">
+              ${this.calendars.length > 0 ? this.calendars.map(cal => `
+                <div style="margin: 5px 0; color: #00d4ff;">• ${cal}</div>
+              `).join('') : '<div style="color: #888;">None configured</div>'}
+            </div>
+          </div>
+          <div class="list-item">
+            <h3>🌡️ Climate Entities</h3>
+            <div style="margin-top: 10px;">
+              ${this.climate_entities.length > 0 ? this.climate_entities.map(ent => `
+                <div style="margin: 5px 0; color: #00d4ff;">• ${ent}</div>
+              `).join('') : '<div style="color: #888;">None configured</div>'}
+            </div>
+          </div>
+          <div class="list-item">
+            <h3>🔧 Options</h3>
+            <div style="margin-top: 10px;">
+              <div style="margin: 5px 0;">
+                <span class="badge">${this.dry_run ? '✅ Dry Run: ON' : '❌ Dry Run: OFF'}</span>
+              </div>
+              <div style="margin: 5px 0;">
+                <span class="badge">${this.debug_mode ? '✅ Debug: ON' : '❌ Debug: OFF'}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   renderSlots() {

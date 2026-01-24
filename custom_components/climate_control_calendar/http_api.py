@@ -44,6 +44,9 @@ class ClimateControlConfigView(HomeAssistantView):
                 slots = config.get(CONF_SLOTS, [])
                 bindings = config.get(CONF_BINDINGS, [])
                 calendars = config.get(CONF_CALENDAR_ENTITIES, [])
+                climate_entities = config.get("climate_entities", [])
+                dry_run = config.get("dry_run", True)
+                debug_mode = config.get("debug_mode", False)
 
                 _LOGGER.info(
                     "HTTP API: Returning config - slots=%d, bindings=%d, calendars=%d",
@@ -56,6 +59,9 @@ class ClimateControlConfigView(HomeAssistantView):
                     "slots": slots,
                     "bindings": bindings,
                     "calendars": calendars,
+                    "climate_entities": climate_entities,
+                    "dry_run": dry_run,
+                    "debug_mode": debug_mode,
                 })
 
             # No config found
@@ -64,12 +70,64 @@ class ClimateControlConfigView(HomeAssistantView):
                 "slots": [],
                 "bindings": [],
                 "calendars": [],
+                "climate_entities": [],
+                "dry_run": True,
+                "debug_mode": False,
             })
 
         except Exception as err:
             _LOGGER.error("HTTP API: Error getting config: %s", err, exc_info=True)
             return self.json_message(
                 f"Error getting configuration: {err}",
+                status_code=500
+            )
+
+    async def post(self, request: web.Request) -> web.Response:
+        """Handle POST request to update basic configuration."""
+        _LOGGER.warning("🔥 HTTP API: POST /api/%s/config - REQUEST RECEIVED!", DOMAIN)
+
+        try:
+            data = await request.json()
+            _LOGGER.info("HTTP API: Received update data: %s", data)
+
+            # Get first config entry
+            config_entry = None
+            for entry_id in self.hass.data.get(DOMAIN, {}).keys():
+                config_entry = self.hass.config_entries.async_get_entry(entry_id)
+                if config_entry:
+                    break
+
+            if not config_entry:
+                return self.json_message("No config entry found", status_code=404)
+
+            # Update data (immutable fields: calendars, dry_run, debug_mode)
+            new_data = {**config_entry.data}
+            if "calendar_entities" in data:
+                new_data[CONF_CALENDAR_ENTITIES] = data["calendar_entities"]
+            if "dry_run" in data:
+                new_data["dry_run"] = data["dry_run"]
+            if "debug_mode" in data:
+                new_data["debug_mode"] = data["debug_mode"]
+
+            # Update options (mutable fields: climate_entities)
+            new_options = {**config_entry.options}
+            if "climate_entities" in data:
+                new_options["climate_entities"] = data["climate_entities"]
+
+            # Apply updates
+            self.hass.config_entries.async_update_entry(
+                config_entry,
+                data=new_data,
+                options=new_options,
+            )
+
+            _LOGGER.info("HTTP API: Config updated successfully")
+            return self.json({"status": "ok", "message": "Configuration updated"})
+
+        except Exception as err:
+            _LOGGER.error("HTTP API: Error updating config: %s", err, exc_info=True)
+            return self.json_message(
+                f"Error updating configuration: {err}",
                 status_code=500
             )
 
