@@ -18,6 +18,9 @@ class ClimatePanelCard extends HTMLElement {
     this.debug_mode = false;
     this.updateInterval = null;
     this.refreshInterval = null;
+    this.statusRefreshInterval = null;
+    // Status data
+    this.statusData = null;
     this.logs = []; // Visual debug logs
     this.maxLogs = 50; // Keep last 50 logs
     // Debug mode toggle - saved in localStorage
@@ -47,7 +50,73 @@ class ClimatePanelCard extends HTMLElement {
     localStorage.setItem('climate_current_page', page);
     this.sidebarOpen = false;
     this.log('📄', `Navigated to ${page}`);
+
+    // Setup page-specific refresh intervals
+    if (page === 'monitor') {
+      this.startStatusRefresh();
+    } else {
+      this.stopStatusRefresh();
+    }
+
     this.render();
+  }
+
+  startStatusRefresh() {
+    // Clear existing interval
+    this.stopStatusRefresh();
+
+    // Load status immediately
+    this.loadStatusData();
+
+    // Refresh every 5 seconds for monitor page
+    this.statusRefreshInterval = setInterval(() => {
+      this.loadStatusData();
+    }, 5000);
+
+    this.log('🔄', 'Started status auto-refresh (5s)');
+  }
+
+  stopStatusRefresh() {
+    if (this.statusRefreshInterval) {
+      clearInterval(this.statusRefreshInterval);
+      this.statusRefreshInterval = null;
+      this.log('⏹️', 'Stopped status auto-refresh');
+    }
+  }
+
+  async loadStatusData() {
+    if (!this.hass) return;
+
+    try {
+      const response = await fetch('/api/climate_control_calendar/status', {
+        headers: {
+          'Authorization': `Bearer ${this.hass.auth.data.access_token}`,
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      this.statusData = await response.json();
+      this.log('📊', 'Status data loaded', this.statusData.summary);
+
+      // Re-render only the monitor page content if we're on that page
+      if (this.currentPage === 'monitor') {
+        this.updateMonitorPage();
+      }
+
+    } catch (error) {
+      this.log('❌', 'Failed to load status data', { error: error.message });
+    }
+  }
+
+  updateMonitorPage() {
+    // Update only the page-content div to avoid full re-render
+    const pageContent = this.shadowRoot.querySelector('.page-content');
+    if (pageContent) {
+      pageContent.innerHTML = this.renderMonitorPage();
+    }
   }
 
   // Custom log function that shows in UI
@@ -116,6 +185,9 @@ class ClimatePanelCard extends HTMLElement {
     }
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
+    }
+    if (this.statusRefreshInterval) {
+      clearInterval(this.statusRefreshInterval);
     }
   }
 
@@ -1019,19 +1091,210 @@ class ClimatePanelCard extends HTMLElement {
   }
 
   renderMonitorPage() {
+    if (!this.statusData) {
+      return `
+        <div class="card">
+          <h2>📊 Real-Time Monitoring</h2>
+          <p style="color: #888; text-align: center; padding: 40px 20px;">
+            Loading status data...
+          </p>
+        </div>
+      `;
+    }
+
+    const { active_events, climate_states, matched_bindings, engine_state, summary } = this.statusData;
+
     return `
+      <!-- Summary Cards -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px;">
+        <div class="card" style="text-align: center;">
+          <h3 style="color: #00d4ff; margin: 0 0 10px 0;">📅 Active Events</h3>
+          <div style="font-size: 2.5em; font-weight: bold;">${summary.active_events_count}</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <h3 style="color: #00d4ff; margin: 0 0 10px 0;">🌡️ Climates ON</h3>
+          <div style="font-size: 2.5em; font-weight: bold;">${summary.climates_on}/${summary.total_climates}</div>
+        </div>
+        <div class="card" style="text-align: center;">
+          <h3 style="color: #00d4ff; margin: 0 0 10px 0;">🔗 Matched Bindings</h3>
+          <div style="font-size: 2.5em; font-weight: bold;">${matched_bindings.length}</div>
+        </div>
+      </div>
+
+      <!-- Active Calendar Events -->
       <div class="card">
-        <h2>📊 Monitoring</h2>
-        <p style="color: #888; text-align: center; padding: 40px 20px;">
-          Real-time monitoring dashboard coming soon!<br><br>
-          This will show:<br>
-          • Active calendar events<br>
-          • Current climate states<br>
-          • Recent automation triggers<br>
-          • System health status
-        </p>
+        <h2>📅 Active Calendar Events (${active_events.length})</h2>
+        ${active_events.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>No active events at the moment</p>
+          </div>
+        ` : active_events.map(event => `
+          <div class="list-item" style="border-left-color: #00ff88;">
+            <h3>${event.summary || 'Unnamed Event'}</h3>
+            <div>
+              <span class="badge">📅 ${event.calendar_id.split('.')[1]}</span>
+              ${event.all_day ? '<span class="badge">🕐 All Day</span>' : ''}
+            </div>
+            ${event.description ? `<p style="margin-top: 10px; color: #ccc;">${event.description}</p>` : ''}
+            <div style="margin-top: 10px; color: #888; font-size: 0.9em;">
+              <div>⏰ Start: ${this.formatDateTime(event.start)}</div>
+              <div>⏰ End: ${this.formatDateTime(event.end)}</div>
+              ${event.location ? `<div>📍 ${event.location}</div>` : ''}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+      <!-- Climate Entities Status -->
+      <div class="card">
+        <h2>🌡️ Climate Entities Status (${climate_states.length})</h2>
+        ${climate_states.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>No climate entities configured</p>
+          </div>
+        ` : `
+          <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+            ${climate_states.map(climate => this.renderClimateCard(climate)).join('')}
+          </div>
+        `}
+      </div>
+
+      <!-- Matched Bindings -->
+      ${matched_bindings.length > 0 ? `
+      <div class="card">
+        <h2>🔗 Currently Matched Bindings (${matched_bindings.length})</h2>
+        ${matched_bindings.map(binding => {
+          const slot = this.slots.find(s => s.id === binding.slot_id);
+          return `
+            <div class="list-item" style="border-left-color: #00d4ff;">
+              <h3>${binding.match?.value || 'Unnamed'}</h3>
+              <div>
+                <span class="badge">🎯 Slot: ${slot?.label || binding.slot_id}</span>
+                <span class="badge">📋 ${binding.match?.type}</span>
+                <span class="badge">⚡ Priority: ${binding.priority || 0}</span>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+      ` : ''}
+
+      <!-- Engine State -->
+      <div class="card">
+        <h2>⚙️ Engine Status</h2>
+        <div style="padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px;">
+          <div style="margin: 5px 0;">
+            <span style="color: #00d4ff;">Engine Active:</span>
+            <span style="color: ${engine_state.has_engine ? '#00ff88' : '#ff4444'};">
+              ${engine_state.has_engine ? '✅ Yes' : '❌ No'}
+            </span>
+          </div>
+          ${engine_state.last_evaluation ? `
+            <div style="margin: 5px 0;">
+              <span style="color: #00d4ff;">Last Evaluation:</span>
+              <span>${this.formatDateTime(engine_state.last_evaluation)}</span>
+            </div>
+          ` : ''}
+          <div style="margin: 5px 0;">
+            <span style="color: #00d4ff;">Timestamp:</span>
+            <span>${this.formatDateTime(this.statusData.timestamp)}</span>
+          </div>
+        </div>
       </div>
     `;
+  }
+
+  renderClimateCard(climate) {
+    const temp = climate.attributes.current_temperature;
+    const targetTemp = climate.attributes.temperature;
+    const hvacMode = climate.state;
+    const hvacAction = climate.attributes.hvac_action;
+
+    const isOn = hvacMode !== 'off';
+    const statusColor = isOn ? '#00ff88' : '#888';
+
+    return `
+      <div class="list-item" style="border-left-color: ${statusColor};">
+        <h3>${climate.entity_id.split('.')[1].replace(/_/g, ' ')}</h3>
+        <div style="margin: 10px 0;">
+          <div style="font-size: 1.5em; color: ${statusColor}; margin-bottom: 5px;">
+            ${temp !== null && temp !== undefined ? `${temp}°C` : 'N/A'}
+            ${targetTemp !== null && targetTemp !== undefined ? ` → ${targetTemp}°C` : ''}
+          </div>
+          <div>
+            <span class="badge">${this.getHvacModeIcon(hvacMode)} ${hvacMode.toUpperCase()}</span>
+            ${hvacAction ? `<span class="badge">${this.getHvacActionIcon(hvacAction)} ${hvacAction}</span>` : ''}
+          </div>
+        </div>
+        ${climate.attributes.preset_mode ? `
+          <div style="margin-top: 8px;">
+            <span class="badge">⚙️ ${climate.attributes.preset_mode}</span>
+          </div>
+        ` : ''}
+        <div style="margin-top: 8px; font-size: 0.85em; color: #666;">
+          Updated: ${this.formatTimeAgo(climate.last_updated)}
+        </div>
+      </div>
+    `;
+  }
+
+  getHvacModeIcon(mode) {
+    const icons = {
+      'heat': '🔥',
+      'cool': '❄️',
+      'heat_cool': '🔄',
+      'auto': '🤖',
+      'off': '⭕',
+      'dry': '💨',
+      'fan_only': '🌀',
+    };
+    return icons[mode] || '❓';
+  }
+
+  getHvacActionIcon(action) {
+    const icons = {
+      'heating': '🔥',
+      'cooling': '❄️',
+      'idle': '⏸️',
+      'off': '⭕',
+      'drying': '💨',
+      'fan': '🌀',
+    };
+    return icons[action] || '❓';
+  }
+
+  formatDateTime(isoString) {
+    if (!isoString) return 'N/A';
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (e) {
+      return isoString;
+    }
+  }
+
+  formatTimeAgo(isoString) {
+    if (!isoString) return 'N/A';
+    try {
+      const date = new Date(isoString);
+      const now = new Date();
+      const seconds = Math.floor((now - date) / 1000);
+
+      if (seconds < 60) return `${seconds}s ago`;
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    } catch (e) {
+      return isoString;
+    }
   }
 
   renderChartsPage() {
