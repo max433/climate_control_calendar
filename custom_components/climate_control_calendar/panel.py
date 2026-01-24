@@ -7,6 +7,7 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN
+from .http_api import async_register_api
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +42,11 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         ])
         _LOGGER.warning("✅ Static path registered: /%s/static -> %s", DOMAIN, www_path)
 
-        # Step 2: Register the panel in the sidebar
+        # Step 2: Register HTTP API for frontend data access
+        await async_register_api(hass)
+        _LOGGER.warning("✅ HTTP API registered: /api/%s/config", DOMAIN)
+
+        # Step 3: Register the panel in the sidebar
         _LOGGER.warning("📋 Calling async_register_built_in_panel...")
         async_register_built_in_panel(
             hass,

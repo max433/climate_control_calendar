@@ -141,28 +141,34 @@ class ClimatePanelCard extends HTMLElement {
     this.log('📥', 'Loading Climate Control Calendar data...');
 
     try {
-      // Call our custom service to get configuration
-      this.log('🔍', 'Calling climate_control_calendar.get_config service...');
+      // Call our HTTP API endpoint
+      this.log('🔍', 'Fetching /api/climate_control_calendar/config...');
 
-      // Use WebSocket call_service with return_response
-      const response = await this.hass.callWS({
-        type: 'call_service',
-        domain: 'climate_control_calendar',
-        service: 'get_config',
-        service_data: {},
-        return_response: true
+      const response = await fetch('/api/climate_control_calendar/config', {
+        headers: {
+          'Authorization': `Bearer ${this.hass.auth.data.access_token}`,
+        }
       });
 
-      this.log('📦', 'Service response received', {
-        hasResponse: !!response,
-        responseType: typeof response,
-        responseKeys: response ? Object.keys(response) : []
+      this.log('📦', 'HTTP response received', {
+        status: response.status,
+        statusText: response.statusText,
+        ok: response.ok
       });
 
-      // The response is nested in 'response' field
-      const data = response?.response || response;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
-      // Extract data from service response
+      const data = await response.json();
+
+      this.log('📦', 'JSON data parsed', {
+        hasSlots: !!data.slots,
+        hasBindings: !!data.bindings,
+        hasCalendars: !!data.calendars
+      });
+
+      // Extract data from API response
       this.slots = data?.slots || [];
       this.bindings = data?.bindings || [];
       this.calendars = data?.calendars || [];
