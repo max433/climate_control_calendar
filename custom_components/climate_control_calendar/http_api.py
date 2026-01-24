@@ -115,12 +115,16 @@ class ClimateControlConfigView(HomeAssistantView):
             if "debug_mode" in data:
                 new_data["debug_mode"] = data["debug_mode"]
 
-            # Update options (mutable fields: climate_entities, calendar_configs)
+            # Update options (mutable fields: climate_entities, calendar_configs, slots, bindings)
             new_options = {**config_entry.options}
             if "climate_entities" in data:
                 new_options["climate_entities"] = data["climate_entities"]
             if "calendar_configs" in data:
                 new_options["calendar_configs"] = data["calendar_configs"]
+            if "slots" in data:
+                new_options[CONF_SLOTS] = data["slots"]
+            if "bindings" in data:
+                new_options[CONF_BINDINGS] = data["bindings"]
 
             # Apply updates
             self.hass.config_entries.async_update_entry(

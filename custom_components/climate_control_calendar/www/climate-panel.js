@@ -942,27 +942,1157 @@ class ClimatePanelCard extends HTMLElement {
   }
 
   async addSlot() {
-    // For now, just navigate to HA config
-    this.log('➕', 'Add slot - redirecting to HA config...');
-    alert('Please use Home Assistant Configuration UI to add slots for now.\n\nFull UI editor coming soon!');
+    this.log('➕', 'Add new slot...');
+
+    // Get all climate entities for excluded_entities selector
+    const allClimateEntities = Object.keys(this.hass.states)
+      .filter(id => id.startsWith('climate.'))
+      .sort();
+
+    // Create modal
+    const modal = this.createModal(`
+      <h2 style="margin-top: 0; color: #00d4ff;">➕ ${this.t('pages.config.slots.add')}</h2>
+
+      <div style="margin: 20px 0;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Label *</strong>
+          <input type="text" id="label" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., Night, Work Hours, Vacation">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            A descriptive name for this slot
+          </div>
+        </label>
+
+        <div class="collapse-section">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🌡️ Temperature Settings</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Target Temperature (°C)</strong>
+              <input type="number" id="temperature" step="0.5" min="-50" max="50"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="e.g., 20.5">
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                Single temperature for heat/cool modes
+              </div>
+            </label>
+
+            <div style="color: #00d4ff; margin: 15px 0;">OR (for heat_cool mode)</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="display: block;">
+                <strong>Min Temperature (°C)</strong>
+                <input type="number" id="target_temp_low" step="0.5" min="-50" max="50"
+                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+              </label>
+              <label style="display: block;">
+                <strong>Max Temperature (°C)</strong>
+                <input type="number" id="target_temp_high" step="0.5" min="-50" max="50"
+                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="collapse-section open">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🔧 HVAC Settings</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>HVAC Mode</strong>
+              <select id="hvac_mode"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <option value="">-- Not set --</option>
+                <option value="heat">🔥 Heat</option>
+                <option value="cool">❄️ Cool</option>
+                <option value="heat_cool">🔄 Heat/Cool (Auto)</option>
+                <option value="auto">🤖 Auto</option>
+                <option value="off">⭕ Off</option>
+                <option value="dry">💨 Dry</option>
+                <option value="fan_only">🌀 Fan Only</option>
+              </select>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Preset Mode</strong>
+              <input type="text" id="preset_mode"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="e.g., eco, comfort, away">
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                Device-specific preset (check your device capabilities)
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="collapse-section">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>⚙️ Advanced Settings</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Humidity (%)</strong>
+              <input type="number" id="humidity" min="0" max="100" step="1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="0-100">
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Auxiliary Heat</strong>
+              <select id="aux_heat"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <option value="">-- Not configured --</option>
+                <option value="on">On</option>
+                <option value="off">Off</option>
+              </select>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Excluded Entities</strong>
+              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
+                ${allClimateEntities.map(ent => `
+                  <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="excluded_entities" value="${ent}">
+                    ${ent}
+                  </label>
+                `).join('')}
+              </div>
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                These entities won't be affected by this slot
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+      </div>
+    `);
+
+    // Add collapse styles to modal
+    const style = document.createElement('style');
+    style.textContent = `
+      .collapse-section {
+        margin: 15px 0;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .collapse-header {
+        padding: 12px 15px;
+        background: rgba(0,212,255,0.1);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+      }
+      .collapse-header:hover {
+        background: rgba(0,212,255,0.2);
+      }
+      .collapse-icon {
+        transition: transform 0.3s;
+      }
+      .collapse-section.open .collapse-icon {
+        transform: rotate(180deg);
+      }
+      .collapse-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        padding: 0 15px;
+      }
+      .collapse-section.open .collapse-content {
+        max-height: 1000px;
+        padding: 15px;
+      }
+    `;
+    modal.appendChild(style);
+
+    document.body.appendChild(modal);
+
+    // Handle save
+    modal.querySelector('#save-btn').addEventListener('click', async () => {
+      try {
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.style.display = 'none';
+
+        const label = modal.querySelector('#label').value.trim();
+        if (!label) {
+          errorDiv.textContent = 'Label is required';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        // Build climate payload
+        const payload = {};
+
+        const temperature = modal.querySelector('#temperature').value;
+        const tempLow = modal.querySelector('#target_temp_low').value;
+        const tempHigh = modal.querySelector('#target_temp_high').value;
+        const hvacMode = modal.querySelector('#hvac_mode').value;
+        const presetMode = modal.querySelector('#preset_mode').value;
+        const humidity = modal.querySelector('#humidity').value;
+        const auxHeat = modal.querySelector('#aux_heat').value;
+
+        // Temperature validation
+        if (temperature && (tempLow || tempHigh)) {
+          errorDiv.textContent = 'Cannot use both single temperature and temperature range';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (temperature) {
+          const temp = parseFloat(temperature);
+          if (temp < -50 || temp > 50) {
+            errorDiv.textContent = 'Temperature must be between -50 and 50°C';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          payload.temperature = temp;
+        }
+
+        if (tempLow) {
+          const low = parseFloat(tempLow);
+          if (low < -50 || low > 50) {
+            errorDiv.textContent = 'Min temperature must be between -50 and 50°C';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          payload.target_temp_low = low;
+        }
+
+        if (tempHigh) {
+          const high = parseFloat(tempHigh);
+          if (high < -50 || high > 50) {
+            errorDiv.textContent = 'Max temperature must be between -50 and 50°C';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          payload.target_temp_high = high;
+        }
+
+        if (tempLow && tempHigh && parseFloat(tempLow) >= parseFloat(tempHigh)) {
+          errorDiv.textContent = 'Min temperature must be lower than max temperature';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (hvacMode) payload.hvac_mode = hvacMode;
+        if (presetMode) payload.preset_mode = presetMode;
+
+        if (humidity) {
+          const hum = parseInt(humidity);
+          if (hum < 0 || hum > 100) {
+            errorDiv.textContent = 'Humidity must be between 0 and 100%';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          payload.humidity = hum;
+        }
+
+        if (auxHeat === 'on') payload.aux_heat = true;
+        else if (auxHeat === 'off') payload.aux_heat = false;
+
+        // Check at least one climate setting
+        if (Object.keys(payload).length === 0) {
+          errorDiv.textContent = 'Please configure at least one climate setting';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        // Get excluded entities
+        const excludedEntities = Array.from(modal.querySelectorAll('input[name="excluded_entities"]:checked'))
+          .map(cb => cb.value);
+
+        this.log('💾', 'Creating new slot...', { label, payload, excludedEntities });
+
+        // Call service
+        const serviceData = {
+          label: label,
+          default_climate_payload: payload,
+        };
+
+        if (excludedEntities.length > 0) {
+          serviceData.excluded_entities = excludedEntities;
+        }
+
+        await this.hass.callService('climate_control_calendar', 'add_slot', serviceData);
+
+        this.log('✅', 'Slot created successfully');
+
+        // Close modal
+        document.body.removeChild(modal);
+
+        // Refresh data
+        await this.manualRefresh();
+
+      } catch (error) {
+        this.log('❌', 'Failed to create slot', { error: error.message });
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    // Close on backdrop click
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
+  }
+
+  createModal(content) {
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      overflow-y: auto;
+      padding: 20px;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      padding: 30px;
+      border-radius: 12px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin: auto;
+    `;
+    modalContent.innerHTML = content;
+
+    // Add button styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .modal-btn {
+        flex: 1;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1em;
+        border: 1px solid;
+        transition: all 0.2s;
+      }
+      .modal-btn-primary {
+        background: rgba(0, 212, 255, 0.2);
+        color: #00d4ff;
+        border-color: #00d4ff;
+      }
+      .modal-btn-primary:hover {
+        background: rgba(0, 212, 255, 0.4);
+      }
+      .modal-btn-secondary {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        border-color: rgba(255, 255, 255, 0.2);
+      }
+      .modal-btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+    `;
+    modalContent.appendChild(style);
+
+    modal.appendChild(modalContent);
+    return modal;
   }
 
   async editSlot(slotId) {
-    // For now, just navigate to HA config
-    this.log('✏️', 'Edit slot - redirecting to HA config...');
-    alert('Please use Home Assistant Configuration UI to edit slots for now.\n\nFull UI editor coming soon!');
+    this.log('✏️', `Edit slot: ${slotId}`);
+
+    const slot = this.slots.find(s => s.id === slotId);
+    if (!slot) {
+      alert('Slot not found');
+      return;
+    }
+
+    const payload = slot.default_climate_payload || slot.climate_payload || {};
+    const excludedEntities = slot.excluded_entities || [];
+
+    // Get all climate entities
+    const allClimateEntities = Object.keys(this.hass.states)
+      .filter(id => id.startsWith('climate.'))
+      .sort();
+
+    // Count bindings using this slot
+    const bindingCount = this.bindings.filter(b => b.slot_id === slotId).length;
+
+    // Create modal
+    const modal = this.createModal(`
+      <h2 style="margin-top: 0; color: #00d4ff;">✏️ Edit Slot</h2>
+      <p style="color: #888; margin-bottom: 20px;">
+        ID: ${slotId}<br>
+        Used by ${bindingCount} binding${bindingCount !== 1 ? 's' : ''}
+      </p>
+
+      <div style="margin: 20px 0;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Label *</strong>
+          <input type="text" id="label" required value="${slot.label || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+        </label>
+
+        <div class="collapse-section ${payload.temperature || payload.target_temp_low || payload.target_temp_high ? 'open' : ''}">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🌡️ Temperature Settings</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Target Temperature (°C)</strong>
+              <input type="number" id="temperature" step="0.5" min="-50" max="50" value="${payload.temperature || ''}"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            </label>
+
+            <div style="color: #00d4ff; margin: 15px 0;">OR (for heat_cool mode)</div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label>
+                <strong>Min Temperature</strong>
+                <input type="number" id="target_temp_low" step="0.5" min="-50" max="50" value="${payload.target_temp_low || ''}"
+                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+              </label>
+              <label>
+                <strong>Max Temperature</strong>
+                <input type="number" id="target_temp_high" step="0.5" min="-50" max="50" value="${payload.target_temp_high || ''}"
+                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="collapse-section ${payload.hvac_mode || payload.preset_mode ? 'open' : ''}">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🔧 HVAC Settings</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>HVAC Mode</strong>
+              <select id="hvac_mode"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <option value="">-- Not set --</option>
+                <option value="heat" ${payload.hvac_mode === 'heat' ? 'selected' : ''}>🔥 Heat</option>
+                <option value="cool" ${payload.hvac_mode === 'cool' ? 'selected' : ''}>❄️ Cool</option>
+                <option value="heat_cool" ${payload.hvac_mode === 'heat_cool' ? 'selected' : ''}>🔄 Heat/Cool</option>
+                <option value="auto" ${payload.hvac_mode === 'auto' ? 'selected' : ''}>🤖 Auto</option>
+                <option value="off" ${payload.hvac_mode === 'off' ? 'selected' : ''}>⭕ Off</option>
+                <option value="dry" ${payload.hvac_mode === 'dry' ? 'selected' : ''}>💨 Dry</option>
+                <option value="fan_only" ${payload.hvac_mode === 'fan_only' ? 'selected' : ''}>🌀 Fan Only</option>
+              </select>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Preset Mode</strong>
+              <input type="text" id="preset_mode" value="${payload.preset_mode || ''}"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            </label>
+          </div>
+        </div>
+
+        <div class="collapse-section ${payload.humidity || payload.aux_heat !== undefined || excludedEntities.length > 0 ? 'open' : ''}">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>⚙️ Advanced Settings</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Humidity (%)</strong>
+              <input type="number" id="humidity" min="0" max="100" step="1" value="${payload.humidity || ''}"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Auxiliary Heat</strong>
+              <select id="aux_heat"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <option value="">-- Not configured --</option>
+                <option value="on" ${payload.aux_heat === true ? 'selected' : ''}>On</option>
+                <option value="off" ${payload.aux_heat === false ? 'selected' : ''}>Off</option>
+              </select>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Excluded Entities</strong>
+              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
+                ${allClimateEntities.map(ent => `
+                  <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="excluded_entities" value="${ent}" ${excludedEntities.includes(ent) ? 'checked' : ''}>
+                    ${ent}
+                  </label>
+                `).join('')}
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+      </div>
+    `);
+
+    // Add collapse styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .collapse-section {
+        margin: 15px 0;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .collapse-header {
+        padding: 12px 15px;
+        background: rgba(0,212,255,0.1);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+      }
+      .collapse-header:hover {
+        background: rgba(0,212,255,0.2);
+      }
+      .collapse-icon {
+        transition: transform 0.3s;
+      }
+      .collapse-section.open .collapse-icon {
+        transform: rotate(180deg);
+      }
+      .collapse-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        padding: 0 15px;
+      }
+      .collapse-section.open .collapse-content {
+        max-height: 1000px;
+        padding: 15px;
+      }
+    `;
+    modal.appendChild(style);
+
+    document.body.appendChild(modal);
+
+    // Handle save
+    modal.querySelector('#save-btn').addEventListener('click', async () => {
+      try {
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.style.display = 'none';
+
+        const label = modal.querySelector('#label').value.trim();
+        if (!label) {
+          errorDiv.textContent = 'Label is required';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        // Build new payload (same validation as add)
+        const newPayload = {};
+        const temperature = modal.querySelector('#temperature').value;
+        const tempLow = modal.querySelector('#target_temp_low').value;
+        const tempHigh = modal.querySelector('#target_temp_high').value;
+        const hvacMode = modal.querySelector('#hvac_mode').value;
+        const presetMode = modal.querySelector('#preset_mode').value;
+        const humidity = modal.querySelector('#humidity').value;
+        const auxHeat = modal.querySelector('#aux_heat').value;
+
+        if (temperature && (tempLow || tempHigh)) {
+          errorDiv.textContent = 'Cannot use both single temperature and temperature range';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (temperature) {
+          const temp = parseFloat(temperature);
+          if (temp < -50 || temp > 50) {
+            errorDiv.textContent = 'Temperature must be between -50 and 50°C';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          newPayload.temperature = temp;
+        }
+
+        if (tempLow) {
+          const low = parseFloat(tempLow);
+          if (low < -50 || low > 50) {
+            errorDiv.textContent = 'Min temperature must be between -50 and 50°C';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          newPayload.target_temp_low = low;
+        }
+
+        if (tempHigh) {
+          const high = parseFloat(tempHigh);
+          if (high < -50 || high > 50) {
+            errorDiv.textContent = 'Max temperature must be between -50 and 50°C';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          newPayload.target_temp_high = high;
+        }
+
+        if (tempLow && tempHigh && parseFloat(tempLow) >= parseFloat(tempHigh)) {
+          errorDiv.textContent = 'Min temperature must be lower than max temperature';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (hvacMode) newPayload.hvac_mode = hvacMode;
+        if (presetMode) newPayload.preset_mode = presetMode;
+
+        if (humidity) {
+          const hum = parseInt(humidity);
+          if (hum < 0 || hum > 100) {
+            errorDiv.textContent = 'Humidity must be between 0 and 100%';
+            errorDiv.style.display = 'block';
+            return;
+          }
+          newPayload.humidity = hum;
+        }
+
+        if (auxHeat === 'on') newPayload.aux_heat = true;
+        else if (auxHeat === 'off') newPayload.aux_heat = false;
+
+        if (Object.keys(newPayload).length === 0) {
+          errorDiv.textContent = 'Please configure at least one climate setting';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        const newExcludedEntities = Array.from(modal.querySelectorAll('input[name="excluded_entities"]:checked'))
+          .map(cb => cb.value);
+
+        this.log('💾', 'Updating slot...', { slotId, label, newPayload, newExcludedEntities });
+
+        // To edit, we need to remove and re-add with same ID
+        // First get the config entry
+        const response = await fetch('/api/climate_control_calendar/config', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.hass.auth.data.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            slots: this.slots.map(s => {
+              if (s.id === slotId) {
+                return {
+                  id: slotId,
+                  label: label,
+                  default_climate_payload: newPayload,
+                  excluded_entities: newExcludedEntities.length > 0 ? newExcludedEntities : undefined,
+                };
+              }
+              return s;
+            })
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        this.log('✅', 'Slot updated successfully');
+
+        // Close modal
+        document.body.removeChild(modal);
+
+        // Refresh
+        await this.manualRefresh();
+
+      } catch (error) {
+        this.log('❌', 'Failed to update slot', { error: error.message });
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
   }
 
   async addBinding() {
-    // For now, just navigate to HA config
-    this.log('➕', 'Add binding - redirecting to HA config...');
-    alert('Please use Home Assistant Configuration UI to add bindings for now.\n\nFull UI editor coming soon!');
+    this.log('➕', 'Add new binding...');
+
+    if (this.slots.length === 0) {
+      alert('Please create at least one slot first');
+      return;
+    }
+
+    // Get climate entities for target_entities selector
+    const allClimateEntities = Object.keys(this.hass.states)
+      .filter(id => id.startsWith('climate.'))
+      .sort();
+
+    const modal = this.createModal(`
+      <h2 style="margin-top: 0; color: #00d4ff;">➕ ${this.t('pages.config.bindings.add')}</h2>
+
+      <div style="margin: 20px 0;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Match Type *</strong>
+          <select id="match_type" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="summary_contains">Summary Contains</option>
+            <option value="summary">Exact Summary Match</option>
+            <option value="regex">Regular Expression</option>
+          </select>
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            How to match calendar events
+          </div>
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Match Pattern *</strong>
+          <input type="text" id="match_value" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., vacation, work, ^Night$">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            Text or pattern to match in event summary
+          </div>
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Target Slot *</strong>
+          <select id="slot_id" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            ${this.slots.map(slot => `
+              <option value="${slot.id}">${slot.label} (${slot.id})</option>
+            `).join('')}
+          </select>
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            Which slot to activate when this pattern matches
+          </div>
+        </label>
+
+        <div class="collapse-section">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>⚙️ Advanced Options</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Calendars</strong>
+              <select id="calendars"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <option value="*">* All Calendars</option>
+                ${this.calendars.map(cal => `
+                  <option value="${cal}">${cal}</option>
+                `).join('')}
+              </select>
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                Which calendar(s) to monitor for this binding
+              </div>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Priority (0-100)</strong>
+              <input type="number" id="priority" min="0" max="100" step="1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="Leave empty to use calendar default">
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                Higher priority wins in conflicts (empty = use calendar default)
+              </div>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Target Entities</strong>
+              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
+                ${allClimateEntities.map(ent => `
+                  <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="target_entities" value="${ent}">
+                    ${ent}
+                  </label>
+                `).join('')}
+              </div>
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                Specific entities for this binding (empty = all configured)
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+      </div>
+    `);
+
+    // Add collapse styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .collapse-section {
+        margin: 15px 0;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .collapse-header {
+        padding: 12px 15px;
+        background: rgba(0,212,255,0.1);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+      }
+      .collapse-header:hover {
+        background: rgba(0,212,255,0.2);
+      }
+      .collapse-icon {
+        transition: transform 0.3s;
+      }
+      .collapse-section.open .collapse-icon {
+        transform: rotate(180deg);
+      }
+      .collapse-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        padding: 0 15px;
+      }
+      .collapse-section.open .collapse-content {
+        max-height: 1000px;
+        padding: 15px;
+      }
+    `;
+    modal.appendChild(style);
+
+    document.body.appendChild(modal);
+
+    // Handle save
+    modal.querySelector('#save-btn').addEventListener('click', async () => {
+      try {
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.style.display = 'none';
+
+        const matchType = modal.querySelector('#match_type').value;
+        const matchValue = modal.querySelector('#match_value').value.trim();
+        const slotId = modal.querySelector('#slot_id').value;
+        const calendars = modal.querySelector('#calendars').value;
+        const priority = modal.querySelector('#priority').value;
+
+        if (!matchValue) {
+          errorDiv.textContent = 'Match pattern is required';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        const targetEntities = Array.from(modal.querySelectorAll('input[name="target_entities"]:checked'))
+          .map(cb => cb.value);
+
+        this.log('💾', 'Creating new binding...', { matchType, matchValue, slotId, calendars, priority, targetEntities });
+
+        // Call service
+        const serviceData = {
+          calendars: calendars,
+          match: {
+            type: matchType,
+            value: matchValue,
+          },
+          slot_id: slotId,
+        };
+
+        if (priority) {
+          serviceData.priority = parseInt(priority);
+        }
+
+        if (targetEntities.length > 0) {
+          serviceData.target_entities = targetEntities;
+        }
+
+        await this.hass.callService('climate_control_calendar', 'add_binding', serviceData);
+
+        this.log('✅', 'Binding created successfully');
+
+        // Close modal
+        document.body.removeChild(modal);
+
+        // Refresh
+        await this.manualRefresh();
+
+      } catch (error) {
+        this.log('❌', 'Failed to create binding', { error: error.message });
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
   }
 
   async editBinding(bindingId) {
-    // For now, just navigate to HA config
-    this.log('✏️', 'Edit binding - redirecting to HA config...');
-    alert('Please use Home Assistant Configuration UI to edit bindings for now.\n\nFull UI editor coming soon!');
+    this.log('✏️', `Edit binding: ${bindingId}`);
+
+    const binding = this.bindings.find(b => b.id === bindingId);
+    if (!binding) {
+      alert('Binding not found');
+      return;
+    }
+
+    const match = binding.match || {};
+    const targetEntities = binding.target_entities || [];
+    const allClimateEntities = Object.keys(this.hass.states)
+      .filter(id => id.startsWith('climate.'))
+      .sort();
+
+    const modal = this.createModal(`
+      <h2 style="margin-top: 0; color: #00d4ff;">✏️ Edit Binding</h2>
+      <p style="color: #888; margin-bottom: 20px;">ID: ${bindingId}</p>
+
+      <div style="margin: 20px 0;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Match Type *</strong>
+          <select id="match_type" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="summary_contains" ${match.type === 'summary_contains' ? 'selected' : ''}>Summary Contains</option>
+            <option value="summary" ${match.type === 'summary' ? 'selected' : ''}>Exact Summary Match</option>
+            <option value="regex" ${match.type === 'regex' ? 'selected' : ''}>Regular Expression</option>
+          </select>
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Match Pattern *</strong>
+          <input type="text" id="match_value" required value="${match.value || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Target Slot *</strong>
+          <select id="slot_id" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            ${this.slots.map(slot => `
+              <option value="${slot.id}" ${binding.slot_id === slot.id ? 'selected' : ''}>
+                ${slot.label} (${slot.id})
+              </option>
+            `).join('')}
+          </select>
+        </label>
+
+        <div class="collapse-section open">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>⚙️ Advanced Options</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Calendars</strong>
+              <select id="calendars"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                <option value="*" ${binding.calendars === '*' ? 'selected' : ''}>* All Calendars</option>
+                ${this.calendars.map(cal => `
+                  <option value="${cal}" ${binding.calendars === cal ? 'selected' : ''}>
+                    ${cal}
+                  </option>
+                `).join('')}
+              </select>
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Priority (0-100)</strong>
+              <input type="number" id="priority" min="0" max="100" step="1" value="${binding.priority !== null && binding.priority !== undefined ? binding.priority : ''}"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="Leave empty to use calendar default">
+            </label>
+
+            <label style="display: block; margin-bottom: 15px;">
+              <strong>Target Entities</strong>
+              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
+                ${allClimateEntities.map(ent => `
+                  <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="target_entities" value="${ent}" ${targetEntities.includes(ent) ? 'checked' : ''}>
+                    ${ent}
+                  </label>
+                `).join('')}
+              </div>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+      </div>
+    `);
+
+    // Add collapse styles
+    const style = document.createElement('style');
+    style.textContent = `
+      .collapse-section {
+        margin: 15px 0;
+        border: 1px solid rgba(255,255,255,0.2);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .collapse-header {
+        padding: 12px 15px;
+        background: rgba(0,212,255,0.1);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        user-select: none;
+      }
+      .collapse-header:hover {
+        background: rgba(0,212,255,0.2);
+      }
+      .collapse-icon {
+        transition: transform 0.3s;
+      }
+      .collapse-section.open .collapse-icon {
+        transform: rotate(180deg);
+      }
+      .collapse-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease;
+        padding: 0 15px;
+      }
+      .collapse-section.open .collapse-content {
+        max-height: 1000px;
+        padding: 15px;
+      }
+    `;
+    modal.appendChild(style);
+
+    document.body.appendChild(modal);
+
+    // Handle save
+    modal.querySelector('#save-btn').addEventListener('click', async () => {
+      try {
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.style.display = 'none';
+
+        const matchType = modal.querySelector('#match_type').value;
+        const matchValue = modal.querySelector('#match_value').value.trim();
+        const slotId = modal.querySelector('#slot_id').value;
+        const calendars = modal.querySelector('#calendars').value;
+        const priority = modal.querySelector('#priority').value;
+
+        if (!matchValue) {
+          errorDiv.textContent = 'Match pattern is required';
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        const newTargetEntities = Array.from(modal.querySelectorAll('input[name="target_entities"]:checked'))
+          .map(cb => cb.value);
+
+        this.log('💾', 'Updating binding...', { bindingId, matchType, matchValue, slotId, calendars, priority, newTargetEntities });
+
+        // Update binding in list
+        const response = await fetch('/api/climate_control_calendar/config', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${this.hass.auth.data.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            bindings: this.bindings.map(b => {
+              if (b.id === bindingId) {
+                return {
+                  id: bindingId,
+                  calendars: calendars,
+                  match: {
+                    type: matchType,
+                    value: matchValue,
+                  },
+                  slot_id: slotId,
+                  priority: priority ? parseInt(priority) : null,
+                  target_entities: newTargetEntities.length > 0 ? newTargetEntities : null,
+                };
+              }
+              return b;
+            })
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        this.log('✅', 'Binding updated successfully');
+
+        // Close modal
+        document.body.removeChild(modal);
+
+        // Refresh
+        await this.manualRefresh();
+
+      } catch (error) {
+        this.log('❌', 'Failed to update binding', { error: error.message });
+        const errorDiv = modal.querySelector('#error-message');
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    // Handle cancel
+    modal.querySelector('#cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(modal);
+    });
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        document.body.removeChild(modal);
+      }
+    });
   }
 
   async editBasicConfig() {
