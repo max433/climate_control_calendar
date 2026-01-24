@@ -141,71 +141,43 @@ class ClimatePanelCard extends HTMLElement {
     this.log('📥', 'Loading Climate Control Calendar data...');
 
     try {
-      // METHOD 1: Try config_entries API
-      this.log('🔍', 'Calling config_entries/get WebSocket...');
+      // Call our custom service to get configuration
+      this.log('🔍', 'Calling climate_control_calendar.get_config service...');
 
-      const entries = await this.hass.callWS({
-        type: 'config_entries/get',
+      const response = await this.hass.callService(
+        'climate_control_calendar',
+        'get_config',
+        {},
+        true  // return_response = true
+      );
+
+      this.log('📦', 'Service response received', {
+        hasResponse: !!response,
+        responseType: typeof response
       });
 
-      this.log('📦', 'WebSocket response received', {
-        totalEntries: entries?.length || 0,
-        entriesType: typeof entries,
-        isArray: Array.isArray(entries)
+      // Extract data from service response
+      this.slots = response?.slots || [];
+      this.bindings = response?.bindings || [];
+      this.calendars = response?.calendars || [];
+
+      this.log('✅', 'Data extracted successfully', {
+        slots: this.slots.length,
+        bindings: this.bindings.length,
+        calendars: this.calendars.length
       });
 
-      // Filter for our integration
-      const ourEntries = entries?.filter(e => e.domain === 'climate_control_calendar') || [];
-
-      this.log('📦', 'Filtered our integration entries', {
-        count: ourEntries.length
-      });
-
-      if (ourEntries.length > 0) {
-        const entry = ourEntries[0];
-
-        this.log('✅', 'Found config entry', {
-          entry_id: entry.entry_id,
-          title: entry.title,
-          domain: entry.domain,
-          hasData: !!entry.data,
-          hasOptions: !!entry.options,
-          dataKeys: entry.data ? Object.keys(entry.data) : [],
-          optionsKeys: entry.options ? Object.keys(entry.options) : []
-        });
-
-        // Extract data
-        this.slots = entry.options?.slots || [];
-        this.bindings = entry.options?.bindings || [];
-        this.calendars = entry.data?.calendar_entities || [];
-
-        this.log('✅', 'Data extracted successfully', {
-          slots: this.slots.length,
-          bindings: this.bindings.length,
-          calendars: this.calendars.length
-        });
-
-        if (this.slots.length > 0) {
-          this.log('📊', 'Sample slot', this.slots[0]);
-        }
-        if (this.bindings.length > 0) {
-          this.log('🔗', 'Sample binding', this.bindings[0]);
-        }
-        if (this.calendars.length > 0) {
-          this.log('📅', 'Sample calendar', this.calendars[0]);
-        }
-
-        this.render();
-      } else {
-        this.log('⚠️', 'No config entries found for climate_control_calendar');
-
-        // Debug: show all domains we found
-        const allDomains = entries?.map(e => e.domain) || [];
-        this.log('🔍', 'All integration domains found', {
-          count: allDomains.length,
-          domains: allDomains.slice(0, 20) // First 20
-        });
+      if (this.slots.length > 0) {
+        this.log('📊', 'Sample slot', this.slots[0]);
       }
+      if (this.bindings.length > 0) {
+        this.log('🔗', 'Sample binding', this.bindings[0]);
+      }
+      if (this.calendars.length > 0) {
+        this.log('📅', 'Sample calendar', this.calendars[0]);
+      }
+
+      this.render()
 
     } catch (error) {
       this.log('❌', 'Failed to load data', {

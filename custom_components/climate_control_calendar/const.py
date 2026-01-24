@@ -73,6 +73,7 @@ SERVICE_REMOVE_SLOT: Final = "remove_slot"
 SERVICE_ADD_BINDING: Final = "add_binding"
 SERVICE_REMOVE_BINDING: Final = "remove_binding"
 SERVICE_LIST_BINDINGS: Final = "list_bindings"
+SERVICE_GET_CONFIG: Final = "get_config"  # Frontend API: Get full configuration
 
 # Storage keys
 STORAGE_VERSION: Final = 1
