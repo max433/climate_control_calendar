@@ -1,5 +1,7 @@
 """HTTP API endpoints for Climate Control Calendar frontend."""
 import logging
+import json
+from pathlib import Path
 from typing import Any
 
 from aiohttp import web
@@ -258,6 +260,53 @@ class ClimateControlStatusView(HomeAssistantView):
             )
 
 
+class ClimateControlTranslationsView(HomeAssistantView):
+    """View to serve translation files for the web UI."""
+
+    url = f"/api/{DOMAIN}/translations/{{language}}"
+    name = f"api:{DOMAIN}:translations"
+    requires_auth = False  # Translations are public
+
+    def __init__(self, hass: HomeAssistant):
+        """Initialize the view."""
+        self.hass = hass
+
+    async def get(self, request: web.Request, language: str) -> web.Response:
+        """Handle GET request for translation file."""
+        try:
+            # Get the translations directory path
+            translations_dir = Path(__file__).parent / "translations"
+            translation_file = translations_dir / f"{language}.json"
+
+            # Default to English if language not found
+            if not translation_file.exists():
+                _LOGGER.warning("Translation file not found for language '%s', falling back to 'en'", language)
+                translation_file = translations_dir / "en.json"
+
+            if not translation_file.exists():
+                return self.json_message(
+                    f"Translation file not found for language: {language}",
+                    status_code=404
+                )
+
+            # Read and return the translation file
+            with open(translation_file, "r", encoding="utf-8") as f:
+                translations = json.load(f)
+
+            # Return only the webui section
+            webui_translations = translations.get("webui", {})
+
+            _LOGGER.info("Served translations for language: %s", language)
+            return self.json(webui_translations)
+
+        except Exception as err:
+            _LOGGER.error("Error serving translations: %s", err, exc_info=True)
+            return self.json_message(
+                f"Error loading translations: {err}",
+                status_code=500
+            )
+
+
 async def async_register_api(hass: HomeAssistant) -> None:
     """Register HTTP API endpoints."""
     _LOGGER.warning("🔥 async_register_api CALLED - Registering HTTP API for %s", DOMAIN)
@@ -270,6 +319,11 @@ async def async_register_api(hass: HomeAssistant) -> None:
     status_view = ClimateControlStatusView(hass)
     hass.http.register_view(status_view)
 
+    # Register translations endpoint
+    translations_view = ClimateControlTranslationsView(hass)
+    hass.http.register_view(translations_view)
+
     _LOGGER.warning("🔥 HTTP API VIEWS REGISTERED:")
     _LOGGER.warning("🔥   - /api/%s/config", DOMAIN)
     _LOGGER.warning("🔥   - /api/%s/status", DOMAIN)
+    _LOGGER.warning("🔥   - /api/%s/translations/{language}", DOMAIN)

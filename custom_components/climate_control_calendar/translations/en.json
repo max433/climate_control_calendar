@@ -303,5 +303,177 @@
         }
       }
     }
+  },
+  "webui": {
+    "navigation": {
+      "config": "Configuration",
+      "monitor": "Monitoring",
+      "charts": "Charts & Stats",
+      "about": "About"
+    },
+    "header": {
+      "title": "Climate Control Calendar",
+      "subtitle": "Web UI",
+      "connected": "Connected",
+      "waiting": "Waiting..."
+    },
+    "status_bar": {
+      "slots": "Slots",
+      "bindings": "Bindings",
+      "calendars": "Calendars",
+      "climate_entities": "Climate Entities",
+      "refresh": "Refresh",
+      "debug": "Debug"
+    },
+    "pages": {
+      "config": {
+        "basic_config": {
+          "title": "Basic Configuration",
+          "edit": "Edit",
+          "calendar_entities": "Calendar Entities",
+          "climate_entities": "Climate Entities",
+          "options": "Options",
+          "dry_run_on": "Dry Run: ON",
+          "dry_run_off": "Dry Run: OFF",
+          "debug_on": "Debug: ON",
+          "debug_off": "Debug: OFF",
+          "none_configured": "None configured"
+        },
+        "slots": {
+          "title": "Slots",
+          "add": "Add Slot",
+          "edit": "Edit",
+          "delete": "Delete",
+          "empty": "No slots configured yet",
+          "empty_hint": "Click \"Add Slot\" to create one"
+        },
+        "bindings": {
+          "title": "Bindings",
+          "add": "Add Binding",
+          "edit": "Edit",
+          "delete": "Delete",
+          "empty": "No bindings configured yet",
+          "empty_hint": "Click \"Add Binding\" to create one",
+          "priority": "Priority"
+        },
+        "calendars": {
+          "title": "Calendars",
+          "edit": "Edit",
+          "empty": "No calendars configured",
+          "enabled": "Enabled",
+          "disabled": "Disabled",
+          "priority": "Priority",
+          "binding": "binding",
+          "bindings": "bindings"
+        }
+      },
+      "monitor": {
+        "title": "Real-Time Monitoring",
+        "loading": "Loading status data...",
+        "summary": {
+          "active_events": "Active Events",
+          "climates_on": "Climates ON",
+          "matched_bindings": "Matched Bindings"
+        },
+        "events": {
+          "title": "Active Calendar Events",
+          "empty": "No active events at the moment",
+          "all_day": "All Day",
+          "start": "Start",
+          "end": "End"
+        },
+        "climate": {
+          "title": "Climate Entities Status",
+          "empty": "No climate entities configured",
+          "updated": "Updated"
+        },
+        "bindings": {
+          "title": "Currently Matched Bindings",
+          "slot": "Slot"
+        },
+        "engine": {
+          "title": "Engine Status",
+          "active": "Engine Active",
+          "yes": "Yes",
+          "no": "No",
+          "last_evaluation": "Last Evaluation",
+          "timestamp": "Timestamp"
+        }
+      },
+      "charts": {
+        "title": "Charts & Statistics",
+        "coming_soon": "Charts and statistics dashboard coming soon!",
+        "features": "This will show:",
+        "feature_temperature": "Temperature history graphs",
+        "feature_usage": "Usage statistics",
+        "feature_frequency": "Event frequency charts",
+        "feature_energy": "Energy consumption trends"
+      },
+      "about": {
+        "title": "About Climate Control Calendar",
+        "version": "Version",
+        "version_unknown": "unknown",
+        "description_title": "Description",
+        "description_text": "Climate Control Calendar is a Home Assistant custom integration that automatically controls your climate devices based on calendar events.",
+        "features_title": "Features",
+        "features": {
+          "calendar": "Calendar-based climate automation",
+          "slots": "Flexible slot system for climate presets",
+          "regex": "Event matching with regex support",
+          "multi_calendar": "Multi-calendar support",
+          "priority": "Priority-based conflict resolution",
+          "dry_run": "Dry run mode for testing"
+        },
+        "config_title": "Current Configuration",
+        "config": {
+          "calendars": "Calendars",
+          "climates": "Climate Entities",
+          "slots": "Slots",
+          "bindings": "Bindings",
+          "dry_run": "Dry Run",
+          "debug": "Debug",
+          "enabled": "Enabled",
+          "disabled": "Disabled"
+        },
+        "links_title": "Links",
+        "github_repo": "GitHub Repository"
+      }
+    },
+    "modals": {
+      "basic_config": {
+        "title": "Edit Basic Configuration",
+        "calendar_entities": "Calendar Entities",
+        "climate_entities": "Climate Entities",
+        "options": "Options",
+        "dry_run": "Dry Run Mode (test without applying changes)",
+        "debug_mode": "Debug Mode (verbose logging)",
+        "save": "Save",
+        "cancel": "Cancel",
+        "no_calendars": "No calendar entities found",
+        "no_climates": "No climate entities found"
+      },
+      "calendar": {
+        "title": "Edit Calendar",
+        "enable": "Enable this calendar",
+        "enable_hint": "When disabled, events from this calendar will be ignored",
+        "priority": "Default Priority (0-100)",
+        "priority_hint": "Higher priority calendars take precedence in conflicts",
+        "description": "Description (optional)",
+        "description_hint": "A note to help you remember what this calendar is for",
+        "stats": "Stats",
+        "save": "Save",
+        "cancel": "Cancel"
+      },
+      "alerts": {
+        "config_ui": "Please use Home Assistant Configuration UI for now.\n\nFull UI editor coming soon!",
+        "delete_confirm": "Delete {item} \"{name}\"?"
+      }
+    },
+    "time": {
+      "seconds_ago": "{count}s ago",
+      "minutes_ago": "{count}m ago",
+      "hours_ago": "{count}h ago",
+      "days_ago": "{count}d ago"
+    }
   }
 }

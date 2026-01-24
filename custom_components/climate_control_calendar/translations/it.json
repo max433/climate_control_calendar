@@ -306,5 +306,177 @@
         }
       }
     }
+  },
+  "webui": {
+    "navigation": {
+      "config": "Configurazione",
+      "monitor": "Monitoraggio",
+      "charts": "Grafici e Statistiche",
+      "about": "Informazioni"
+    },
+    "header": {
+      "title": "Climate Control Calendar",
+      "subtitle": "Interfaccia Web",
+      "connected": "Connesso",
+      "waiting": "In attesa..."
+    },
+    "status_bar": {
+      "slots": "Slot",
+      "bindings": "Binding",
+      "calendars": "Calendari",
+      "climate_entities": "Entità Clima",
+      "refresh": "Aggiorna",
+      "debug": "Debug"
+    },
+    "pages": {
+      "config": {
+        "basic_config": {
+          "title": "Configurazione Base",
+          "edit": "Modifica",
+          "calendar_entities": "Entità Calendario",
+          "climate_entities": "Entità Clima",
+          "options": "Opzioni",
+          "dry_run_on": "Dry Run: ATTIVO",
+          "dry_run_off": "Dry Run: DISATTIVO",
+          "debug_on": "Debug: ATTIVO",
+          "debug_off": "Debug: DISATTIVO",
+          "none_configured": "Nessuna configurata"
+        },
+        "slots": {
+          "title": "Slot",
+          "add": "Aggiungi Slot",
+          "edit": "Modifica",
+          "delete": "Elimina",
+          "empty": "Nessuno slot configurato",
+          "empty_hint": "Clicca \"Aggiungi Slot\" per crearne uno"
+        },
+        "bindings": {
+          "title": "Binding",
+          "add": "Aggiungi Binding",
+          "edit": "Modifica",
+          "delete": "Elimina",
+          "empty": "Nessun binding configurato",
+          "empty_hint": "Clicca \"Aggiungi Binding\" per crearne uno",
+          "priority": "Priorità"
+        },
+        "calendars": {
+          "title": "Calendari",
+          "edit": "Modifica",
+          "empty": "Nessun calendario configurato",
+          "enabled": "Abilitato",
+          "disabled": "Disabilitato",
+          "priority": "Priorità",
+          "binding": "binding",
+          "bindings": "binding"
+        }
+      },
+      "monitor": {
+        "title": "Monitoraggio in Tempo Reale",
+        "loading": "Caricamento dati di stato...",
+        "summary": {
+          "active_events": "Eventi Attivi",
+          "climates_on": "Clima Accesi",
+          "matched_bindings": "Binding Attivi"
+        },
+        "events": {
+          "title": "Eventi Calendario Attivi",
+          "empty": "Nessun evento attivo al momento",
+          "all_day": "Tutto il giorno",
+          "start": "Inizio",
+          "end": "Fine"
+        },
+        "climate": {
+          "title": "Stato Entità Clima",
+          "empty": "Nessuna entità clima configurata",
+          "updated": "Aggiornato"
+        },
+        "bindings": {
+          "title": "Binding Attualmente Attivi",
+          "slot": "Slot"
+        },
+        "engine": {
+          "title": "Stato Motore",
+          "active": "Motore Attivo",
+          "yes": "Sì",
+          "no": "No",
+          "last_evaluation": "Ultima Valutazione",
+          "timestamp": "Timestamp"
+        }
+      },
+      "charts": {
+        "title": "Grafici e Statistiche",
+        "coming_soon": "Dashboard grafici e statistiche in arrivo!",
+        "features": "Mostrerà:",
+        "feature_temperature": "Grafici cronologici temperatura",
+        "feature_usage": "Statistiche di utilizzo",
+        "feature_frequency": "Grafici frequenza eventi",
+        "feature_energy": "Trend consumo energetico"
+      },
+      "about": {
+        "title": "Informazioni su Climate Control Calendar",
+        "version": "Versione",
+        "version_unknown": "sconosciuta",
+        "description_title": "Descrizione",
+        "description_text": "Climate Control Calendar è un'integrazione personalizzata per Home Assistant che controlla automaticamente i tuoi dispositivi climatici basandosi sugli eventi del calendario.",
+        "features_title": "Funzionalità",
+        "features": {
+          "calendar": "Automazione climatica basata su calendario",
+          "slots": "Sistema slot flessibile per preset climatici",
+          "regex": "Matching eventi con supporto regex",
+          "multi_calendar": "Supporto multi-calendario",
+          "priority": "Risoluzione conflitti basata su priorità",
+          "dry_run": "Modalità dry run per test"
+        },
+        "config_title": "Configurazione Attuale",
+        "config": {
+          "calendars": "Calendari",
+          "climates": "Entità Clima",
+          "slots": "Slot",
+          "bindings": "Binding",
+          "dry_run": "Dry Run",
+          "debug": "Debug",
+          "enabled": "Abilitato",
+          "disabled": "Disabilitato"
+        },
+        "links_title": "Collegamenti",
+        "github_repo": "Repository GitHub"
+      }
+    },
+    "modals": {
+      "basic_config": {
+        "title": "Modifica Configurazione Base",
+        "calendar_entities": "Entità Calendario",
+        "climate_entities": "Entità Clima",
+        "options": "Opzioni",
+        "dry_run": "Modalità Dry Run (test senza applicare modifiche)",
+        "debug_mode": "Modalità Debug (log dettagliati)",
+        "save": "Salva",
+        "cancel": "Annulla",
+        "no_calendars": "Nessuna entità calendario trovata",
+        "no_climates": "Nessuna entità clima trovata"
+      },
+      "calendar": {
+        "title": "Modifica Calendario",
+        "enable": "Abilita questo calendario",
+        "enable_hint": "Quando disabilitato, gli eventi di questo calendario verranno ignorati",
+        "priority": "Priorità Predefinita (0-100)",
+        "priority_hint": "I calendari con priorità maggiore hanno precedenza nei conflitti",
+        "description": "Descrizione (opzionale)",
+        "description_hint": "Una nota per ricordarti a cosa serve questo calendario",
+        "stats": "Statistiche",
+        "save": "Salva",
+        "cancel": "Annulla"
+      },
+      "alerts": {
+        "config_ui": "Per ora utilizza la configurazione di Home Assistant.\n\nEditor completo in arrivo!",
+        "delete_confirm": "Eliminare {item} \"{name}\"?"
+      }
+    },
+    "time": {
+      "seconds_ago": "{count}s fa",
+      "minutes_ago": "{count}m fa",
+      "hours_ago": "{count}h fa",
+      "days_ago": "{count}g fa"
+    }
   }
 }

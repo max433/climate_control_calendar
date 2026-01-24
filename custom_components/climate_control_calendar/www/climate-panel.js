@@ -4,6 +4,70 @@
  * WITH VISUAL DEBUG CONSOLE FOR MOBILE
  */
 
+// I18n system
+class I18n {
+  constructor() {
+    this.translations = {};
+    this.language = 'en';
+    this.loaded = false;
+  }
+
+  async loadTranslations(language) {
+    try {
+      const response = await fetch(`/api/climate_control_calendar/translations/${language}`);
+      if (response.ok) {
+        this.translations = await response.json();
+        this.language = language;
+        this.loaded = true;
+        console.log(`✅ Translations loaded for language: ${language}`);
+        return true;
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load translations for ${language}:`, error);
+    }
+
+    // Fallback to English
+    if (language !== 'en') {
+      return await this.loadTranslations('en');
+    }
+
+    return false;
+  }
+
+  // Translate a key with optional replacements
+  t(key, replacements = {}) {
+    if (!this.loaded) {
+      return key; // Return key if translations not loaded yet
+    }
+
+    const keys = key.split('.');
+    let value = this.translations;
+
+    for (const k of keys) {
+      if (value && typeof value === 'object') {
+        value = value[k];
+      } else {
+        return key; // Key not found, return the key itself
+      }
+    }
+
+    if (typeof value !== 'string') {
+      return key;
+    }
+
+    // Replace placeholders
+    let result = value;
+    for (const [placeholder, replacement] of Object.entries(replacements)) {
+      result = result.replace(`{${placeholder}}`, replacement);
+    }
+
+    return result;
+  }
+}
+
+// Global i18n instance
+const i18n = new I18n();
+
 class ClimatePanelCard extends HTMLElement {
   constructor() {
     super();
@@ -28,6 +92,8 @@ class ClimatePanelCard extends HTMLElement {
     // Navigation state
     this.currentPage = localStorage.getItem('climate_current_page') || 'config';
     this.sidebarOpen = false;
+    // I18n ready flag
+    this.i18nReady = false;
   }
 
   // Toggle debug mode
@@ -230,6 +296,17 @@ class ClimatePanelCard extends HTMLElement {
     this.log('🚀', 'Initializing panel with hass connection');
 
     try {
+      // Load translations first
+      if (!i18n.loaded) {
+        // Detect language from Home Assistant
+        const language = this.hass.language || 'en';
+        await i18n.loadTranslations(language);
+        this.i18nReady = true;
+        this.log('🌍', `Translations loaded for language: ${language}`);
+        // Re-render with translations
+        this.render();
+      }
+
       // Try to load data
       await this.loadIntegrationData();
 
@@ -252,6 +329,11 @@ class ClimatePanelCard extends HTMLElement {
       });
       this.showError(error.message);
     }
+  }
+
+  // Helper method for translations
+  t(key, replacements = {}) {
+    return i18n.t(key, replacements);
   }
 
   async manualRefresh() {
@@ -685,40 +767,40 @@ class ClimatePanelCard extends HTMLElement {
       <div class="sidebar">
         <div class="nav-item ${this.currentPage === 'config' ? 'active' : ''}" data-page="config">
           <span class="nav-item-icon">⚙️</span>
-          Configuration
+          ${this.t('navigation.config')}
         </div>
         <div class="nav-item ${this.currentPage === 'monitor' ? 'active' : ''}" data-page="monitor">
           <span class="nav-item-icon">📊</span>
-          Monitoring
+          ${this.t('navigation.monitor')}
         </div>
         <div class="nav-item ${this.currentPage === 'charts' ? 'active' : ''}" data-page="charts">
           <span class="nav-item-icon">📈</span>
-          Charts & Stats
+          ${this.t('navigation.charts')}
         </div>
         <div class="nav-item ${this.currentPage === 'about' ? 'active' : ''}" data-page="about">
           <span class="nav-item-icon">ℹ️</span>
-          About
+          ${this.t('navigation.about')}
         </div>
       </div>
 
       <div class="container">
-        <h1>🌡️ Climate Control Calendar</h1>
-        <p class="subtitle">Web UI - ${this.hass ? 'Connected ✅' : 'Waiting...'}</p>
+        <h1>🌡️ ${this.t('header.title')}</h1>
+        <p class="subtitle">${this.t('header.subtitle')} - ${this.hass ? this.t('header.connected') + ' ✅' : this.t('header.waiting')}</p>
 
         <div class="status-bar">
           <div class="status-badge">
             <span class="status-dot"></span>
             <span class="live-time">${timeStr}</span>
           </div>
-          <div class="status-badge">📊 ${this.slots.length} Slots</div>
-          <div class="status-badge">🔗 ${this.bindings.length} Bindings</div>
-          <div class="status-badge">📅 ${this.calendars.length} Calendars</div>
-          <div class="status-badge">🌡️ ${this.climate_entities.length} Climate Entities</div>
+          <div class="status-badge">📊 ${this.slots.length} ${this.t('status_bar.slots')}</div>
+          <div class="status-badge">🔗 ${this.bindings.length} ${this.t('status_bar.bindings')}</div>
+          <div class="status-badge">📅 ${this.calendars.length} ${this.t('status_bar.calendars')}</div>
+          <div class="status-badge">🌡️ ${this.climate_entities.length} ${this.t('status_bar.climate_entities')}</div>
           <div class="status-badge" style="cursor: pointer;" id="refresh-btn">
-            🔄 Refresh
+            🔄 ${this.t('status_bar.refresh')}
           </div>
           <div class="status-badge" style="cursor: pointer;" id="debug-toggle">
-            🐛 Debug: ${this.debugEnabled ? 'ON' : 'OFF'}
+            🐛 ${this.t('status_bar.debug')}: ${this.debugEnabled ? 'ON' : 'OFF'}
           </div>
         </div>
 
