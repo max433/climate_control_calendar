@@ -13,6 +13,7 @@ class ClimatePanelCard extends HTMLElement {
     this.bindings = [];
     this.calendars = [];
     this.updateInterval = null;
+    this.refreshInterval = null;
     this.logs = []; // Visual debug logs
     this.maxLogs = 50; // Keep last 50 logs
     // Debug mode toggle - saved in localStorage
@@ -91,6 +92,9 @@ class ClimatePanelCard extends HTMLElement {
     if (this.updateInterval) {
       clearInterval(this.updateInterval);
     }
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
   }
 
   // Called when hass object is set by Home Assistant
@@ -138,6 +142,15 @@ class ClimatePanelCard extends HTMLElement {
       // Subscribe to state changes
       this.subscribeToUpdates();
 
+      // Start auto-refresh every 30 seconds
+      if (this.refreshInterval) {
+        clearInterval(this.refreshInterval);
+      }
+      this.refreshInterval = setInterval(() => {
+        this.log('🔄', 'Auto-refresh triggered (every 30s)');
+        this.loadIntegrationData();
+      }, 30000);
+
     } catch (error) {
       this.log('❌', 'Failed to initialize', {
         error: error.message,
@@ -145,6 +158,11 @@ class ClimatePanelCard extends HTMLElement {
       });
       this.showError(error.message);
     }
+  }
+
+  async manualRefresh() {
+    this.log('🔄', 'Manual refresh requested');
+    await this.loadIntegrationData();
   }
 
   async loadIntegrationData() {
@@ -468,6 +486,9 @@ class ClimatePanelCard extends HTMLElement {
           <div class="status-badge">📊 ${this.slots.length} Slots</div>
           <div class="status-badge">🔗 ${this.bindings.length} Bindings</div>
           <div class="status-badge">📅 ${this.calendars.length} Calendars</div>
+          <div class="status-badge" style="cursor: pointer;" id="refresh-btn">
+            🔄 Refresh
+          </div>
           <div class="status-badge" style="cursor: pointer;" id="debug-toggle">
             🐛 Debug: ${this.debugEnabled ? 'ON' : 'OFF'}
           </div>
@@ -495,6 +516,11 @@ class ClimatePanelCard extends HTMLElement {
     const debugToggle = this.shadowRoot.querySelector('#debug-toggle');
     if (debugToggle) {
       debugToggle.addEventListener('click', () => this.toggleDebug());
+    }
+
+    const refreshBtn = this.shadowRoot.querySelector('#refresh-btn');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.manualRefresh());
     }
 
     // Attach action button listeners
