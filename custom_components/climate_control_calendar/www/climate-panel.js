@@ -22,6 +22,9 @@ class ClimatePanelCard extends HTMLElement {
     this.maxLogs = 50; // Keep last 50 logs
     // Debug mode toggle - saved in localStorage
     this.debugEnabled = localStorage.getItem('climate_debug_enabled') !== 'false'; // Default: true
+    // Navigation state
+    this.currentPage = localStorage.getItem('climate_current_page') || 'config';
+    this.sidebarOpen = false;
   }
 
   // Toggle debug mode
@@ -29,6 +32,21 @@ class ClimatePanelCard extends HTMLElement {
     this.debugEnabled = !this.debugEnabled;
     localStorage.setItem('climate_debug_enabled', this.debugEnabled);
     this.log('🔧', `Debug mode ${this.debugEnabled ? 'ENABLED' : 'DISABLED'}`);
+    this.render();
+  }
+
+  // Toggle sidebar
+  toggleSidebar() {
+    this.sidebarOpen = !this.sidebarOpen;
+    this.render();
+  }
+
+  // Navigate to page
+  navigateTo(page) {
+    this.currentPage = page;
+    localStorage.setItem('climate_current_page', page);
+    this.sidebarOpen = false;
+    this.log('📄', `Navigated to ${page}`);
     this.render();
   }
 
@@ -287,6 +305,102 @@ class ClimatePanelCard extends HTMLElement {
         .container {
           max-width: 1200px;
           margin: 0 auto;
+          position: relative;
+        }
+
+        .hamburger-menu {
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          width: 40px;
+          height: 40px;
+          background: rgba(0, 212, 255, 0.2);
+          border: 1px solid #00d4ff;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          gap: 5px;
+          z-index: 1001;
+          transition: all 0.3s;
+        }
+
+        .hamburger-menu:hover {
+          background: rgba(0, 212, 255, 0.4);
+        }
+
+        .hamburger-line {
+          width: 24px;
+          height: 2px;
+          background: #00d4ff;
+          transition: all 0.3s;
+        }
+
+        .hamburger-menu.open .hamburger-line:nth-child(1) {
+          transform: rotate(45deg) translateY(7px);
+        }
+
+        .hamburger-menu.open .hamburger-line:nth-child(2) {
+          opacity: 0;
+        }
+
+        .hamburger-menu.open .hamburger-line:nth-child(3) {
+          transform: rotate(-45deg) translateY(-7px);
+        }
+
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: ${this.sidebarOpen ? '0' : '-280px'};
+          width: 280px;
+          height: 100%;
+          background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
+          border-right: 1px solid rgba(0, 212, 255, 0.3);
+          transition: left 0.3s ease;
+          z-index: 1000;
+          overflow-y: auto;
+          padding: 80px 20px 20px 20px;
+        }
+
+        .sidebar-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: rgba(0, 0, 0, 0.5);
+          display: ${this.sidebarOpen ? 'block' : 'none'};
+          z-index: 999;
+        }
+
+        .nav-item {
+          padding: 15px 20px;
+          margin: 5px 0;
+          border-radius: 8px;
+          cursor: pointer;
+          transition: all 0.2s;
+          border-left: 3px solid transparent;
+        }
+
+        .nav-item:hover {
+          background: rgba(0, 212, 255, 0.1);
+          border-left-color: #00d4ff;
+        }
+
+        .nav-item.active {
+          background: rgba(0, 212, 255, 0.2);
+          border-left-color: #00d4ff;
+        }
+
+        .nav-item-icon {
+          font-size: 1.2em;
+          margin-right: 10px;
+        }
+
+        .page-content {
+          margin-top: 20px;
         }
 
         h1 {
@@ -485,6 +599,36 @@ class ClimatePanelCard extends HTMLElement {
         }
       </style>
 
+      <!-- Hamburger Menu -->
+      <div class="hamburger-menu ${this.sidebarOpen ? 'open' : ''}" id="hamburger-btn">
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+        <div class="hamburger-line"></div>
+      </div>
+
+      <!-- Sidebar Overlay -->
+      <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="nav-item ${this.currentPage === 'config' ? 'active' : ''}" data-page="config">
+          <span class="nav-item-icon">⚙️</span>
+          Configuration
+        </div>
+        <div class="nav-item ${this.currentPage === 'monitor' ? 'active' : ''}" data-page="monitor">
+          <span class="nav-item-icon">📊</span>
+          Monitoring
+        </div>
+        <div class="nav-item ${this.currentPage === 'charts' ? 'active' : ''}" data-page="charts">
+          <span class="nav-item-icon">📈</span>
+          Charts & Stats
+        </div>
+        <div class="nav-item ${this.currentPage === 'about' ? 'active' : ''}" data-page="about">
+          <span class="nav-item-icon">ℹ️</span>
+          About
+        </div>
+      </div>
+
       <div class="container">
         <h1>🌡️ Climate Control Calendar</h1>
         <p class="subtitle">Web UI - ${this.hass ? 'Connected ✅' : 'Waiting...'}</p>
@@ -515,10 +659,9 @@ class ClimatePanelCard extends HTMLElement {
         </div>
         ` : ''}
 
-        ${this.renderBasicConfig()}
-        ${this.renderSlots()}
-        ${this.renderBindings()}
-        ${this.renderCalendars()}
+        <div class="page-content">
+          ${this.renderPage()}
+        </div>
       </div>
     `;
 
@@ -526,6 +669,16 @@ class ClimatePanelCard extends HTMLElement {
     this.updateDebugLogs();
 
     // Attach event listeners
+    const hamburgerBtn = this.shadowRoot.querySelector('#hamburger-btn');
+    if (hamburgerBtn) {
+      hamburgerBtn.addEventListener('click', () => this.toggleSidebar());
+    }
+
+    const sidebarOverlay = this.shadowRoot.querySelector('#sidebar-overlay');
+    if (sidebarOverlay) {
+      sidebarOverlay.addEventListener('click', () => this.toggleSidebar());
+    }
+
     const debugToggle = this.shadowRoot.querySelector('#debug-toggle');
     if (debugToggle) {
       debugToggle.addEventListener('click', () => this.toggleDebug());
@@ -535,6 +688,16 @@ class ClimatePanelCard extends HTMLElement {
     if (refreshBtn) {
       refreshBtn.addEventListener('click', () => this.manualRefresh());
     }
+
+    // Attach nav item listeners
+    this.shadowRoot.querySelectorAll('.nav-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const page = e.currentTarget.dataset.page;
+        if (page) {
+          this.navigateTo(page);
+        }
+      });
+    });
 
     // Attach action button listeners
     this.shadowRoot.querySelectorAll('[data-action]').forEach(btn => {
@@ -809,8 +972,8 @@ class ClimatePanelCard extends HTMLElement {
         // Close modal
         document.body.removeChild(modal);
 
-        // Reload data - WebSocket will handle it
-        this.log('🔄', 'Waiting for config update via WebSocket...');
+        // Refresh data manually (like the refresh button)
+        await this.manualRefresh();
 
       } catch (error) {
         this.log('❌', 'Failed to save config', { error: error.message });
@@ -829,6 +992,104 @@ class ClimatePanelCard extends HTMLElement {
         document.body.removeChild(modal);
       }
     });
+  }
+
+  renderPage() {
+    switch (this.currentPage) {
+      case 'config':
+        return this.renderConfigPage();
+      case 'monitor':
+        return this.renderMonitorPage();
+      case 'charts':
+        return this.renderChartsPage();
+      case 'about':
+        return this.renderAboutPage();
+      default:
+        return this.renderConfigPage();
+    }
+  }
+
+  renderConfigPage() {
+    return `
+      ${this.renderBasicConfig()}
+      ${this.renderSlots()}
+      ${this.renderBindings()}
+      ${this.renderCalendars()}
+    `;
+  }
+
+  renderMonitorPage() {
+    return `
+      <div class="card">
+        <h2>📊 Monitoring</h2>
+        <p style="color: #888; text-align: center; padding: 40px 20px;">
+          Real-time monitoring dashboard coming soon!<br><br>
+          This will show:<br>
+          • Active calendar events<br>
+          • Current climate states<br>
+          • Recent automation triggers<br>
+          • System health status
+        </p>
+      </div>
+    `;
+  }
+
+  renderChartsPage() {
+    return `
+      <div class="card">
+        <h2>📈 Charts & Statistics</h2>
+        <p style="color: #888; text-align: center; padding: 40px 20px;">
+          Charts and statistics dashboard coming soon!<br><br>
+          This will show:<br>
+          • Temperature history graphs<br>
+          • Usage statistics<br>
+          • Event frequency charts<br>
+          • Energy consumption trends
+        </p>
+      </div>
+    `;
+  }
+
+  renderAboutPage() {
+    return `
+      <div class="card">
+        <h2>ℹ️ About Climate Control Calendar</h2>
+        <div style="padding: 20px;">
+          <h3 style="color: #00d4ff; margin-top: 20px;">Version</h3>
+          <p>Web UI Alpha (v${this.hass?.config?.version || 'unknown'})</p>
+
+          <h3 style="color: #00d4ff; margin-top: 20px;">Description</h3>
+          <p>Climate Control Calendar is a Home Assistant custom integration that automatically controls your climate devices based on calendar events.</p>
+
+          <h3 style="color: #00d4ff; margin-top: 20px;">Features</h3>
+          <ul style="color: #ccc;">
+            <li>Calendar-based climate automation</li>
+            <li>Flexible slot system for climate presets</li>
+            <li>Event matching with regex support</li>
+            <li>Multi-calendar support</li>
+            <li>Priority-based conflict resolution</li>
+            <li>Dry run mode for testing</li>
+          </ul>
+
+          <h3 style="color: #00d4ff; margin-top: 20px;">Current Configuration</h3>
+          <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-top: 10px;">
+            <div>📅 Calendars: ${this.calendars.length}</div>
+            <div>🌡️ Climate Entities: ${this.climate_entities.length}</div>
+            <div>🎯 Slots: ${this.slots.length}</div>
+            <div>🔗 Bindings: ${this.bindings.length}</div>
+            <div>🔧 Dry Run: ${this.dry_run ? 'Enabled' : 'Disabled'}</div>
+            <div>🐛 Debug: ${this.debug_mode ? 'Enabled' : 'Disabled'}</div>
+          </div>
+
+          <h3 style="color: #00d4ff; margin-top: 20px;">Links</h3>
+          <p>
+            <a href="https://github.com/max433/climate_control_calendar" target="_blank" style="color: #00d4ff;">
+              📦 GitHub Repository
+            </a>
+          </p>
+        </div>
+      </div>
+    `;
   }
 
   renderBasicConfig() {
@@ -1094,8 +1355,8 @@ class ClimatePanelCard extends HTMLElement {
         // Close modal
         document.body.removeChild(modal);
 
-        // WebSocket will handle refresh
-        this.log('🔄', 'Waiting for config update via WebSocket...');
+        // Refresh data manually (like the refresh button)
+        await this.manualRefresh();
 
       } catch (error) {
         this.log('❌', 'Failed to save calendar config', { error: error.message });
