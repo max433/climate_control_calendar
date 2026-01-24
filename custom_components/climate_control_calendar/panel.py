@@ -6,7 +6,7 @@ from homeassistant.components.frontend import async_register_built_in_panel
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 from .http_api import async_register_api
 
 _LOGGER = logging.getLogger(__name__)
@@ -48,6 +48,7 @@ async def async_register_panel(hass: HomeAssistant) -> None:
 
         # Step 3: Register the panel in the sidebar
         _LOGGER.warning("📋 Calling async_register_built_in_panel...")
+        _LOGGER.warning("📋 Using VERSION for cache busting: %s", VERSION)
         async_register_built_in_panel(
             hass,
             component_name="custom",  # Use 'custom' for custom panels
@@ -60,7 +61,7 @@ async def async_register_panel(hass: HomeAssistant) -> None:
                     "name": "climate-panel-card",  # Custom element tag name
                     "embed_iframe": True,  # CRITICAL: Embed in iframe to avoid conflicts
                     "trust": False,  # Don't trust external content
-                    "js_url": f"/{DOMAIN}/static/climate-panel.js",  # Path to JS file
+                    "js_url": f"/{DOMAIN}/static/climate-panel.js?v={VERSION}",  # Cache busting with version
                 }
             },
             require_admin=False,  # Allow non-admin users to see the panel

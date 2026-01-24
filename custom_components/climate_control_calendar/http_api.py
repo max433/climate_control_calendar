@@ -16,6 +16,9 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Log module import
+_LOGGER.warning("🔥 http_api.py MODULE LOADED - This should appear in logs!")
+
 
 class ClimateControlConfigView(HomeAssistantView):
     """View to handle config data requests from frontend."""
@@ -27,10 +30,11 @@ class ClimateControlConfigView(HomeAssistantView):
     def __init__(self, hass: HomeAssistant):
         """Initialize the view."""
         self.hass = hass
+        _LOGGER.warning("🔥 ClimateControlConfigView.__init__ called")
 
     async def get(self, request: web.Request) -> web.Response:
         """Handle GET request for configuration data."""
-        _LOGGER.info("HTTP API: GET /api/%s/config", DOMAIN)
+        _LOGGER.warning("🔥 HTTP API: GET /api/%s/config - REQUEST RECEIVED!", DOMAIN)
 
         try:
             # Get first available config entry data
@@ -72,9 +76,12 @@ class ClimateControlConfigView(HomeAssistantView):
 
 async def async_register_api(hass: HomeAssistant) -> None:
     """Register HTTP API endpoints."""
-    _LOGGER.info("Registering HTTP API endpoints for %s", DOMAIN)
+    _LOGGER.warning("🔥 async_register_api CALLED - Registering HTTP API for %s", DOMAIN)
 
     # Register config endpoint
-    hass.http.register_view(ClimateControlConfigView(hass))
+    view = ClimateControlConfigView(hass)
+    hass.http.register_view(view)
 
-    _LOGGER.info("HTTP API endpoints registered: /api/%s/config", DOMAIN)
+    _LOGGER.warning("🔥 HTTP API VIEW REGISTERED: /api/%s/config", DOMAIN)
+    _LOGGER.warning("🔥 View URL: %s", view.url)
+    _LOGGER.warning("🔥 View name: %s", view.name)
