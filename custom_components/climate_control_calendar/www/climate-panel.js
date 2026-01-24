@@ -405,6 +405,55 @@ class ClimatePanelCard extends HTMLElement {
           font-family: 'Courier New', monospace;
           font-size: 0.85em;
         }
+
+        .btn {
+          background: rgba(0, 212, 255, 0.2);
+          color: #00d4ff;
+          border: 1px solid #00d4ff;
+          padding: 8px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 0.9em;
+          margin: 5px;
+          transition: all 0.2s;
+        }
+
+        .btn:hover {
+          background: rgba(0, 212, 255, 0.4);
+        }
+
+        .btn-danger {
+          background: rgba(255, 68, 68, 0.2);
+          color: #ff4444;
+          border-color: #ff4444;
+        }
+
+        .btn-danger:hover {
+          background: rgba(255, 68, 68, 0.4);
+        }
+
+        .btn-small {
+          padding: 4px 8px;
+          font-size: 0.8em;
+        }
+
+        .actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 15px;
+          flex-wrap: wrap;
+        }
+
+        .card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 15px;
+        }
+
+        .card-header h2 {
+          margin: 0;
+        }
       </style>
 
       <div class="container">
@@ -447,21 +496,114 @@ class ClimatePanelCard extends HTMLElement {
     if (debugToggle) {
       debugToggle.addEventListener('click', () => this.toggleDebug());
     }
+
+    // Attach action button listeners
+    this.shadowRoot.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const action = e.target.dataset.action;
+        const id = e.target.dataset.id;
+        this.handleAction(action, id);
+      });
+    });
+  }
+
+  async handleAction(action, id) {
+    this.log('🎬', `Action: ${action}`, { id });
+
+    try {
+      switch (action) {
+        case 'add-slot':
+          await this.addSlot();
+          break;
+        case 'edit-slot':
+          await this.editSlot(id);
+          break;
+        case 'delete-slot':
+          await this.deleteSlot(id);
+          break;
+        case 'add-binding':
+          await this.addBinding();
+          break;
+        case 'edit-binding':
+          await this.editBinding(id);
+          break;
+        case 'delete-binding':
+          await this.deleteBinding(id);
+          break;
+        default:
+          this.log('⚠️', `Unknown action: ${action}`);
+      }
+    } catch (error) {
+      this.log('❌', `Action failed: ${action}`, { error: error.message });
+      alert(`Error: ${error.message}`);
+    }
+  }
+
+  async deleteSlot(slotId) {
+    const slot = this.slots.find(s => s.id === slotId);
+    if (!slot) return;
+
+    if (!confirm(`Delete slot "${slot.label}"?`)) {
+      return;
+    }
+
+    this.log('🗑️', `Deleting slot ${slotId}...`);
+
+    await this.hass.callService('climate_control_calendar', 'remove_slot', {
+      slot_id: slotId
+    });
+
+    this.log('✅', 'Slot deleted successfully');
+
+    // Reload data
+    await this.loadIntegrationData();
+  }
+
+  async deleteBinding(bindingId) {
+    const binding = this.bindings.find(b => b.id === bindingId);
+    if (!binding) return;
+
+    if (!confirm(`Delete binding "${binding.match?.value || 'Unnamed'}"?`)) {
+      return;
+    }
+
+    this.log('🗑️', `Deleting binding ${bindingId}...`);
+
+    await this.hass.callService('climate_control_calendar', 'remove_binding', {
+      binding_id: bindingId
+    });
+
+    this.log('✅', 'Binding deleted successfully');
+
+    // Reload data
+    await this.loadIntegrationData();
+  }
+
+  async addSlot() {
+    // For now, just navigate to HA config
+    this.log('➕', 'Add slot - redirecting to HA config...');
+    alert('Please use Home Assistant Configuration UI to add slots for now.\n\nFull UI editor coming soon!');
+  }
+
+  async editSlot(slotId) {
+    // For now, just navigate to HA config
+    this.log('✏️', 'Edit slot - redirecting to HA config...');
+    alert('Please use Home Assistant Configuration UI to edit slots for now.\n\nFull UI editor coming soon!');
+  }
+
+  async addBinding() {
+    // For now, just navigate to HA config
+    this.log('➕', 'Add binding - redirecting to HA config...');
+    alert('Please use Home Assistant Configuration UI to add bindings for now.\n\nFull UI editor coming soon!');
+  }
+
+  async editBinding(bindingId) {
+    // For now, just navigate to HA config
+    this.log('✏️', 'Edit binding - redirecting to HA config...');
+    alert('Please use Home Assistant Configuration UI to edit bindings for now.\n\nFull UI editor coming soon!');
   }
 
   renderSlots() {
-    if (this.slots.length === 0) {
-      return `
-        <div class="card">
-          <h2>🎯 Climate Slots</h2>
-          <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <p>No slots configured</p>
-          </div>
-        </div>
-      `;
-    }
-
     const slotsList = this.slots.map(slot => {
       const payload = slot.default_climate_payload || {};
       const temp = payload.temperature || 'N/A';
@@ -476,26 +618,32 @@ class ClimatePanelCard extends HTMLElement {
             ${payload.preset_mode ? `<span class="badge">⚙️ ${payload.preset_mode}</span>` : ''}
             ${payload.humidity ? `<span class="badge">💧 ${payload.humidity}%</span>` : ''}
           </div>
+          <div class="actions">
+            <button class="btn btn-small" data-action="edit-slot" data-id="${slot.id}">✏️ Edit</button>
+            <button class="btn btn-small btn-danger" data-action="delete-slot" data-id="${slot.id}">🗑️ Delete</button>
+          </div>
         </div>
       `;
     }).join('');
 
-    return `<div class="card"><h2>🎯 Slots (${this.slots.length})</h2>${slotsList}</div>`;
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h2>🎯 Slots (${this.slots.length})</h2>
+          <button class="btn" data-action="add-slot">➕ Add Slot</button>
+        </div>
+        ${this.slots.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>No slots configured yet</p>
+            <p style="margin-top: 10px; color: #666;">Click "Add Slot" to create one</p>
+          </div>
+        ` : slotsList}
+      </div>
+    `;
   }
 
   renderBindings() {
-    if (this.bindings.length === 0) {
-      return `
-        <div class="card">
-          <h2>🔗 Bindings</h2>
-          <div class="empty-state">
-            <div class="empty-state-icon">📭</div>
-            <p>No bindings configured</p>
-          </div>
-        </div>
-      `;
-    }
-
     const bindingsList = this.bindings.map(binding => {
       const matchType = binding.match?.type || 'unknown';
       const matchValue = binding.match?.value || '';
@@ -509,13 +657,31 @@ class ClimatePanelCard extends HTMLElement {
           <div>
             <span class="badge">📋 ${matchType}</span>
             <span class="badge">🎯 ${slotLabel}</span>
-            <span class="badge">⚡ ${priority}</span>
+            <span class="badge">⚡ Priority: ${priority}</span>
+          </div>
+          <div class="actions">
+            <button class="btn btn-small" data-action="edit-binding" data-id="${binding.id}">✏️ Edit</button>
+            <button class="btn btn-small btn-danger" data-action="delete-binding" data-id="${binding.id}">🗑️ Delete</button>
           </div>
         </div>
       `;
     }).join('');
 
-    return `<div class="card"><h2>🔗 Bindings (${this.bindings.length})</h2>${bindingsList}</div>`;
+    return `
+      <div class="card">
+        <div class="card-header">
+          <h2>🔗 Bindings (${this.bindings.length})</h2>
+          <button class="btn" data-action="add-binding">➕ Add Binding</button>
+        </div>
+        ${this.bindings.length === 0 ? `
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <p>No bindings configured yet</p>
+            <p style="margin-top: 10px; color: #666;">Click "Add Binding" to create one</p>
+          </div>
+        ` : bindingsList}
+      </div>
+    `;
   }
 
   renderCalendars() {
