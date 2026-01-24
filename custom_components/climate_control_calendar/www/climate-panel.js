@@ -579,10 +579,10 @@ class ClimatePanelCard extends HTMLElement {
       slot_id: slotId
     });
 
-    this.log('✅', 'Slot deleted successfully');
+    this.log('✅', 'Slot deleted successfully - waiting for WebSocket update');
 
-    // Reload data
-    await this.loadIntegrationData();
+    // Don't reload manually - WebSocket subscription will handle it automatically
+    // This prevents navigation issues from full DOM recreation
   }
 
   async deleteBinding(bindingId) {
@@ -599,10 +599,10 @@ class ClimatePanelCard extends HTMLElement {
       binding_id: bindingId
     });
 
-    this.log('✅', 'Binding deleted successfully');
+    this.log('✅', 'Binding deleted successfully - waiting for WebSocket update');
 
-    // Reload data
-    await this.loadIntegrationData();
+    // Don't reload manually - WebSocket subscription will handle it automatically
+    // This prevents navigation issues from full DOM recreation
   }
 
   async addSlot() {
