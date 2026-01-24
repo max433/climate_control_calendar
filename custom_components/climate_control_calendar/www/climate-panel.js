@@ -15,6 +15,16 @@ class ClimatePanelCard extends HTMLElement {
     this.updateInterval = null;
     this.logs = []; // Visual debug logs
     this.maxLogs = 50; // Keep last 50 logs
+    // Debug mode toggle - saved in localStorage
+    this.debugEnabled = localStorage.getItem('climate_debug_enabled') !== 'false'; // Default: true
+  }
+
+  // Toggle debug mode
+  toggleDebug() {
+    this.debugEnabled = !this.debugEnabled;
+    localStorage.setItem('climate_debug_enabled', this.debugEnabled);
+    this.log('🔧', `Debug mode ${this.debugEnabled ? 'ENABLED' : 'DISABLED'}`);
+    this.render();
   }
 
   // Custom log function that shows in UI
@@ -409,14 +419,19 @@ class ClimatePanelCard extends HTMLElement {
           <div class="status-badge">📊 ${this.slots.length} Slots</div>
           <div class="status-badge">🔗 ${this.bindings.length} Bindings</div>
           <div class="status-badge">📅 ${this.calendars.length} Calendars</div>
+          <div class="status-badge" style="cursor: pointer;" id="debug-toggle">
+            🐛 Debug: ${this.debugEnabled ? 'ON' : 'OFF'}
+          </div>
         </div>
 
+        ${this.debugEnabled ? `
         <div class="card">
-          <h2>🐛 Debug Console (Mobile-Friendly)</h2>
+          <h2>🐛 Debug Console</h2>
           <div class="debug-logs">
             ${this.logs.length === 0 ? '<div style="color: #888;">Waiting for logs...</div>' : ''}
           </div>
         </div>
+        ` : ''}
 
         ${this.renderSlots()}
         ${this.renderBindings()}
@@ -426,6 +441,12 @@ class ClimatePanelCard extends HTMLElement {
 
     // Update logs after render
     this.updateDebugLogs();
+
+    // Attach event listeners
+    const debugToggle = this.shadowRoot.querySelector('#debug-toggle');
+    if (debugToggle) {
+      debugToggle.addEventListener('click', () => this.toggleDebug());
+    }
   }
 
   renderSlots() {
