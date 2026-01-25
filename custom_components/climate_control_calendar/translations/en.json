@@ -464,6 +464,60 @@
         "save": "Save",
         "cancel": "Cancel"
       },
+      "templates": {
+        "hint": "Supports templates",
+        "example_sensor": "{{ states('sensor.temp') }}",
+        "example_calculation": "{{ states('sensor.outdoor_temp') | float - 2 }}",
+        "info": "Use Jinja2 templates for dynamic values based on Home Assistant state"
+      },
+      "conditions": {
+        "title": "Add Condition",
+        "type_label": "Condition Type",
+        "types": {
+          "state": "State - Check entity state",
+          "numeric_state": "Numeric State - Compare numeric value",
+          "time": "Time - Check time range/weekday",
+          "template": "Template - Custom Jinja2 condition"
+        },
+        "state": {
+          "entity": "Entity",
+          "state": "State",
+          "example": "sensor.presence = \"home\""
+        },
+        "numeric_state": {
+          "entity": "Entity",
+          "above": "Above",
+          "below": "Below",
+          "example": "sensor.temperature above 25 and below 30",
+          "at_least_one": "Specify at least \"above\" or \"below\""
+        },
+        "time": {
+          "after": "After",
+          "before": "Before",
+          "weekday": "Weekday",
+          "any_day": "Leave all unchecked for any day",
+          "example": "Between 22:00-06:00 on Mon, Tue, Wed",
+          "at_least_one": "Specify at least time range or weekday"
+        },
+        "template": {
+          "template_label": "Template",
+          "placeholder": "{{ states('sensor.temp') | float > 25 }}",
+          "info": "Jinja2 template that must evaluate to true",
+          "example": "{{ is_state('binary_sensor.workday', 'on') }}",
+          "must_have_markers": "Template must contain {{ }} markers"
+        },
+        "info": "Binding activates only when ALL conditions are met (AND logic). Leave empty for always active.",
+        "no_conditions": "No conditions configured (binding always active)",
+        "add_button": "Add Condition",
+        "remove_button": "Remove",
+        "save_button": "Add",
+        "cancel_button": "Cancel",
+        "errors": {
+          "entity_required": "Entity is required",
+          "state_required": "Entity and state are required",
+          "template_required": "Template is required"
+        }
+      },
       "alerts": {
         "config_ui": "Please use Home Assistant Configuration UI for now.\n\nFull UI editor coming soon!",
         "delete_confirm": "Delete {item} \"{name}\"?"

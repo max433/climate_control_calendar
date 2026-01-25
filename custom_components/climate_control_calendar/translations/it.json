@@ -467,6 +467,60 @@
         "save": "Salva",
         "cancel": "Annulla"
       },
+      "templates": {
+        "hint": "Supporta template",
+        "example_sensor": "{{ states('sensor.temp') }}",
+        "example_calculation": "{{ states('sensor.outdoor_temp') | float - 2 }}",
+        "info": "Usa template Jinja2 per valori dinamici basati sullo stato di Home Assistant"
+      },
+      "conditions": {
+        "title": "Aggiungi Condizione",
+        "type_label": "Tipo Condizione",
+        "types": {
+          "state": "State - Verifica stato entità",
+          "numeric_state": "Numeric State - Confronta valore numerico",
+          "time": "Time - Verifica fascia oraria/giorno settimana",
+          "template": "Template - Condizione Jinja2 personalizzata"
+        },
+        "state": {
+          "entity": "Entità",
+          "state": "Stato",
+          "example": "sensor.presence = \"home\""
+        },
+        "numeric_state": {
+          "entity": "Entità",
+          "above": "Sopra",
+          "below": "Sotto",
+          "example": "sensor.temperature sopra 25 e sotto 30",
+          "at_least_one": "Specifica almeno \"sopra\" o \"sotto\""
+        },
+        "time": {
+          "after": "Dopo",
+          "before": "Prima",
+          "weekday": "Giorno settimana",
+          "any_day": "Lascia tutti deselezionati per qualsiasi giorno",
+          "example": "Tra 22:00-06:00 di Lun, Mar, Mer",
+          "at_least_one": "Specifica almeno fascia oraria o giorno"
+        },
+        "template": {
+          "template_label": "Template",
+          "placeholder": "{{ states('sensor.temp') | float > 25 }}",
+          "info": "Template Jinja2 che deve valutare a true",
+          "example": "{{ is_state('binary_sensor.workday', 'on') }}",
+          "must_have_markers": "Il template deve contenere i marcatori {{ }}"
+        },
+        "info": "Il binding si attiva solo quando TUTTE le condizioni sono soddisfatte (logica AND). Lascia vuoto per sempre attivo.",
+        "no_conditions": "Nessuna condizione configurata (binding sempre attivo)",
+        "add_button": "Aggiungi Condizione",
+        "remove_button": "Rimuovi",
+        "save_button": "Aggiungi",
+        "cancel_button": "Annulla",
+        "errors": {
+          "entity_required": "Entità richiesta",
+          "state_required": "Entità e stato sono richiesti",
+          "template_required": "Template richiesto"
+        }
+      },
       "alerts": {
         "config_ui": "Per ora utilizza la configurazione di Home Assistant.\n\nEditor completo in arrivo!",
         "delete_confirm": "Eliminare {item} \"{name}\"?"

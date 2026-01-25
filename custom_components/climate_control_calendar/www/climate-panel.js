@@ -2672,6 +2672,27 @@ class ClimatePanelCard extends HTMLElement {
           </select>
         </label>
 
+        <div class="collapse-section ${binding.conditions && binding.conditions.length > 0 ? 'open' : ''}">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🎯 Conditions</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+              ℹ️ Binding activates only when ALL conditions are met (AND logic). Leave empty for always active.
+            </div>
+
+            <div id="conditions-list" style="margin-bottom: 15px;">
+              <!-- Conditions will be added here dynamically -->
+            </div>
+
+            <button type="button" id="add-condition-btn"
+              style="padding: 8px 15px; background: rgba(0,212,255,0.2); color: #00d4ff; border: 1px solid #00d4ff; border-radius: 4px; cursor: pointer;">
+              ➕ Add Condition
+            </button>
+          </div>
+        </div>
+
         <div class="collapse-section open">
           <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
             <span>⚙️ Advanced Options</span>
@@ -2763,6 +2784,78 @@ class ClimatePanelCard extends HTMLElement {
 
     document.body.appendChild(modal);
 
+    // Track conditions for this binding (initialize with existing)
+    let conditions = binding.conditions ? JSON.parse(JSON.stringify(binding.conditions)) : [];
+
+    // Function to render a condition in the list (same as addBinding)
+    const renderConditionItem = (condition, index) => {
+      const conditionType = condition.type || condition.condition;
+      let summary = '';
+
+      if (conditionType === 'state') {
+        summary = `${condition.entity_id} = ${condition.state}`;
+      } else if (conditionType === 'numeric_state') {
+        const parts = [];
+        if (condition.above !== undefined) parts.push(`> ${condition.above}`);
+        if (condition.below !== undefined) parts.push(`< ${condition.below}`);
+        summary = `${condition.entity_id} ${parts.join(' and ')}`;
+      } else if (conditionType === 'time') {
+        const parts = [];
+        if (condition.after) parts.push(`after ${condition.after}`);
+        if (condition.before) parts.push(`before ${condition.before}`);
+        if (condition.weekday) {
+          const wd = Array.isArray(condition.weekday) ? condition.weekday.join(', ') : condition.weekday;
+          parts.push(`on ${wd}`);
+        }
+        summary = parts.join(', ');
+      } else if (conditionType === 'template') {
+        const template = condition.value_template || '';
+        summary = template.length > 40 ? template.substring(0, 37) + '...' : template;
+      }
+
+      return `
+        <div class="condition-item" style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #00d4ff;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+              <div style="color: #00d4ff; font-weight: bold; margin-bottom: 5px; font-size: 0.9em;">${conditionType.replace('_', ' ').toUpperCase()}</div>
+              <div style="font-size: 0.9em; color: #ddd;">${summary}</div>
+            </div>
+            <button type="button" class="remove-condition-btn" data-index="${index}"
+              style="background: rgba(255,68,68,0.2); color: #ff4444; border: 1px solid #ff4444; padding: 6px 12px; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px;">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `;
+    };
+
+    // Function to update conditions list display
+    const updateConditionsList = () => {
+      const conditionsList = modal.querySelector('#conditions-list');
+      if (conditions.length === 0) {
+        conditionsList.innerHTML = '<div style="color: #888; font-style: italic; padding: 10px;">No conditions configured (binding always active)</div>';
+      } else {
+        conditionsList.innerHTML = conditions.map((cond, idx) => renderConditionItem(cond, idx)).join('');
+
+        // Attach remove handlers
+        conditionsList.querySelectorAll('.remove-condition-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const index = parseInt(btn.dataset.index);
+            conditions.splice(index, 1);
+            updateConditionsList();
+          });
+        });
+      }
+    };
+
+    // Initial render
+    updateConditionsList();
+
+    // Handle "Add Condition" button
+    modal.querySelector('#add-condition-btn').addEventListener('click', () => {
+      this.showAddConditionDialog(modal, conditions, updateConditionsList);
+    });
+
     // Handle save
     modal.querySelector('#save-btn').addEventListener('click', async () => {
       try {
@@ -2784,7 +2877,7 @@ class ClimatePanelCard extends HTMLElement {
         const newTargetEntities = Array.from(modal.querySelectorAll('input[name="target_entities"]:checked'))
           .map(cb => cb.value);
 
-        this.log('💾', 'Updating binding...', { bindingId, matchType, matchValue, slotId, calendars, priority, newTargetEntities });
+        this.log('💾', 'Updating binding...', { bindingId, matchType, matchValue, slotId, calendars, priority, newTargetEntities, conditions });
 
         // Update binding in list
         const response = await fetch('/api/climate_control_calendar/config', {
@@ -2796,7 +2889,7 @@ class ClimatePanelCard extends HTMLElement {
           body: JSON.stringify({
             bindings: this.bindings.map(b => {
               if (b.id === bindingId) {
-                return {
+                const updated = {
                   id: bindingId,
                   calendars: calendars,
                   match: {
@@ -2807,6 +2900,13 @@ class ClimatePanelCard extends HTMLElement {
                   priority: priority ? parseInt(priority) : null,
                   target_entities: newTargetEntities.length > 0 ? newTargetEntities : null,
                 };
+
+                // Add conditions if present
+                if (conditions.length > 0) {
+                  updated.conditions = conditions;
+                }
+
+                return updated;
               }
               return b;
             })
