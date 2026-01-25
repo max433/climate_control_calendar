@@ -4,6 +4,140 @@
  * WITH VISUAL DEBUG CONSOLE FOR MOBILE
  */
 
+// ===== Searchable Select Component =====
+class SearchableSelect {
+  constructor(selectElement, options = {}) {
+    this.select = selectElement;
+    this.options = {
+      placeholder: options.placeholder || 'Search...',
+      noResultsText: options.noResultsText || 'No results found',
+      ...options
+    };
+
+    this.isOpen = false;
+    this.selectedOption = null;
+    this.filteredOptions = [];
+    this.init();
+  }
+
+  init() {
+    this.select.style.display = 'none';
+    this.container = document.createElement('div');
+    this.container.className = 'searchable-select-container';
+
+    this.display = document.createElement('input');
+    this.display.type = 'text';
+    this.display.className = 'searchable-select-display';
+    this.display.placeholder = this.getSelectedText() || this.options.placeholder;
+    this.display.readOnly = false;
+
+    this.dropdown = document.createElement('div');
+    this.dropdown.className = 'searchable-select-dropdown';
+    this.dropdown.style.display = 'none';
+
+    this.container.appendChild(this.display);
+    this.container.appendChild(this.dropdown);
+    this.select.parentNode.insertBefore(this.container, this.select);
+
+    this.updateOptions();
+
+    this.display.addEventListener('focus', () => this.open());
+    this.display.addEventListener('input', (e) => this.filter(e.target.value));
+    this.display.addEventListener('blur', () => {
+      setTimeout(() => this.close(), 200);
+    });
+
+    this.select.addEventListener('change', () => {
+      this.display.placeholder = this.getSelectedText();
+      this.display.value = '';
+    });
+  }
+
+  getSelectedText() {
+    const selected = this.select.options[this.select.selectedIndex];
+    return selected ? selected.text : '';
+  }
+
+  updateOptions() {
+    this.filteredOptions = Array.from(this.select.options).map((opt, idx) => ({
+      value: opt.value,
+      text: opt.text,
+      index: idx
+    }));
+    this.renderOptions();
+  }
+
+  renderOptions() {
+    this.dropdown.innerHTML = '';
+
+    if (this.filteredOptions.length === 0) {
+      const noResults = document.createElement('div');
+      noResults.className = 'searchable-select-option searchable-select-no-results';
+      noResults.textContent = this.options.noResultsText;
+      this.dropdown.appendChild(noResults);
+      return;
+    }
+
+    this.filteredOptions.forEach(opt => {
+      const optionEl = document.createElement('div');
+      optionEl.className = 'searchable-select-option';
+      optionEl.textContent = opt.text;
+      optionEl.dataset.value = opt.value;
+      optionEl.dataset.index = opt.index;
+
+      if (this.select.selectedIndex === opt.index) {
+        optionEl.classList.add('selected');
+      }
+
+      optionEl.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        this.selectOption(opt.index);
+      });
+
+      this.dropdown.appendChild(optionEl);
+    });
+  }
+
+  filter(query) {
+    const lowerQuery = query.toLowerCase();
+    this.filteredOptions = Array.from(this.select.options)
+      .map((opt, idx) => ({
+        value: opt.value,
+        text: opt.text,
+        index: idx
+      }))
+      .filter(opt => opt.text.toLowerCase().includes(lowerQuery));
+
+    this.renderOptions();
+  }
+
+  selectOption(index) {
+    this.select.selectedIndex = index;
+    this.select.dispatchEvent(new Event('change', { bubbles: true }));
+    this.display.value = '';
+    this.display.placeholder = this.getSelectedText();
+    this.close();
+  }
+
+  open() {
+    this.isOpen = true;
+    this.dropdown.style.display = 'block';
+    this.display.value = '';
+    this.filter('');
+  }
+
+  close() {
+    this.isOpen = false;
+    this.dropdown.style.display = 'none';
+    this.display.value = '';
+  }
+
+  destroy() {
+    this.container.remove();
+    this.select.style.display = '';
+  }
+}
+
 // I18n system
 class I18n {
   constructor() {
@@ -751,6 +885,101 @@ class ClimatePanelCard extends HTMLElement {
         .card-header h2 {
           margin: 0;
         }
+
+        /* Searchable Select Styles */
+        .searchable-select-container {
+          position: relative;
+          width: 100%;
+        }
+
+        .searchable-select-display {
+          width: 100%;
+          padding: 8px 30px 8px 10px;
+          background: rgba(0,0,0,0.3);
+          color: white;
+          border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 4px;
+          font-size: 14px;
+          cursor: pointer;
+          background-image: url('data:image/svg+xml;utf8,<svg fill="white" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>');
+          background-repeat: no-repeat;
+          background-position: right 5px center;
+          background-size: 20px;
+        }
+
+        .searchable-select-display:focus {
+          outline: none;
+          border-color: #00d4ff;
+          box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.2);
+          background-image: url('data:image/svg+xml;utf8,<svg fill="%2300d4ff" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>');
+        }
+
+        .searchable-select-display::placeholder {
+          color: rgba(255, 255, 255, 0.5);
+        }
+
+        .searchable-select-dropdown {
+          position: absolute;
+          top: 100%;
+          left: 0;
+          right: 0;
+          max-height: 250px;
+          overflow-y: auto;
+          background: rgba(20, 20, 35, 0.98);
+          border: 1px solid #00d4ff;
+          border-radius: 4px;
+          margin-top: 4px;
+          z-index: 1000;
+          box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+        }
+
+        .searchable-select-option {
+          padding: 10px 12px;
+          cursor: pointer;
+          color: white;
+          transition: background 0.2s;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .searchable-select-option:last-child {
+          border-bottom: none;
+        }
+
+        .searchable-select-option:hover {
+          background: rgba(0, 212, 255, 0.2);
+        }
+
+        .searchable-select-option.selected {
+          background: rgba(0, 212, 255, 0.3);
+          font-weight: bold;
+        }
+
+        .searchable-select-no-results {
+          color: rgba(255, 255, 255, 0.5);
+          font-style: italic;
+          cursor: default;
+        }
+
+        .searchable-select-no-results:hover {
+          background: transparent;
+        }
+
+        .searchable-select-dropdown::-webkit-scrollbar {
+          width: 8px;
+        }
+
+        .searchable-select-dropdown::-webkit-scrollbar-track {
+          background: rgba(0, 0, 0, 0.2);
+        }
+
+        .searchable-select-dropdown::-webkit-scrollbar-thumb {
+          background: rgba(0, 212, 255, 0.5);
+          border-radius: 4px;
+        }
+
+        .searchable-select-dropdown::-webkit-scrollbar-thumb:hover {
+          background: rgba(0, 212, 255, 0.7);
+        }
       </style>
 
       <!-- Hamburger Menu -->
@@ -976,6 +1205,66 @@ class ClimatePanelCard extends HTMLElement {
     return { valid: true, value: num, isTemplate: false };
   }
 
+  // Helper: Evaluate template and return rendered value
+  async evaluateTemplate(templateString) {
+    if (!templateString || !templateString.includes('{{') || !templateString.includes('}}')) {
+      return { success: false, error: 'Not a template' };
+    }
+
+    try {
+      // Use Home Assistant's template rendering via WebSocket
+      const result = await this.hass.callWS({
+        type: 'render_template',
+        template: templateString
+      });
+
+      return { success: true, value: result };
+    } catch (error) {
+      return { success: false, error: error.message || 'Template rendering failed' };
+    }
+  }
+
+  // Helper: Add template preview to an input element
+  addTemplatePreview(inputElement, previewId) {
+    // Check if preview already exists
+    let previewDiv = inputElement.parentElement.querySelector(`#${previewId}`);
+    if (!previewDiv) {
+      previewDiv = document.createElement('div');
+      previewDiv.id = previewId;
+      previewDiv.style.cssText = 'color: #888; font-size: 0.85em; margin-top: 5px; padding: 5px; background: rgba(0,0,0,0.2); border-radius: 4px; display: none;';
+      inputElement.parentElement.appendChild(previewDiv);
+    }
+
+    // Add blur event listener for live evaluation
+    inputElement.addEventListener('blur', async () => {
+      const value = inputElement.value.trim();
+
+      // Hide preview if empty or not a template
+      if (!value || !value.includes('{{') || !value.includes('}}')) {
+        previewDiv.style.display = 'none';
+        return;
+      }
+
+      // Show loading state
+      previewDiv.style.display = 'block';
+      previewDiv.innerHTML = '⏳ Evaluating template...';
+      previewDiv.style.color = '#888';
+
+      // Evaluate template
+      const result = await this.evaluateTemplate(value);
+
+      if (result.success) {
+        previewDiv.innerHTML = `✅ Current value: <strong style="color: #00d4ff;">${result.value}</strong>`;
+        previewDiv.style.color = '#00ff88';
+      } else {
+        previewDiv.innerHTML = `❌ Error: ${result.error}`;
+        previewDiv.style.color = '#ff4444';
+      }
+    });
+
+    return previewDiv;
+  }
+
   async addSlot() {
     this.log('➕', 'Add new slot...');
 
@@ -1083,6 +1372,9 @@ class ClimatePanelCard extends HTMLElement {
                     <input type="text" class="override-temperature" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="20 or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
 
                   <label style="display: block;">
@@ -1105,6 +1397,9 @@ class ClimatePanelCard extends HTMLElement {
                     <input type="text" class="override-temp-low" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="18 or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
 
                   <label style="display: block;">
@@ -1112,6 +1407,9 @@ class ClimatePanelCard extends HTMLElement {
                     <input type="text" class="override-temp-high" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="22 or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
 
                   <label style="display: block; grid-column: 1 / -1;">
@@ -1119,6 +1417,9 @@ class ClimatePanelCard extends HTMLElement {
                     <input type="text" class="override-preset" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="eco or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
                 </div>
               </div>
@@ -1245,6 +1546,9 @@ class ClimatePanelCard extends HTMLElement {
 
     document.body.appendChild(modal);
 
+    // Initialize searchable selects
+    this.initSearchableSelects(modal);
+
     // Setup tab switching
     modal.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1280,6 +1584,25 @@ class ClimatePanelCard extends HTMLElement {
           });
         }
       });
+    });
+
+    // Setup template preview for all template-supporting fields
+    const templateFields = [
+      { selector: '#temperature', id: 'preview-temperature' },
+      { selector: '#target_temp_low', id: 'preview-temp-low' },
+      { selector: '#target_temp_high', id: 'preview-temp-high' }
+    ];
+
+    templateFields.forEach(({ selector, id }) => {
+      const field = modal.querySelector(selector);
+      if (field) {
+        this.addTemplatePreview(field, id);
+      }
+    });
+
+    // Setup template preview for entity override fields
+    modal.querySelectorAll('.override-temperature, .override-temp-low, .override-temp-high, .override-preset').forEach((input, idx) => {
+      this.addTemplatePreview(input, `preview-override-${input.className}-${idx}`);
     });
 
     // Handle save
@@ -1539,6 +1862,38 @@ class ClimatePanelCard extends HTMLElement {
     return modal;
   }
 
+  // Initialize SearchableSelect on all select elements with many options
+  initSearchableSelects(container, minOptions = 5) {
+    const selects = container.querySelectorAll('select');
+    const searchableInstances = [];
+
+    selects.forEach(select => {
+      // Skip if already initialized or has few options
+      if (select.dataset.searchableInit === 'true' || select.options.length < minOptions) {
+        return;
+      }
+
+      // Skip HVAC/preset mode selects (they have few options and are better as regular select)
+      if (select.id && (select.id.includes('hvac_mode') || select.id.includes('preset_mode') ||
+          select.id.includes('fan_mode') || select.id.includes('swing_mode'))) {
+        return;
+      }
+
+      try {
+        const instance = new SearchableSelect(select, {
+          placeholder: 'Type to search...',
+          noResultsText: 'No entities found'
+        });
+        select.dataset.searchableInit = 'true';
+        searchableInstances.push(instance);
+      } catch (err) {
+        console.error('Failed to initialize SearchableSelect:', err);
+      }
+    });
+
+    return searchableInstances;
+  }
+
   async editSlot(slotId) {
     this.log('✏️', `Edit slot: ${slotId}`);
 
@@ -1660,8 +2015,12 @@ class ClimatePanelCard extends HTMLElement {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                   <label style="display: block;">
                     <strong>Temperature (°C)</strong>
-                    <input type="number" class="override-temperature" data-entity="${entityId}" step="0.5" min="-50" max="50" value="${override.temperature || ''}"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                    <input type="text" class="override-temperature" data-entity="${entityId}" value="${override.temperature || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="20 or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
 
                   <label style="display: block;">
@@ -1681,21 +2040,32 @@ class ClimatePanelCard extends HTMLElement {
 
                   <label style="display: block;">
                     <strong>Min Temp (°C)</strong>
-                    <input type="number" class="override-temp-low" data-entity="${entityId}" step="0.5" min="-50" max="50" value="${override.target_temp_low || ''}"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                    <input type="text" class="override-temp-low" data-entity="${entityId}" value="${override.target_temp_low || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="18 or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
 
                   <label style="display: block;">
                     <strong>Max Temp (°C)</strong>
-                    <input type="number" class="override-temp-high" data-entity="${entityId}" step="0.5" min="-50" max="50" value="${override.target_temp_high || ''}"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                    <input type="text" class="override-temp-high" data-entity="${entityId}" value="${override.target_temp_high || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="22 or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
 
                   <label style="display: block; grid-column: 1 / -1;">
                     <strong>Preset Mode</strong>
                     <input type="text" class="override-preset" data-entity="${entityId}" value="${override.preset_mode || ''}"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
-                      placeholder="e.g., eco, comfort">
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="eco or {{ ... }}">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
+                      💡 <code>{{ states(...) }}</code>
+                    </div>
                   </label>
                 </div>
               </div>
@@ -1822,6 +2192,9 @@ class ClimatePanelCard extends HTMLElement {
 
     document.body.appendChild(modal);
 
+    // Initialize searchable selects
+    this.initSearchableSelects(modal);
+
     // Setup tab switching
     modal.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -1857,6 +2230,25 @@ class ClimatePanelCard extends HTMLElement {
           });
         }
       });
+    });
+
+    // Setup template preview for all template-supporting fields
+    const templateFields = [
+      { selector: '#temperature', id: 'preview-temperature' },
+      { selector: '#target_temp_low', id: 'preview-temp-low' },
+      { selector: '#target_temp_high', id: 'preview-temp-high' }
+    ];
+
+    templateFields.forEach(({ selector, id }) => {
+      const field = modal.querySelector(selector);
+      if (field) {
+        this.addTemplatePreview(field, id);
+      }
+    });
+
+    // Setup template preview for entity override fields
+    modal.querySelectorAll('.override-temperature, .override-temp-low, .override-temp-high, .override-preset').forEach((input, idx) => {
+      this.addTemplatePreview(input, `preview-override-${input.className}-${idx}`);
     });
 
     // Handle save
@@ -2061,18 +2453,42 @@ class ClimatePanelCard extends HTMLElement {
     const conditionModal = this.createModal(`
       <h2 style="margin-top: 0; color: #00d4ff;">➕ Add Condition</h2>
 
-      <label style="display: block; margin-bottom: 15px;">
-        <strong>Condition Type *</strong>
-        <select id="condition_type"
-          style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-          <option value="state">State - Check entity state</option>
-          <option value="numeric_state">Numeric State - Compare numeric value</option>
-          <option value="time">Time - Check time range/weekday</option>
-          <option value="template">Template - Custom Jinja2 condition</option>
-        </select>
-      </label>
+      <div style="margin-bottom: 20px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+        <span style="color: #888; font-size: 0.9em;">💡 Use Advanced Mode for complex conditions or custom JSON</span>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+          <span style="font-weight: bold; color: #00d4ff;">Advanced Mode</span>
+          <input type="checkbox" id="advanced-mode-toggle" style="width: 20px; height: 20px; cursor: pointer;">
+        </label>
+      </div>
 
-      <div id="condition-form-container"></div>
+      <!-- Basic Mode Container -->
+      <div id="basic-mode-container">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Condition Type *</strong>
+          <select id="condition_type"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="state">State - Check entity state</option>
+            <option value="numeric_state">Numeric State - Compare numeric value</option>
+            <option value="time">Time - Check time range/weekday</option>
+            <option value="template">Template - Custom Jinja2 condition</option>
+          </select>
+        </label>
+
+        <div id="condition-form-container"></div>
+      </div>
+
+      <!-- Advanced Mode Container -->
+      <div id="advanced-mode-container" style="display: none;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Condition JSON *</strong>
+          <textarea id="condition-json" rows="8"
+            style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px;"
+            placeholder='{\n  "condition": "state",\n  "entity_id": "binary_sensor.window",\n  "state": "off"\n}'></textarea>
+          <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
+            Enter condition as JSON. Supports all Home Assistant condition types: state, numeric_state, time, template, and, or, not, zone, device, etc.
+          </div>
+        </label>
+      </div>
 
       <div id="condition-error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
@@ -2198,20 +2614,75 @@ class ClimatePanelCard extends HTMLElement {
     // Update form when type changes
     conditionModal.querySelector('#condition_type').addEventListener('change', (e) => {
       renderConditionForm(e.target.value);
+      // Re-initialize searchable selects after form change
+      this.initSearchableSelects(conditionModal);
     });
 
     document.body.appendChild(conditionModal);
+
+    // Initialize searchable selects
+    this.initSearchableSelects(conditionModal);
+
+    // Handle Advanced Mode toggle
+    const advancedToggle = conditionModal.querySelector('#advanced-mode-toggle');
+    const basicContainer = conditionModal.querySelector('#basic-mode-container');
+    const advancedContainer = conditionModal.querySelector('#advanced-mode-container');
+
+    advancedToggle.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        basicContainer.style.display = 'none';
+        advancedContainer.style.display = 'block';
+      } else {
+        basicContainer.style.display = 'block';
+        advancedContainer.style.display = 'none';
+      }
+    });
 
     // Handle add condition
     conditionModal.querySelector('#condition-save-btn').addEventListener('click', () => {
       const errorDiv = conditionModal.querySelector('#condition-error-message');
       errorDiv.style.display = 'none';
 
-      const condType = conditionModal.querySelector('#condition_type').value;
-      const condition = { type: condType };
+      const isAdvancedMode = advancedToggle.checked;
+      let condition;
 
       try {
-        if (condType === 'state') {
+        // Advanced Mode: Parse JSON
+        if (isAdvancedMode) {
+          const jsonText = conditionModal.querySelector('#condition-json')?.value?.trim();
+
+          if (!jsonText) {
+            errorDiv.textContent = 'Condition JSON is required';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          try {
+            condition = JSON.parse(jsonText);
+          } catch (parseError) {
+            errorDiv.textContent = `Invalid JSON: ${parseError.message}`;
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          // Validate that condition has required field
+          if (!condition.condition && !condition.type) {
+            errorDiv.textContent = 'Condition must have "condition" or "type" field';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          // Normalize: ensure "condition" field exists
+          if (!condition.condition && condition.type) {
+            condition.condition = condition.type;
+          }
+
+        // Basic Mode: Use form-guided approach
+        } else {
+          const condType = conditionModal.querySelector('#condition_type').value;
+          condition = { type: condType };
+
+          if (condType === 'state') {
           const entityId = conditionModal.querySelector('#cond_entity_id')?.value;
           const state = conditionModal.querySelector('#cond_state')?.value?.trim();
 
@@ -2277,7 +2748,8 @@ class ClimatePanelCard extends HTMLElement {
           }
 
           condition.value_template = template;
-        }
+          }
+        } // End of basic mode
 
         // Add condition to list
         conditions.push(condition);
@@ -2476,6 +2948,9 @@ class ClimatePanelCard extends HTMLElement {
     modal.appendChild(style);
 
     document.body.appendChild(modal);
+
+    // Initialize searchable selects
+    this.initSearchableSelects(modal);
 
     // Track conditions for this binding
     let conditions = [];
@@ -2783,6 +3258,9 @@ class ClimatePanelCard extends HTMLElement {
     modal.appendChild(style);
 
     document.body.appendChild(modal);
+
+    // Initialize searchable selects
+    this.initSearchableSelects(modal);
 
     // Track conditions for this binding (initialize with existing)
     let conditions = binding.conditions ? JSON.parse(JSON.stringify(binding.conditions)) : [];
