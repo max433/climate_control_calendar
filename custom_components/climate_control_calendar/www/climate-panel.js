@@ -944,16 +944,24 @@ class ClimatePanelCard extends HTMLElement {
   async addSlot() {
     this.log('➕', 'Add new slot...');
 
-    // Get all climate entities for excluded_entities selector
+    // Get all climate entities
     const allClimateEntities = Object.keys(this.hass.states)
       .filter(id => id.startsWith('climate.'))
       .sort();
 
-    // Create modal
+    // Create modal with tabs
     const modal = this.createModal(`
       <h2 style="margin-top: 0; color: #00d4ff;">➕ ${this.t('pages.config.slots.add')}</h2>
 
-      <div style="margin: 20px 0;">
+      <!-- Tabs Navigation -->
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="basic">🔧 Basic Settings</button>
+        <button class="tab-btn" data-tab="overrides">🎯 Entity Overrides</button>
+        <button class="tab-btn" data-tab="advanced">⚙️ Advanced</button>
+      </div>
+
+      <!-- Tab: Basic Settings -->
+      <div class="tab-content active" data-tab="basic">
         <label style="display: block; margin-bottom: 15px;">
           <strong>Label *</strong>
           <input type="text" id="label" required
@@ -964,111 +972,168 @@ class ClimatePanelCard extends HTMLElement {
           </div>
         </label>
 
-        <div class="collapse-section">
-          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
-            <span>🌡️ Temperature Settings</span>
-            <span class="collapse-icon">▼</span>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Target Temperature (°C)</strong>
+          <input type="number" id="temperature" step="0.5" min="-50" max="50"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., 20.5">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            Single temperature for heat/cool modes
           </div>
-          <div class="collapse-content">
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Target Temperature (°C)</strong>
-              <input type="number" id="temperature" step="0.5" min="-50" max="50"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
-                placeholder="e.g., 20.5">
-              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
-                Single temperature for heat/cool modes
-              </div>
-            </label>
+        </label>
 
-            <div style="color: #00d4ff; margin: 15px 0;">OR (for heat_cool mode)</div>
+        <div style="color: #00d4ff; margin: 15px 0; text-align: center;">OR (for heat_cool mode)</div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label style="display: block;">
-                <strong>Min Temperature (°C)</strong>
-                <input type="number" id="target_temp_low" step="0.5" min="-50" max="50"
-                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-              </label>
-              <label style="display: block;">
-                <strong>Max Temperature (°C)</strong>
-                <input type="number" id="target_temp_high" step="0.5" min="-50" max="50"
-                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-              </label>
-            </div>
-          </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+          <label style="display: block;">
+            <strong>Min Temperature (°C)</strong>
+            <input type="number" id="target_temp_low" step="0.5" min="-50" max="50"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+          </label>
+          <label style="display: block;">
+            <strong>Max Temperature (°C)</strong>
+            <input type="number" id="target_temp_high" step="0.5" min="-50" max="50"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+          </label>
         </div>
 
-        <div class="collapse-section open">
-          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
-            <span>🔧 HVAC Settings</span>
-            <span class="collapse-icon">▼</span>
-          </div>
-          <div class="collapse-content">
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>HVAC Mode</strong>
-              <select id="hvac_mode"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-                <option value="">-- Not set --</option>
-                <option value="heat">🔥 Heat</option>
-                <option value="cool">❄️ Cool</option>
-                <option value="heat_cool">🔄 Heat/Cool (Auto)</option>
-                <option value="auto">🤖 Auto</option>
-                <option value="off">⭕ Off</option>
-                <option value="dry">💨 Dry</option>
-                <option value="fan_only">🌀 Fan Only</option>
-              </select>
-            </label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>HVAC Mode</strong>
+          <select id="hvac_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="">-- Not set --</option>
+            <option value="heat">🔥 Heat</option>
+            <option value="cool">❄️ Cool</option>
+            <option value="heat_cool">🔄 Heat/Cool (Auto)</option>
+            <option value="auto">🤖 Auto</option>
+            <option value="off">⭕ Off</option>
+            <option value="dry">💨 Dry</option>
+            <option value="fan_only">🌀 Fan Only</option>
+          </select>
+        </label>
 
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Preset Mode</strong>
-              <input type="text" id="preset_mode"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
-                placeholder="e.g., eco, comfort, away">
-              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
-                Device-specific preset (check your device capabilities)
-              </div>
-            </label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Preset Mode</strong>
+          <input type="text" id="preset_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., eco, comfort, away">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            Device-specific preset (check your device capabilities)
           </div>
+        </label>
+      </div>
+
+      <!-- Tab: Entity Overrides -->
+      <div class="tab-content" data-tab="overrides">
+        <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+          ℹ️ Override default settings for specific entities. Disabled entities will use the default settings from Basic tab.
         </div>
 
-        <div class="collapse-section">
-          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
-            <span>⚙️ Advanced Settings</span>
-            <span class="collapse-icon">▼</span>
-          </div>
-          <div class="collapse-content">
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Humidity (%)</strong>
-              <input type="number" id="humidity" min="0" max="100" step="1"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
-                placeholder="0-100">
-            </label>
-
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Auxiliary Heat</strong>
-              <select id="aux_heat"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-                <option value="">-- Not configured --</option>
-                <option value="on">On</option>
-                <option value="off">Off</option>
-              </select>
-            </label>
-
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Excluded Entities</strong>
-              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
-                ${allClimateEntities.map(ent => `
-                  <label style="display: block; margin: 5px 0;">
-                    <input type="checkbox" name="excluded_entities" value="${ent}">
-                    ${ent}
+        <div id="entity-overrides-container">
+          ${allClimateEntities.map(entityId => `
+            <div class="entity-override-item" data-entity="${entityId}">
+              <div class="entity-override-header">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                  <input type="checkbox" class="override-toggle" data-entity="${entityId}"
+                    style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
+                  <span style="font-weight: bold;">${entityId}</span>
+                </label>
+              </div>
+              <div class="entity-override-form" style="display: none; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid #00d4ff;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <label style="display: block;">
+                    <strong>Temperature (°C)</strong>
+                    <input type="number" class="override-temperature" data-entity="${entityId}" step="0.5" min="-50" max="50"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                   </label>
-                `).join('')}
+
+                  <label style="display: block;">
+                    <strong>HVAC Mode</strong>
+                    <select class="override-hvac-mode" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                      <option value="">-- Use default --</option>
+                      <option value="heat">🔥 Heat</option>
+                      <option value="cool">❄️ Cool</option>
+                      <option value="heat_cool">🔄 Heat/Cool</option>
+                      <option value="auto">🤖 Auto</option>
+                      <option value="off">⭕ Off</option>
+                      <option value="dry">💨 Dry</option>
+                      <option value="fan_only">🌀 Fan Only</option>
+                    </select>
+                  </label>
+
+                  <label style="display: block;">
+                    <strong>Min Temp (°C)</strong>
+                    <input type="number" class="override-temp-low" data-entity="${entityId}" step="0.5" min="-50" max="50"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                  </label>
+
+                  <label style="display: block;">
+                    <strong>Max Temp (°C)</strong>
+                    <input type="number" class="override-temp-high" data-entity="${entityId}" step="0.5" min="-50" max="50"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                  </label>
+
+                  <label style="display: block; grid-column: 1 / -1;">
+                    <strong>Preset Mode</strong>
+                    <input type="text" class="override-preset" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                      placeholder="e.g., eco, comfort">
+                  </label>
+                </div>
               </div>
-              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
-                These entities won't be affected by this slot
-              </div>
-            </label>
-          </div>
+            </div>
+          `).join('')}
         </div>
+      </div>
+
+      <!-- Tab: Advanced -->
+      <div class="tab-content" data-tab="advanced">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Humidity (%)</strong>
+          <input type="number" id="humidity" min="0" max="100" step="1"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="0-100">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Auxiliary Heat</strong>
+          <select id="aux_heat"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="">-- Not configured --</option>
+            <option value="on">On</option>
+            <option value="off">Off</option>
+          </select>
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Fan Mode</strong>
+          <input type="text" id="fan_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., auto, low, medium, high">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Swing Mode</strong>
+          <input type="text" id="swing_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., off, vertical, horizontal, both">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Excluded Entities</strong>
+          <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
+            ${allClimateEntities.map(ent => `
+              <label style="display: block; margin: 5px 0;">
+                <input type="checkbox" name="excluded_entities" value="${ent}">
+                ${ent}
+              </label>
+            `).join('')}
+          </div>
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            These entities won't be affected by this slot at all
+          </div>
+        </label>
       </div>
 
       <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
@@ -1079,47 +1144,103 @@ class ClimatePanelCard extends HTMLElement {
       </div>
     `);
 
-    // Add collapse styles to modal
+    // Add tab styles to modal
     const style = document.createElement('style');
     style.textContent = `
-      .collapse-section {
-        margin: 15px 0;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .collapse-header {
-        padding: 12px 15px;
-        background: rgba(0,212,255,0.1);
-        cursor: pointer;
+      .tabs-nav {
         display: flex;
-        justify-content: space-between;
+        gap: 5px;
+        margin: 15px 0;
+        border-bottom: 2px solid rgba(255,255,255,0.1);
+      }
+      .tab-btn {
+        padding: 10px 20px;
+        background: rgba(0,0,0,0.3);
+        color: #888;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 0.95em;
+        transition: all 0.3s;
+        flex: 1;
+      }
+      .tab-btn:hover {
+        background: rgba(0,212,255,0.1);
+        color: #00d4ff;
+      }
+      .tab-btn.active {
+        background: rgba(0,212,255,0.15);
+        color: #00d4ff;
+        border-bottom-color: #00d4ff;
+        font-weight: bold;
+      }
+      .tab-content {
+        display: none;
+        padding: 20px 0;
+        animation: fadeIn 0.3s;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .entity-override-item {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .entity-override-header {
+        display: flex;
         align-items: center;
-        user-select: none;
       }
-      .collapse-header:hover {
-        background: rgba(0,212,255,0.2);
-      }
-      .collapse-icon {
-        transition: transform 0.3s;
-      }
-      .collapse-section.open .collapse-icon {
-        transform: rotate(180deg);
-      }
-      .collapse-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-        padding: 0 15px;
-      }
-      .collapse-section.open .collapse-content {
-        max-height: 1000px;
-        padding: 15px;
+      .entity-override-form {
+        transition: all 0.3s ease;
       }
     `;
     modal.appendChild(style);
 
     document.body.appendChild(modal);
+
+    // Setup tab switching
+    modal.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.dataset.tab;
+
+        // Update tab buttons
+        modal.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update tab content
+        modal.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        modal.querySelector(`.tab-content[data-tab="${targetTab}"]`).classList.add('active');
+      });
+    });
+
+    // Setup override toggle switches
+    modal.querySelectorAll('.override-toggle').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const entityId = e.target.dataset.entity;
+        const form = modal.querySelector(`.entity-override-item[data-entity="${entityId}"] .entity-override-form`);
+
+        if (e.target.checked) {
+          form.style.display = 'block';
+        } else {
+          form.style.display = 'none';
+          // Clear override fields when disabled
+          form.querySelectorAll('input, select').forEach(input => {
+            if (input.type === 'number' || input.type === 'text') {
+              input.value = '';
+            } else if (input.tagName === 'SELECT') {
+              input.value = '';
+            }
+          });
+        }
+      });
+    });
 
     // Handle save
     modal.querySelector('#save-btn').addEventListener('click', async () => {
@@ -1144,6 +1265,8 @@ class ClimatePanelCard extends HTMLElement {
         const presetMode = modal.querySelector('#preset_mode').value;
         const humidity = modal.querySelector('#humidity').value;
         const auxHeat = modal.querySelector('#aux_heat').value;
+        const fanMode = modal.querySelector('#fan_mode')?.value;
+        const swingMode = modal.querySelector('#swing_mode')?.value;
 
         // Temperature validation
         if (temperature && (tempLow || tempHigh)) {
@@ -1204,24 +1327,73 @@ class ClimatePanelCard extends HTMLElement {
         if (auxHeat === 'on') payload.aux_heat = true;
         else if (auxHeat === 'off') payload.aux_heat = false;
 
+        if (fanMode) payload.fan_mode = fanMode;
+        if (swingMode) payload.swing_mode = swingMode;
+
         // Check at least one climate setting
         if (Object.keys(payload).length === 0) {
-          errorDiv.textContent = 'Please configure at least one climate setting';
+          errorDiv.textContent = 'Please configure at least one climate setting in Basic Settings tab';
           errorDiv.style.display = 'block';
           return;
         }
+
+        // Collect entity_overrides
+        const entityOverrides = {};
+        modal.querySelectorAll('.override-toggle:checked').forEach(checkbox => {
+          const entityId = checkbox.dataset.entity;
+          const overridePayload = {};
+
+          const overrideTemp = modal.querySelector(`.override-temperature[data-entity="${entityId}"]`)?.value;
+          const overrideTempLow = modal.querySelector(`.override-temp-low[data-entity="${entityId}"]`)?.value;
+          const overrideTempHigh = modal.querySelector(`.override-temp-high[data-entity="${entityId}"]`)?.value;
+          const overrideHvac = modal.querySelector(`.override-hvac-mode[data-entity="${entityId}"]`)?.value;
+          const overridePreset = modal.querySelector(`.override-preset[data-entity="${entityId}"]`)?.value;
+
+          if (overrideTemp) {
+            const temp = parseFloat(overrideTemp);
+            if (temp >= -50 && temp <= 50) {
+              overridePayload.temperature = temp;
+            }
+          }
+
+          if (overrideTempLow) {
+            const low = parseFloat(overrideTempLow);
+            if (low >= -50 && low <= 50) {
+              overridePayload.target_temp_low = low;
+            }
+          }
+
+          if (overrideTempHigh) {
+            const high = parseFloat(overrideTempHigh);
+            if (high >= -50 && high <= 50) {
+              overridePayload.target_temp_high = high;
+            }
+          }
+
+          if (overrideHvac) overridePayload.hvac_mode = overrideHvac;
+          if (overridePreset) overridePayload.preset_mode = overridePreset;
+
+          // Only add to entity_overrides if at least one field is set
+          if (Object.keys(overridePayload).length > 0) {
+            entityOverrides[entityId] = overridePayload;
+          }
+        });
 
         // Get excluded entities
         const excludedEntities = Array.from(modal.querySelectorAll('input[name="excluded_entities"]:checked'))
           .map(cb => cb.value);
 
-        this.log('💾', 'Creating new slot...', { label, payload, excludedEntities });
+        this.log('💾', 'Creating new slot...', { label, payload, entityOverrides, excludedEntities });
 
         // Call service
         const serviceData = {
           label: label,
           default_climate_payload: payload,
         };
+
+        if (Object.keys(entityOverrides).length > 0) {
+          serviceData.entity_overrides = entityOverrides;
+        }
 
         if (excludedEntities.length > 0) {
           serviceData.excluded_entities = excludedEntities;
@@ -1335,6 +1507,7 @@ class ClimatePanelCard extends HTMLElement {
     }
 
     const payload = slot.default_climate_payload || slot.climate_payload || {};
+    const entityOverrides = slot.entity_overrides || {};
     const excludedEntities = slot.excluded_entities || [];
 
     // Get all climate entities
@@ -1345,7 +1518,7 @@ class ClimatePanelCard extends HTMLElement {
     // Count bindings using this slot
     const bindingCount = this.bindings.filter(b => b.slot_id === slotId).length;
 
-    // Create modal
+    // Create modal with tabs
     const modal = this.createModal(`
       <h2 style="margin-top: 0; color: #00d4ff;">✏️ Edit Slot</h2>
       <p style="color: #888; margin-bottom: 20px;">
@@ -1353,106 +1526,186 @@ class ClimatePanelCard extends HTMLElement {
         Used by ${bindingCount} binding${bindingCount !== 1 ? 's' : ''}
       </p>
 
-      <div style="margin: 20px 0;">
+      <!-- Tabs Navigation -->
+      <div class="tabs-nav">
+        <button class="tab-btn active" data-tab="basic">🔧 Basic Settings</button>
+        <button class="tab-btn" data-tab="overrides">🎯 Entity Overrides</button>
+        <button class="tab-btn" data-tab="advanced">⚙️ Advanced</button>
+      </div>
+
+      <!-- Tab: Basic Settings -->
+      <div class="tab-content active" data-tab="basic">
         <label style="display: block; margin-bottom: 15px;">
           <strong>Label *</strong>
           <input type="text" id="label" required value="${slot.label || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
         </label>
 
-        <div class="collapse-section ${payload.temperature || payload.target_temp_low || payload.target_temp_high ? 'open' : ''}">
-          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
-            <span>🌡️ Temperature Settings</span>
-            <span class="collapse-icon">▼</span>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Target Temperature (°C)</strong>
+          <input type="number" id="temperature" step="0.5" min="-50" max="50" value="${payload.temperature || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            Single temperature for heat/cool modes
           </div>
-          <div class="collapse-content">
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Target Temperature (°C)</strong>
-              <input type="number" id="temperature" step="0.5" min="-50" max="50" value="${payload.temperature || ''}"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-            </label>
+        </label>
 
-            <div style="color: #00d4ff; margin: 15px 0;">OR (for heat_cool mode)</div>
+        <div style="color: #00d4ff; margin: 15px 0; text-align: center;">OR (for heat_cool mode)</div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-              <label>
-                <strong>Min Temperature</strong>
-                <input type="number" id="target_temp_low" step="0.5" min="-50" max="50" value="${payload.target_temp_low || ''}"
-                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-              </label>
-              <label>
-                <strong>Max Temperature</strong>
-                <input type="number" id="target_temp_high" step="0.5" min="-50" max="50" value="${payload.target_temp_high || ''}"
-                  style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-              </label>
-            </div>
-          </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+          <label style="display: block;">
+            <strong>Min Temperature (°C)</strong>
+            <input type="number" id="target_temp_low" step="0.5" min="-50" max="50" value="${payload.target_temp_low || ''}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+          </label>
+          <label style="display: block;">
+            <strong>Max Temperature (°C)</strong>
+            <input type="number" id="target_temp_high" step="0.5" min="-50" max="50" value="${payload.target_temp_high || ''}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+          </label>
         </div>
 
-        <div class="collapse-section ${payload.hvac_mode || payload.preset_mode ? 'open' : ''}">
-          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
-            <span>🔧 HVAC Settings</span>
-            <span class="collapse-icon">▼</span>
-          </div>
-          <div class="collapse-content">
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>HVAC Mode</strong>
-              <select id="hvac_mode"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-                <option value="">-- Not set --</option>
-                <option value="heat" ${payload.hvac_mode === 'heat' ? 'selected' : ''}>🔥 Heat</option>
-                <option value="cool" ${payload.hvac_mode === 'cool' ? 'selected' : ''}>❄️ Cool</option>
-                <option value="heat_cool" ${payload.hvac_mode === 'heat_cool' ? 'selected' : ''}>🔄 Heat/Cool</option>
-                <option value="auto" ${payload.hvac_mode === 'auto' ? 'selected' : ''}>🤖 Auto</option>
-                <option value="off" ${payload.hvac_mode === 'off' ? 'selected' : ''}>⭕ Off</option>
-                <option value="dry" ${payload.hvac_mode === 'dry' ? 'selected' : ''}>💨 Dry</option>
-                <option value="fan_only" ${payload.hvac_mode === 'fan_only' ? 'selected' : ''}>🌀 Fan Only</option>
-              </select>
-            </label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>HVAC Mode</strong>
+          <select id="hvac_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="">-- Not set --</option>
+            <option value="heat" ${payload.hvac_mode === 'heat' ? 'selected' : ''}>🔥 Heat</option>
+            <option value="cool" ${payload.hvac_mode === 'cool' ? 'selected' : ''}>❄️ Cool</option>
+            <option value="heat_cool" ${payload.hvac_mode === 'heat_cool' ? 'selected' : ''}>🔄 Heat/Cool (Auto)</option>
+            <option value="auto" ${payload.hvac_mode === 'auto' ? 'selected' : ''}>🤖 Auto</option>
+            <option value="off" ${payload.hvac_mode === 'off' ? 'selected' : ''}>⭕ Off</option>
+            <option value="dry" ${payload.hvac_mode === 'dry' ? 'selected' : ''}>💨 Dry</option>
+            <option value="fan_only" ${payload.hvac_mode === 'fan_only' ? 'selected' : ''}>🌀 Fan Only</option>
+          </select>
+        </label>
 
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Preset Mode</strong>
-              <input type="text" id="preset_mode" value="${payload.preset_mode || ''}"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-            </label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Preset Mode</strong>
+          <input type="text" id="preset_mode" value="${payload.preset_mode || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., eco, comfort, away">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            Device-specific preset (check your device capabilities)
           </div>
+        </label>
+      </div>
+
+      <!-- Tab: Entity Overrides -->
+      <div class="tab-content" data-tab="overrides">
+        <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+          ℹ️ Override default settings for specific entities. ${Object.keys(entityOverrides).length > 0 ? `Currently ${Object.keys(entityOverrides).length} override(s) configured.` : 'Disabled entities will use default settings from Basic tab.'}
         </div>
 
-        <div class="collapse-section ${payload.humidity || payload.aux_heat !== undefined || excludedEntities.length > 0 ? 'open' : ''}">
-          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
-            <span>⚙️ Advanced Settings</span>
-            <span class="collapse-icon">▼</span>
-          </div>
-          <div class="collapse-content">
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Humidity (%)</strong>
-              <input type="number" id="humidity" min="0" max="100" step="1" value="${payload.humidity || ''}"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-            </label>
-
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Auxiliary Heat</strong>
-              <select id="aux_heat"
-                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-                <option value="">-- Not configured --</option>
-                <option value="on" ${payload.aux_heat === true ? 'selected' : ''}>On</option>
-                <option value="off" ${payload.aux_heat === false ? 'selected' : ''}>Off</option>
-              </select>
-            </label>
-
-            <label style="display: block; margin-bottom: 15px;">
-              <strong>Excluded Entities</strong>
-              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
-                ${allClimateEntities.map(ent => `
-                  <label style="display: block; margin: 5px 0;">
-                    <input type="checkbox" name="excluded_entities" value="${ent}" ${excludedEntities.includes(ent) ? 'checked' : ''}>
-                    ${ent}
-                  </label>
-                `).join('')}
+        <div id="entity-overrides-container">
+          ${allClimateEntities.map(entityId => {
+            const override = entityOverrides[entityId] || {};
+            const hasOverride = Object.keys(override).length > 0;
+            return `
+            <div class="entity-override-item" data-entity="${entityId}">
+              <div class="entity-override-header">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                  <input type="checkbox" class="override-toggle" data-entity="${entityId}" ${hasOverride ? 'checked' : ''}
+                    style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
+                  <span style="font-weight: bold;">${entityId}</span>
+                  ${hasOverride ? '<span style="margin-left: 10px; color: #00d4ff; font-size: 0.9em;">✓ Customized</span>' : ''}
+                </label>
               </div>
-            </label>
-          </div>
+              <div class="entity-override-form" style="display: ${hasOverride ? 'block' : 'none'}; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid #00d4ff;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <label style="display: block;">
+                    <strong>Temperature (°C)</strong>
+                    <input type="number" class="override-temperature" data-entity="${entityId}" step="0.5" min="-50" max="50" value="${override.temperature || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                  </label>
+
+                  <label style="display: block;">
+                    <strong>HVAC Mode</strong>
+                    <select class="override-hvac-mode" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                      <option value="">-- Use default --</option>
+                      <option value="heat" ${override.hvac_mode === 'heat' ? 'selected' : ''}>🔥 Heat</option>
+                      <option value="cool" ${override.hvac_mode === 'cool' ? 'selected' : ''}>❄️ Cool</option>
+                      <option value="heat_cool" ${override.hvac_mode === 'heat_cool' ? 'selected' : ''}>🔄 Heat/Cool</option>
+                      <option value="auto" ${override.hvac_mode === 'auto' ? 'selected' : ''}>🤖 Auto</option>
+                      <option value="off" ${override.hvac_mode === 'off' ? 'selected' : ''}>⭕ Off</option>
+                      <option value="dry" ${override.hvac_mode === 'dry' ? 'selected' : ''}>💨 Dry</option>
+                      <option value="fan_only" ${override.hvac_mode === 'fan_only' ? 'selected' : ''}>🌀 Fan Only</option>
+                    </select>
+                  </label>
+
+                  <label style="display: block;">
+                    <strong>Min Temp (°C)</strong>
+                    <input type="number" class="override-temp-low" data-entity="${entityId}" step="0.5" min="-50" max="50" value="${override.target_temp_low || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                  </label>
+
+                  <label style="display: block;">
+                    <strong>Max Temp (°C)</strong>
+                    <input type="number" class="override-temp-high" data-entity="${entityId}" step="0.5" min="-50" max="50" value="${override.target_temp_high || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                  </label>
+
+                  <label style="display: block; grid-column: 1 / -1;">
+                    <strong>Preset Mode</strong>
+                    <input type="text" class="override-preset" data-entity="${entityId}" value="${override.preset_mode || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                      placeholder="e.g., eco, comfort">
+                  </label>
+                </div>
+              </div>
+            </div>
+          `}).join('')}
         </div>
+      </div>
+
+      <!-- Tab: Advanced -->
+      <div class="tab-content" data-tab="advanced">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Humidity (%)</strong>
+          <input type="number" id="humidity" min="0" max="100" step="1" value="${payload.humidity || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="0-100">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Auxiliary Heat</strong>
+          <select id="aux_heat"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <option value="">-- Not configured --</option>
+            <option value="on" ${payload.aux_heat === true ? 'selected' : ''}>On</option>
+            <option value="off" ${payload.aux_heat === false ? 'selected' : ''}>Off</option>
+          </select>
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Fan Mode</strong>
+          <input type="text" id="fan_mode" value="${payload.fan_mode || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., auto, low, medium, high">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Swing Mode</strong>
+          <input type="text" id="swing_mode" value="${payload.swing_mode || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+            placeholder="e.g., off, vertical, horizontal, both">
+        </label>
+
+        <label style="display: block; margin-bottom: 15px;">
+          <strong>Excluded Entities</strong>
+          <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
+            ${allClimateEntities.map(ent => `
+              <label style="display: block; margin: 5px 0;">
+                <input type="checkbox" name="excluded_entities" value="${ent}" ${excludedEntities.includes(ent) ? 'checked' : ''}>
+                ${ent}
+              </label>
+            `).join('')}
+          </div>
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
+            These entities won't be affected by this slot at all
+          </div>
+        </label>
       </div>
 
       <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
@@ -1463,47 +1716,103 @@ class ClimatePanelCard extends HTMLElement {
       </div>
     `);
 
-    // Add collapse styles
+    // Add tab styles
     const style = document.createElement('style');
     style.textContent = `
-      .collapse-section {
-        margin: 15px 0;
-        border: 1px solid rgba(255,255,255,0.2);
-        border-radius: 8px;
-        overflow: hidden;
-      }
-      .collapse-header {
-        padding: 12px 15px;
-        background: rgba(0,212,255,0.1);
-        cursor: pointer;
+      .tabs-nav {
         display: flex;
-        justify-content: space-between;
+        gap: 5px;
+        margin: 15px 0;
+        border-bottom: 2px solid rgba(255,255,255,0.1);
+      }
+      .tab-btn {
+        padding: 10px 20px;
+        background: rgba(0,0,0,0.3);
+        color: #888;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-size: 0.95em;
+        transition: all 0.3s;
+        flex: 1;
+      }
+      .tab-btn:hover {
+        background: rgba(0,212,255,0.1);
+        color: #00d4ff;
+      }
+      .tab-btn.active {
+        background: rgba(0,212,255,0.15);
+        color: #00d4ff;
+        border-bottom-color: #00d4ff;
+        font-weight: bold;
+      }
+      .tab-content {
+        display: none;
+        padding: 20px 0;
+        animation: fadeIn 0.3s;
+      }
+      .tab-content.active {
+        display: block;
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .entity-override-item {
+        margin-bottom: 15px;
+        padding: 12px;
+        background: rgba(0,0,0,0.2);
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .entity-override-header {
+        display: flex;
         align-items: center;
-        user-select: none;
       }
-      .collapse-header:hover {
-        background: rgba(0,212,255,0.2);
-      }
-      .collapse-icon {
-        transition: transform 0.3s;
-      }
-      .collapse-section.open .collapse-icon {
-        transform: rotate(180deg);
-      }
-      .collapse-content {
-        max-height: 0;
-        overflow: hidden;
-        transition: max-height 0.3s ease;
-        padding: 0 15px;
-      }
-      .collapse-section.open .collapse-content {
-        max-height: 1000px;
-        padding: 15px;
+      .entity-override-form {
+        transition: all 0.3s ease;
       }
     `;
     modal.appendChild(style);
 
     document.body.appendChild(modal);
+
+    // Setup tab switching
+    modal.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.dataset.tab;
+
+        // Update tab buttons
+        modal.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Update tab content
+        modal.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        modal.querySelector(`.tab-content[data-tab="${targetTab}"]`).classList.add('active');
+      });
+    });
+
+    // Setup override toggle switches
+    modal.querySelectorAll('.override-toggle').forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const entityId = e.target.dataset.entity;
+        const form = modal.querySelector(`.entity-override-item[data-entity="${entityId}"] .entity-override-form`);
+
+        if (e.target.checked) {
+          form.style.display = 'block';
+        } else {
+          form.style.display = 'none';
+          // Clear override fields when disabled
+          form.querySelectorAll('input, select').forEach(input => {
+            if (input.type === 'number' || input.type === 'text') {
+              input.value = '';
+            } else if (input.tagName === 'SELECT') {
+              input.value = '';
+            }
+          });
+        }
+      });
+    });
 
     // Handle save
     modal.querySelector('#save-btn').addEventListener('click', async () => {
@@ -1518,7 +1827,7 @@ class ClimatePanelCard extends HTMLElement {
           return;
         }
 
-        // Build new payload (same validation as add)
+        // Build new payload
         const newPayload = {};
         const temperature = modal.querySelector('#temperature').value;
         const tempLow = modal.querySelector('#target_temp_low').value;
@@ -1527,6 +1836,8 @@ class ClimatePanelCard extends HTMLElement {
         const presetMode = modal.querySelector('#preset_mode').value;
         const humidity = modal.querySelector('#humidity').value;
         const auxHeat = modal.querySelector('#aux_heat').value;
+        const fanMode = modal.querySelector('#fan_mode')?.value;
+        const swingMode = modal.querySelector('#swing_mode')?.value;
 
         if (temperature && (tempLow || tempHigh)) {
           errorDiv.textContent = 'Cannot use both single temperature and temperature range';
@@ -1586,19 +1897,63 @@ class ClimatePanelCard extends HTMLElement {
         if (auxHeat === 'on') newPayload.aux_heat = true;
         else if (auxHeat === 'off') newPayload.aux_heat = false;
 
+        if (fanMode) newPayload.fan_mode = fanMode;
+        if (swingMode) newPayload.swing_mode = swingMode;
+
         if (Object.keys(newPayload).length === 0) {
-          errorDiv.textContent = 'Please configure at least one climate setting';
+          errorDiv.textContent = 'Please configure at least one climate setting in Basic Settings tab';
           errorDiv.style.display = 'block';
           return;
         }
 
+        // Collect entity_overrides
+        const newEntityOverrides = {};
+        modal.querySelectorAll('.override-toggle:checked').forEach(checkbox => {
+          const entityId = checkbox.dataset.entity;
+          const overridePayload = {};
+
+          const overrideTemp = modal.querySelector(`.override-temperature[data-entity="${entityId}"]`)?.value;
+          const overrideTempLow = modal.querySelector(`.override-temp-low[data-entity="${entityId}"]`)?.value;
+          const overrideTempHigh = modal.querySelector(`.override-temp-high[data-entity="${entityId}"]`)?.value;
+          const overrideHvac = modal.querySelector(`.override-hvac-mode[data-entity="${entityId}"]`)?.value;
+          const overridePreset = modal.querySelector(`.override-preset[data-entity="${entityId}"]`)?.value;
+
+          if (overrideTemp) {
+            const temp = parseFloat(overrideTemp);
+            if (temp >= -50 && temp <= 50) {
+              overridePayload.temperature = temp;
+            }
+          }
+
+          if (overrideTempLow) {
+            const low = parseFloat(overrideTempLow);
+            if (low >= -50 && low <= 50) {
+              overridePayload.target_temp_low = low;
+            }
+          }
+
+          if (overrideTempHigh) {
+            const high = parseFloat(overrideTempHigh);
+            if (high >= -50 && high <= 50) {
+              overridePayload.target_temp_high = high;
+            }
+          }
+
+          if (overrideHvac) overridePayload.hvac_mode = overrideHvac;
+          if (overridePreset) overridePayload.preset_mode = overridePreset;
+
+          // Only add to entity_overrides if at least one field is set
+          if (Object.keys(overridePayload).length > 0) {
+            newEntityOverrides[entityId] = overridePayload;
+          }
+        });
+
         const newExcludedEntities = Array.from(modal.querySelectorAll('input[name="excluded_entities"]:checked'))
           .map(cb => cb.value);
 
-        this.log('💾', 'Updating slot...', { slotId, label, newPayload, newExcludedEntities });
+        this.log('💾', 'Updating slot...', { slotId, label, newPayload, newEntityOverrides, newExcludedEntities });
 
-        // To edit, we need to remove and re-add with same ID
-        // First get the config entry
+        // Update slot via API
         const response = await fetch('/api/climate_control_calendar/config', {
           method: 'POST',
           headers: {
@@ -1612,6 +1967,7 @@ class ClimatePanelCard extends HTMLElement {
                   id: slotId,
                   label: label,
                   default_climate_payload: newPayload,
+                  entity_overrides: Object.keys(newEntityOverrides).length > 0 ? newEntityOverrides : undefined,
                   excluded_entities: newExcludedEntities.length > 0 ? newExcludedEntities : undefined,
                 };
               }
