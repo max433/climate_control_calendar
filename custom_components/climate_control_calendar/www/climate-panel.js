@@ -941,6 +941,41 @@ class ClimatePanelCard extends HTMLElement {
     // This prevents navigation issues from full DOM recreation
   }
 
+  // Helper: Parse value that can be template or number
+  parseTemplateOrNumber(value, fieldName, min = -50, max = 50) {
+    if (!value || !value.trim()) {
+      return { valid: true, value: null, isTemplate: false };
+    }
+
+    const trimmed = value.trim();
+
+    // Check if it's a template
+    if (trimmed.includes('{{') && trimmed.includes('}}')) {
+      // It's a template, return as string
+      return { valid: true, value: trimmed, isTemplate: true };
+    }
+
+    // It's a static value, validate as number
+    const num = parseFloat(trimmed);
+    if (isNaN(num)) {
+      return {
+        valid: false,
+        error: `${fieldName} must be a number or a template ({{ ... }})`,
+        isTemplate: false
+      };
+    }
+
+    if (num < min || num > max) {
+      return {
+        valid: false,
+        error: `${fieldName} must be between ${min} and ${max}°C`,
+        isTemplate: false
+      };
+    }
+
+    return { valid: true, value: num, isTemplate: false };
+  }
+
   async addSlot() {
     this.log('➕', 'Add new slot...');
 
@@ -974,11 +1009,11 @@ class ClimatePanelCard extends HTMLElement {
 
         <label style="display: block; margin-bottom: 15px;">
           <strong>Target Temperature (°C)</strong>
-          <input type="number" id="temperature" step="0.5" min="-50" max="50"
-            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
-            placeholder="e.g., 20.5">
-          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
-            Single temperature for heat/cool modes
+          <input type="text" id="temperature"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+            placeholder="e.g., 20.5 or {{ states('sensor.temp') }}">
+          <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
+            💡 Supports templates: <code style="color: #00d4ff;">{{ '{{ states("sensor.temp") }}' }}</code>
           </div>
         </label>
 
@@ -987,13 +1022,15 @@ class ClimatePanelCard extends HTMLElement {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <label style="display: block;">
             <strong>Min Temperature (°C)</strong>
-            <input type="number" id="target_temp_low" step="0.5" min="-50" max="50"
-              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <input type="text" id="target_temp_low"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+              placeholder="18 or {{ ... }}">
           </label>
           <label style="display: block;">
             <strong>Max Temperature (°C)</strong>
-            <input type="number" id="target_temp_high" step="0.5" min="-50" max="50"
-              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <input type="text" id="target_temp_high"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+              placeholder="22 or {{ ... }}">
           </label>
         </div>
 
@@ -1043,8 +1080,9 @@ class ClimatePanelCard extends HTMLElement {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                   <label style="display: block;">
                     <strong>Temperature (°C)</strong>
-                    <input type="number" class="override-temperature" data-entity="${entityId}" step="0.5" min="-50" max="50"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                    <input type="text" class="override-temperature" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="20 or {{ ... }}">
                   </label>
 
                   <label style="display: block;">
@@ -1064,21 +1102,23 @@ class ClimatePanelCard extends HTMLElement {
 
                   <label style="display: block;">
                     <strong>Min Temp (°C)</strong>
-                    <input type="number" class="override-temp-low" data-entity="${entityId}" step="0.5" min="-50" max="50"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                    <input type="text" class="override-temp-low" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="18 or {{ ... }}">
                   </label>
 
                   <label style="display: block;">
                     <strong>Max Temp (°C)</strong>
-                    <input type="number" class="override-temp-high" data-entity="${entityId}" step="0.5" min="-50" max="50"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+                    <input type="text" class="override-temp-high" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="22 or {{ ... }}">
                   </label>
 
                   <label style="display: block; grid-column: 1 / -1;">
                     <strong>Preset Mode</strong>
                     <input type="text" class="override-preset" data-entity="${entityId}"
-                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
-                      placeholder="e.g., eco, comfort">
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+                      placeholder="eco or {{ ... }}">
                   </label>
                 </div>
               </div>
@@ -1268,47 +1308,53 @@ class ClimatePanelCard extends HTMLElement {
         const fanMode = modal.querySelector('#fan_mode')?.value;
         const swingMode = modal.querySelector('#swing_mode')?.value;
 
-        // Temperature validation
-        if (temperature && (tempLow || tempHigh)) {
+        // Temperature validation (supports templates)
+        const tempResult = this.parseTemplateOrNumber(temperature, 'Temperature');
+        const tempLowResult = this.parseTemplateOrNumber(tempLow, 'Min temperature');
+        const tempHighResult = this.parseTemplateOrNumber(tempHigh, 'Max temperature');
+
+        if (!tempResult.valid) {
+          errorDiv.textContent = tempResult.error;
+          errorDiv.style.display = 'block';
+          return;
+        }
+        if (!tempLowResult.valid) {
+          errorDiv.textContent = tempLowResult.error;
+          errorDiv.style.display = 'block';
+          return;
+        }
+        if (!tempHighResult.valid) {
+          errorDiv.textContent = tempHighResult.error;
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (tempResult.value && (tempLowResult.value || tempHighResult.value)) {
           errorDiv.textContent = 'Cannot use both single temperature and temperature range';
           errorDiv.style.display = 'block';
           return;
         }
 
-        if (temperature) {
-          const temp = parseFloat(temperature);
-          if (temp < -50 || temp > 50) {
-            errorDiv.textContent = 'Temperature must be between -50 and 50°C';
+        if (tempResult.value !== null) {
+          payload.temperature = tempResult.value;
+        }
+
+        if (tempLowResult.value !== null) {
+          payload.target_temp_low = tempLowResult.value;
+        }
+
+        if (tempHighResult.value !== null) {
+          payload.target_temp_high = tempHighResult.value;
+        }
+
+        // Validate range only if both are static numbers
+        if (tempLowResult.value !== null && tempHighResult.value !== null &&
+            !tempLowResult.isTemplate && !tempHighResult.isTemplate) {
+          if (tempLowResult.value >= tempHighResult.value) {
+            errorDiv.textContent = 'Min temperature must be lower than max temperature';
             errorDiv.style.display = 'block';
             return;
           }
-          payload.temperature = temp;
-        }
-
-        if (tempLow) {
-          const low = parseFloat(tempLow);
-          if (low < -50 || low > 50) {
-            errorDiv.textContent = 'Min temperature must be between -50 and 50°C';
-            errorDiv.style.display = 'block';
-            return;
-          }
-          payload.target_temp_low = low;
-        }
-
-        if (tempHigh) {
-          const high = parseFloat(tempHigh);
-          if (high < -50 || high > 50) {
-            errorDiv.textContent = 'Max temperature must be between -50 and 50°C';
-            errorDiv.style.display = 'block';
-            return;
-          }
-          payload.target_temp_high = high;
-        }
-
-        if (tempLow && tempHigh && parseFloat(tempLow) >= parseFloat(tempHigh)) {
-          errorDiv.textContent = 'Min temperature must be lower than max temperature';
-          errorDiv.style.display = 'block';
-          return;
         }
 
         if (hvacMode) payload.hvac_mode = hvacMode;
@@ -1349,25 +1395,21 @@ class ClimatePanelCard extends HTMLElement {
           const overrideHvac = modal.querySelector(`.override-hvac-mode[data-entity="${entityId}"]`)?.value;
           const overridePreset = modal.querySelector(`.override-preset[data-entity="${entityId}"]`)?.value;
 
-          if (overrideTemp) {
-            const temp = parseFloat(overrideTemp);
-            if (temp >= -50 && temp <= 50) {
-              overridePayload.temperature = temp;
-            }
+          // Support templates in entity overrides
+          const overrideTempResult = this.parseTemplateOrNumber(overrideTemp, 'Override temperature');
+          const overrideTempLowResult = this.parseTemplateOrNumber(overrideTempLow, 'Override min temp');
+          const overrideTempHighResult = this.parseTemplateOrNumber(overrideTempHigh, 'Override max temp');
+
+          if (overrideTempResult.valid && overrideTempResult.value !== null) {
+            overridePayload.temperature = overrideTempResult.value;
           }
 
-          if (overrideTempLow) {
-            const low = parseFloat(overrideTempLow);
-            if (low >= -50 && low <= 50) {
-              overridePayload.target_temp_low = low;
-            }
+          if (overrideTempLowResult.valid && overrideTempLowResult.value !== null) {
+            overridePayload.target_temp_low = overrideTempLowResult.value;
           }
 
-          if (overrideTempHigh) {
-            const high = parseFloat(overrideTempHigh);
-            if (high >= -50 && high <= 50) {
-              overridePayload.target_temp_high = high;
-            }
+          if (overrideTempHighResult.valid && overrideTempHighResult.value !== null) {
+            overridePayload.target_temp_high = overrideTempHighResult.value;
           }
 
           if (overrideHvac) overridePayload.hvac_mode = overrideHvac;
@@ -1543,10 +1585,11 @@ class ClimatePanelCard extends HTMLElement {
 
         <label style="display: block; margin-bottom: 15px;">
           <strong>Target Temperature (°C)</strong>
-          <input type="number" id="temperature" step="0.5" min="-50" max="50" value="${payload.temperature || ''}"
-            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
-          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
-            Single temperature for heat/cool modes
+          <input type="text" id="temperature" value="${payload.temperature || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+            placeholder="e.g., 20.5 or {{ states('sensor.temp') }}">
+          <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
+            💡 Supports templates: <code style="color: #00d4ff;">{{ '{{ states("sensor.temp") }}' }}</code>
           </div>
         </label>
 
@@ -1555,13 +1598,15 @@ class ClimatePanelCard extends HTMLElement {
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <label style="display: block;">
             <strong>Min Temperature (°C)</strong>
-            <input type="number" id="target_temp_low" step="0.5" min="-50" max="50" value="${payload.target_temp_low || ''}"
-              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <input type="text" id="target_temp_low" value="${payload.target_temp_low || ''}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+              placeholder="18 or {{ ... }}">
           </label>
           <label style="display: block;">
             <strong>Max Temperature (°C)</strong>
-            <input type="number" id="target_temp_high" step="0.5" min="-50" max="50" value="${payload.target_temp_high || ''}"
-              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            <input type="text" id="target_temp_high" value="${payload.target_temp_high || ''}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+              placeholder="22 or {{ ... }}">
           </label>
         </div>
 
@@ -1839,46 +1884,53 @@ class ClimatePanelCard extends HTMLElement {
         const fanMode = modal.querySelector('#fan_mode')?.value;
         const swingMode = modal.querySelector('#swing_mode')?.value;
 
-        if (temperature && (tempLow || tempHigh)) {
+        // Temperature validation (supports templates)
+        const tempResult = this.parseTemplateOrNumber(temperature, 'Temperature');
+        const tempLowResult = this.parseTemplateOrNumber(tempLow, 'Min temperature');
+        const tempHighResult = this.parseTemplateOrNumber(tempHigh, 'Max temperature');
+
+        if (!tempResult.valid) {
+          errorDiv.textContent = tempResult.error;
+          errorDiv.style.display = 'block';
+          return;
+        }
+        if (!tempLowResult.valid) {
+          errorDiv.textContent = tempLowResult.error;
+          errorDiv.style.display = 'block';
+          return;
+        }
+        if (!tempHighResult.valid) {
+          errorDiv.textContent = tempHighResult.error;
+          errorDiv.style.display = 'block';
+          return;
+        }
+
+        if (tempResult.value && (tempLowResult.value || tempHighResult.value)) {
           errorDiv.textContent = 'Cannot use both single temperature and temperature range';
           errorDiv.style.display = 'block';
           return;
         }
 
-        if (temperature) {
-          const temp = parseFloat(temperature);
-          if (temp < -50 || temp > 50) {
-            errorDiv.textContent = 'Temperature must be between -50 and 50°C';
+        if (tempResult.value !== null) {
+          newPayload.temperature = tempResult.value;
+        }
+
+        if (tempLowResult.value !== null) {
+          newPayload.target_temp_low = tempLowResult.value;
+        }
+
+        if (tempHighResult.value !== null) {
+          newPayload.target_temp_high = tempHighResult.value;
+        }
+
+        // Validate range only if both are static numbers
+        if (tempLowResult.value !== null && tempHighResult.value !== null &&
+            !tempLowResult.isTemplate && !tempHighResult.isTemplate) {
+          if (tempLowResult.value >= tempHighResult.value) {
+            errorDiv.textContent = 'Min temperature must be lower than max temperature';
             errorDiv.style.display = 'block';
             return;
           }
-          newPayload.temperature = temp;
-        }
-
-        if (tempLow) {
-          const low = parseFloat(tempLow);
-          if (low < -50 || low > 50) {
-            errorDiv.textContent = 'Min temperature must be between -50 and 50°C';
-            errorDiv.style.display = 'block';
-            return;
-          }
-          newPayload.target_temp_low = low;
-        }
-
-        if (tempHigh) {
-          const high = parseFloat(tempHigh);
-          if (high < -50 || high > 50) {
-            errorDiv.textContent = 'Max temperature must be between -50 and 50°C';
-            errorDiv.style.display = 'block';
-            return;
-          }
-          newPayload.target_temp_high = high;
-        }
-
-        if (tempLow && tempHigh && parseFloat(tempLow) >= parseFloat(tempHigh)) {
-          errorDiv.textContent = 'Min temperature must be lower than max temperature';
-          errorDiv.style.display = 'block';
-          return;
         }
 
         if (hvacMode) newPayload.hvac_mode = hvacMode;
@@ -1918,25 +1970,21 @@ class ClimatePanelCard extends HTMLElement {
           const overrideHvac = modal.querySelector(`.override-hvac-mode[data-entity="${entityId}"]`)?.value;
           const overridePreset = modal.querySelector(`.override-preset[data-entity="${entityId}"]`)?.value;
 
-          if (overrideTemp) {
-            const temp = parseFloat(overrideTemp);
-            if (temp >= -50 && temp <= 50) {
-              overridePayload.temperature = temp;
-            }
+          // Support templates in entity overrides
+          const overrideTempResult = this.parseTemplateOrNumber(overrideTemp, 'Override temperature');
+          const overrideTempLowResult = this.parseTemplateOrNumber(overrideTempLow, 'Override min temp');
+          const overrideTempHighResult = this.parseTemplateOrNumber(overrideTempHigh, 'Override max temp');
+
+          if (overrideTempResult.valid && overrideTempResult.value !== null) {
+            overridePayload.temperature = overrideTempResult.value;
           }
 
-          if (overrideTempLow) {
-            const low = parseFloat(overrideTempLow);
-            if (low >= -50 && low <= 50) {
-              overridePayload.target_temp_low = low;
-            }
+          if (overrideTempLowResult.valid && overrideTempLowResult.value !== null) {
+            overridePayload.target_temp_low = overrideTempLowResult.value;
           }
 
-          if (overrideTempHigh) {
-            const high = parseFloat(overrideTempHigh);
-            if (high >= -50 && high <= 50) {
-              overridePayload.target_temp_high = high;
-            }
+          if (overrideTempHighResult.valid && overrideTempHighResult.value !== null) {
+            overridePayload.target_temp_high = overrideTempHighResult.value;
           }
 
           if (overrideHvac) overridePayload.hvac_mode = overrideHvac;
@@ -2008,6 +2056,255 @@ class ClimatePanelCard extends HTMLElement {
     });
   }
 
+  showAddConditionDialog(parentModal, conditions, updateCallback) {
+    // Create inner modal for condition configuration
+    const conditionModal = this.createModal(`
+      <h2 style="margin-top: 0; color: #00d4ff;">➕ Add Condition</h2>
+
+      <label style="display: block; margin-bottom: 15px;">
+        <strong>Condition Type *</strong>
+        <select id="condition_type"
+          style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+          <option value="state">State - Check entity state</option>
+          <option value="numeric_state">Numeric State - Compare numeric value</option>
+          <option value="time">Time - Check time range/weekday</option>
+          <option value="template">Template - Custom Jinja2 condition</option>
+        </select>
+      </label>
+
+      <div id="condition-form-container"></div>
+
+      <div id="condition-error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
+
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button id="condition-save-btn" class="modal-btn modal-btn-primary">✅ Add</button>
+        <button id="condition-cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+      </div>
+    `);
+
+    conditionModal.style.zIndex = '10002'; // Higher than parent modal
+
+    // Get all entities for selectors
+    const allEntities = Object.keys(this.hass.states).sort();
+
+    // Function to render form based on selected type
+    const renderConditionForm = (type) => {
+      const container = conditionModal.querySelector('#condition-form-container');
+
+      if (type === 'state') {
+        container.innerHTML = `
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>Entity *</strong>
+            <select id="cond_entity_id" required
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+              ${allEntities.map(ent => `<option value="${ent}">${ent}</option>`).join('')}
+            </select>
+          </label>
+
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>State *</strong>
+            <input type="text" id="cond_state" required
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+              placeholder="e.g., on, off, home, away">
+            <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
+              Example: sensor.presence = "home"
+            </div>
+          </label>
+        `;
+      } else if (type === 'numeric_state') {
+        container.innerHTML = `
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>Entity *</strong>
+            <select id="cond_entity_id" required
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+              ${allEntities.map(ent => `<option value="${ent}">${ent}</option>`).join('')}
+            </select>
+          </label>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <label style="display: block;">
+              <strong>Above</strong>
+              <input type="number" id="cond_above" step="0.1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="Min value">
+            </label>
+
+            <label style="display: block;">
+              <strong>Below</strong>
+              <input type="number" id="cond_below" step="0.1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
+                placeholder="Max value">
+            </label>
+          </div>
+
+          <div style="color: #888; font-size: 0.85em; margin-top: 10px;">
+            Example: sensor.temperature above 25 and below 30
+          </div>
+        `;
+      } else if (type === 'time') {
+        container.innerHTML = `
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <label style="display: block;">
+              <strong>After</strong>
+              <input type="time" id="cond_after"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            </label>
+
+            <label style="display: block;">
+              <strong>Before</strong>
+              <input type="time" id="cond_before"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+            </label>
+          </div>
+
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>Weekday</strong>
+            <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 5px;">
+              ${['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => `
+                <label style="display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; cursor: pointer;">
+                  <input type="checkbox" name="cond_weekday" value="${day}" style="margin-bottom: 5px;">
+                  <span style="font-size: 0.8em;">${day.toUpperCase()}</span>
+                </label>
+              `).join('')}
+            </div>
+            <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
+              Leave all unchecked for any day
+            </div>
+          </label>
+
+          <div style="color: #888; font-size: 0.85em; margin-top: 10px;">
+            Example: Between 22:00-06:00 on Mon, Tue, Wed
+          </div>
+        `;
+      } else if (type === 'template') {
+        container.innerHTML = `
+          <label style="display: block; margin-bottom: 15px;">
+            <strong>Template *</strong>
+            <textarea id="cond_template" required rows="4"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
+              placeholder="{{ states('sensor.temp') | float > 25 }}"></textarea>
+            <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
+              Jinja2 template that must evaluate to true<br>
+              Example: <code style="color: #00d4ff;">{{ '{{ is_state("binary_sensor.workday", "on") }}' }}</code>
+            </div>
+          </label>
+        `;
+      }
+    };
+
+    // Initial render for state type
+    renderConditionForm('state');
+
+    // Update form when type changes
+    conditionModal.querySelector('#condition_type').addEventListener('change', (e) => {
+      renderConditionForm(e.target.value);
+    });
+
+    document.body.appendChild(conditionModal);
+
+    // Handle add condition
+    conditionModal.querySelector('#condition-save-btn').addEventListener('click', () => {
+      const errorDiv = conditionModal.querySelector('#condition-error-message');
+      errorDiv.style.display = 'none';
+
+      const condType = conditionModal.querySelector('#condition_type').value;
+      const condition = { type: condType };
+
+      try {
+        if (condType === 'state') {
+          const entityId = conditionModal.querySelector('#cond_entity_id')?.value;
+          const state = conditionModal.querySelector('#cond_state')?.value?.trim();
+
+          if (!entityId || !state) {
+            errorDiv.textContent = 'Entity and state are required';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          condition.entity_id = entityId;
+          condition.state = state;
+
+        } else if (condType === 'numeric_state') {
+          const entityId = conditionModal.querySelector('#cond_entity_id')?.value;
+          const above = conditionModal.querySelector('#cond_above')?.value;
+          const below = conditionModal.querySelector('#cond_below')?.value;
+
+          if (!entityId) {
+            errorDiv.textContent = 'Entity is required';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          if (!above && !below) {
+            errorDiv.textContent = 'Specify at least "above" or "below"';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          condition.entity_id = entityId;
+          if (above) condition.above = parseFloat(above);
+          if (below) condition.below = parseFloat(below);
+
+        } else if (condType === 'time') {
+          const after = conditionModal.querySelector('#cond_after')?.value;
+          const before = conditionModal.querySelector('#cond_before')?.value;
+          const weekdays = Array.from(conditionModal.querySelectorAll('input[name="cond_weekday"]:checked'))
+            .map(cb => cb.value);
+
+          if (!after && !before && weekdays.length === 0) {
+            errorDiv.textContent = 'Specify at least time range or weekday';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          if (after) condition.after = after;
+          if (before) condition.before = before;
+          if (weekdays.length > 0) condition.weekday = weekdays;
+
+        } else if (condType === 'template') {
+          const template = conditionModal.querySelector('#cond_template')?.value?.trim();
+
+          if (!template) {
+            errorDiv.textContent = 'Template is required';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          if (!template.includes('{{') || !template.includes('}}')) {
+            errorDiv.textContent = 'Template must contain {{ }} markers';
+            errorDiv.style.display = 'block';
+            return;
+          }
+
+          condition.value_template = template;
+        }
+
+        // Add condition to list
+        conditions.push(condition);
+        updateCallback();
+
+        // Close condition modal
+        document.body.removeChild(conditionModal);
+
+      } catch (error) {
+        errorDiv.textContent = `Error: ${error.message}`;
+        errorDiv.style.display = 'block';
+      }
+    });
+
+    // Handle cancel
+    conditionModal.querySelector('#condition-cancel-btn').addEventListener('click', () => {
+      document.body.removeChild(conditionModal);
+    });
+
+    // Close on backdrop click
+    conditionModal.addEventListener('click', (e) => {
+      if (e.target === conditionModal) {
+        document.body.removeChild(conditionModal);
+      }
+    });
+  }
+
   async addBinding() {
     this.log('➕', 'Add new binding...');
 
@@ -2060,6 +2357,27 @@ class ClimatePanelCard extends HTMLElement {
             Which slot to activate when this pattern matches
           </div>
         </label>
+
+        <div class="collapse-section">
+          <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
+            <span>🎯 Conditions</span>
+            <span class="collapse-icon">▼</span>
+          </div>
+          <div class="collapse-content">
+            <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+              ℹ️ Binding activates only when ALL conditions are met (AND logic). Leave empty for always active.
+            </div>
+
+            <div id="conditions-list" style="margin-bottom: 15px;">
+              <!-- Conditions will be added here dynamically -->
+            </div>
+
+            <button type="button" id="add-condition-btn"
+              style="padding: 8px 15px; background: rgba(0,212,255,0.2); color: #00d4ff; border: 1px solid #00d4ff; border-radius: 4px; cursor: pointer;">
+              ➕ Add Condition
+            </button>
+          </div>
+        </div>
 
         <div class="collapse-section">
           <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
@@ -2159,6 +2477,78 @@ class ClimatePanelCard extends HTMLElement {
 
     document.body.appendChild(modal);
 
+    // Track conditions for this binding
+    let conditions = [];
+
+    // Function to render a condition in the list
+    const renderConditionItem = (condition, index) => {
+      const conditionType = condition.type || condition.condition;
+      let summary = '';
+
+      if (conditionType === 'state') {
+        summary = `${condition.entity_id} = ${condition.state}`;
+      } else if (conditionType === 'numeric_state') {
+        const parts = [];
+        if (condition.above !== undefined) parts.push(`> ${condition.above}`);
+        if (condition.below !== undefined) parts.push(`< ${condition.below}`);
+        summary = `${condition.entity_id} ${parts.join(' and ')}`;
+      } else if (conditionType === 'time') {
+        const parts = [];
+        if (condition.after) parts.push(`after ${condition.after}`);
+        if (condition.before) parts.push(`before ${condition.before}`);
+        if (condition.weekday) {
+          const wd = Array.isArray(condition.weekday) ? condition.weekday.join(', ') : condition.weekday;
+          parts.push(`on ${wd}`);
+        }
+        summary = parts.join(', ');
+      } else if (conditionType === 'template') {
+        const template = condition.value_template || '';
+        summary = template.length > 40 ? template.substring(0, 37) + '...' : template;
+      }
+
+      return `
+        <div class="condition-item" style="background: rgba(0,0,0,0.3); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid #00d4ff;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="flex: 1;">
+              <div style="color: #00d4ff; font-weight: bold; margin-bottom: 5px; font-size: 0.9em;">${conditionType.replace('_', ' ').toUpperCase()}</div>
+              <div style="font-size: 0.9em; color: #ddd;">${summary}</div>
+            </div>
+            <button type="button" class="remove-condition-btn" data-index="${index}"
+              style="background: rgba(255,68,68,0.2); color: #ff4444; border: 1px solid #ff4444; padding: 6px 12px; border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-left: 10px;">
+              🗑️
+            </button>
+          </div>
+        </div>
+      `;
+    };
+
+    // Function to update conditions list display
+    const updateConditionsList = () => {
+      const conditionsList = modal.querySelector('#conditions-list');
+      if (conditions.length === 0) {
+        conditionsList.innerHTML = '<div style="color: #888; font-style: italic; padding: 10px;">No conditions configured (binding always active)</div>';
+      } else {
+        conditionsList.innerHTML = conditions.map((cond, idx) => renderConditionItem(cond, idx)).join('');
+
+        // Attach remove handlers
+        conditionsList.querySelectorAll('.remove-condition-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const index = parseInt(btn.dataset.index);
+            conditions.splice(index, 1);
+            updateConditionsList();
+          });
+        });
+      }
+    };
+
+    // Initial render
+    updateConditionsList();
+
+    // Handle "Add Condition" button
+    modal.querySelector('#add-condition-btn').addEventListener('click', () => {
+      this.showAddConditionDialog(modal, conditions, updateConditionsList);
+    });
+
     // Handle save
     modal.querySelector('#save-btn').addEventListener('click', async () => {
       try {
@@ -2180,7 +2570,7 @@ class ClimatePanelCard extends HTMLElement {
         const targetEntities = Array.from(modal.querySelectorAll('input[name="target_entities"]:checked'))
           .map(cb => cb.value);
 
-        this.log('💾', 'Creating new binding...', { matchType, matchValue, slotId, calendars, priority, targetEntities });
+        this.log('💾', 'Creating new binding...', { matchType, matchValue, slotId, calendars, priority, targetEntities, conditions });
 
         // Call service
         const serviceData = {
@@ -2198,6 +2588,10 @@ class ClimatePanelCard extends HTMLElement {
 
         if (targetEntities.length > 0) {
           serviceData.target_entities = targetEntities;
+        }
+
+        if (conditions.length > 0) {
+          serviceData.conditions = conditions;
         }
 
         await this.hass.callService('climate_control_calendar', 'add_binding', serviceData);
