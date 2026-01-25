@@ -4,140 +4,6 @@
  * WITH VISUAL DEBUG CONSOLE FOR MOBILE
  */
 
-// ===== Searchable Select Component =====
-class SearchableSelect {
-  constructor(selectElement, options = {}) {
-    this.select = selectElement;
-    this.options = {
-      placeholder: options.placeholder || 'Search...',
-      noResultsText: options.noResultsText || 'No results found',
-      ...options
-    };
-
-    this.isOpen = false;
-    this.selectedOption = null;
-    this.filteredOptions = [];
-    this.init();
-  }
-
-  init() {
-    this.select.style.display = 'none';
-    this.container = document.createElement('div');
-    this.container.className = 'searchable-select-container';
-
-    this.display = document.createElement('input');
-    this.display.type = 'text';
-    this.display.className = 'searchable-select-display';
-    this.display.placeholder = this.getSelectedText() || this.options.placeholder;
-    this.display.readOnly = false;
-
-    this.dropdown = document.createElement('div');
-    this.dropdown.className = 'searchable-select-dropdown';
-    this.dropdown.style.display = 'none';
-
-    this.container.appendChild(this.display);
-    this.container.appendChild(this.dropdown);
-    this.select.parentNode.insertBefore(this.container, this.select);
-
-    this.updateOptions();
-
-    this.display.addEventListener('focus', () => this.open());
-    this.display.addEventListener('input', (e) => this.filter(e.target.value));
-    this.display.addEventListener('blur', () => {
-      setTimeout(() => this.close(), 200);
-    });
-
-    this.select.addEventListener('change', () => {
-      this.display.placeholder = this.getSelectedText();
-      this.display.value = '';
-    });
-  }
-
-  getSelectedText() {
-    const selected = this.select.options[this.select.selectedIndex];
-    return selected ? selected.text : '';
-  }
-
-  updateOptions() {
-    this.filteredOptions = Array.from(this.select.options).map((opt, idx) => ({
-      value: opt.value,
-      text: opt.text,
-      index: idx
-    }));
-    this.renderOptions();
-  }
-
-  renderOptions() {
-    this.dropdown.innerHTML = '';
-
-    if (this.filteredOptions.length === 0) {
-      const noResults = document.createElement('div');
-      noResults.className = 'searchable-select-option searchable-select-no-results';
-      noResults.textContent = this.options.noResultsText;
-      this.dropdown.appendChild(noResults);
-      return;
-    }
-
-    this.filteredOptions.forEach(opt => {
-      const optionEl = document.createElement('div');
-      optionEl.className = 'searchable-select-option';
-      optionEl.textContent = opt.text;
-      optionEl.dataset.value = opt.value;
-      optionEl.dataset.index = opt.index;
-
-      if (this.select.selectedIndex === opt.index) {
-        optionEl.classList.add('selected');
-      }
-
-      optionEl.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        this.selectOption(opt.index);
-      });
-
-      this.dropdown.appendChild(optionEl);
-    });
-  }
-
-  filter(query) {
-    const lowerQuery = query.toLowerCase();
-    this.filteredOptions = Array.from(this.select.options)
-      .map((opt, idx) => ({
-        value: opt.value,
-        text: opt.text,
-        index: idx
-      }))
-      .filter(opt => opt.text.toLowerCase().includes(lowerQuery));
-
-    this.renderOptions();
-  }
-
-  selectOption(index) {
-    this.select.selectedIndex = index;
-    this.select.dispatchEvent(new Event('change', { bubbles: true }));
-    this.display.value = '';
-    this.display.placeholder = this.getSelectedText();
-    this.close();
-  }
-
-  open() {
-    this.isOpen = true;
-    this.dropdown.style.display = 'block';
-    this.display.value = '';
-    this.filter('');
-  }
-
-  close() {
-    this.isOpen = false;
-    this.dropdown.style.display = 'none';
-    this.display.value = '';
-  }
-
-  destroy() {
-    this.container.remove();
-    this.select.style.display = '';
-  }
-}
-
 // I18n system
 class I18n {
   constructor() {
@@ -584,8 +450,8 @@ class ClimatePanelCard extends HTMLElement {
     });
 
     this.shadowRoot.innerHTML = `
-      <!-- Bootstrap Custom CSS -->
-      <link rel="stylesheet" href="/local/climate_control_calendar/bootstrap-custom.css">
+      <!-- Bootstrap 5.3.3 Official CSS -->
+      <link rel="stylesheet" href="/local/climate_control_calendar/bootstrap.min.css">
 
       <style>
         * {
@@ -1512,8 +1378,8 @@ class ClimatePanelCard extends HTMLElement {
       <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
-        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+        <button id="save-btn" class="btn btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
     `);
 
@@ -1579,7 +1445,7 @@ class ClimatePanelCard extends HTMLElement {
     document.body.appendChild(modal);
 
     // Initialize searchable selects
-    this.initSearchableSelects(modal);
+    this.initSelect2(modal);
 
     // Setup tab switching
     modal.querySelectorAll('.tab-btn').forEach(btn => {
@@ -1895,35 +1761,22 @@ class ClimatePanelCard extends HTMLElement {
   }
 
   // Initialize SearchableSelect on all select elements with many options
-  initSearchableSelects(container, minOptions = 5) {
+  // Initialize Select2 on select elements with many options
+  initSelect2(container, minOptions = 5) {
+    // Select2 requires jQuery - check if available in shadow DOM context
+    // For now, we'll apply Bootstrap styling to selects and keep them native
+    // Select2 will be initialized in a future update when we solve shadow DOM + jQuery integration
+
     const selects = container.querySelectorAll('select');
-    const searchableInstances = [];
-
     selects.forEach(select => {
-      // Skip if already initialized or has few options
-      if (select.dataset.searchableInit === 'true' || select.options.length < minOptions) {
-        return;
-      }
+      // Add Bootstrap class
+      select.classList.add('form-select');
 
-      // Skip HVAC/preset mode selects (they have few options and are better as regular select)
-      if (select.id && (select.id.includes('hvac_mode') || select.id.includes('preset_mode') ||
-          select.id.includes('fan_mode') || select.id.includes('swing_mode'))) {
-        return;
-      }
-
-      try {
-        const instance = new SearchableSelect(select, {
-          placeholder: 'Type to search...',
-          noResultsText: 'No entities found'
-        });
-        select.dataset.searchableInit = 'true';
-        searchableInstances.push(instance);
-      } catch (err) {
-        console.error('Failed to initialize SearchableSelect:', err);
+      // Add custom styling for selects with many options
+      if (select.options.length >= minOptions) {
+        select.style.cursor = 'pointer';
       }
     });
-
-    return searchableInstances;
   }
 
   async editSlot(slotId) {
@@ -2158,8 +2011,8 @@ class ClimatePanelCard extends HTMLElement {
       <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
-        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+        <button id="save-btn" class="btn btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
     `);
 
@@ -2225,7 +2078,7 @@ class ClimatePanelCard extends HTMLElement {
     document.body.appendChild(modal);
 
     // Initialize searchable selects
-    this.initSearchableSelects(modal);
+    this.initSelect2(modal);
 
     // Setup tab switching
     modal.querySelectorAll('.tab-btn').forEach(btn => {
@@ -2525,8 +2378,8 @@ class ClimatePanelCard extends HTMLElement {
       <div id="condition-error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button id="condition-save-btn" class="modal-btn modal-btn-primary">✅ Add</button>
-        <button id="condition-cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+        <button id="condition-save-btn" class="btn btn-primary">✅ Add</button>
+        <button id="condition-cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
     `);
 
@@ -2647,13 +2500,13 @@ class ClimatePanelCard extends HTMLElement {
     conditionModal.querySelector('#condition_type').addEventListener('change', (e) => {
       renderConditionForm(e.target.value);
       // Re-initialize searchable selects after form change
-      this.initSearchableSelects(conditionModal);
+      this.initSelect2(conditionModal);
     });
 
     document.body.appendChild(conditionModal);
 
     // Initialize searchable selects
-    this.initSearchableSelects(conditionModal);
+    this.initSelect2(conditionModal);
 
     // Handle Advanced Mode toggle
     const advancedToggle = conditionModal.querySelector('#advanced-mode-toggle');
@@ -2934,8 +2787,8 @@ class ClimatePanelCard extends HTMLElement {
       <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
-        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+        <button id="save-btn" class="btn btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
     `);
 
@@ -2982,7 +2835,7 @@ class ClimatePanelCard extends HTMLElement {
     document.body.appendChild(modal);
 
     // Initialize searchable selects
-    this.initSearchableSelects(modal);
+    this.initSelect2(modal);
 
     // Track conditions for this binding
     let conditions = [];
@@ -3244,8 +3097,8 @@ class ClimatePanelCard extends HTMLElement {
       <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
       <div style="display: flex; gap: 10px; margin-top: 20px;">
-        <button id="save-btn" class="modal-btn modal-btn-primary">💾 Save</button>
-        <button id="cancel-btn" class="modal-btn modal-btn-secondary">❌ Cancel</button>
+        <button id="save-btn" class="btn btn-primary">💾 Save</button>
+        <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
     `);
 
@@ -3292,7 +3145,7 @@ class ClimatePanelCard extends HTMLElement {
     document.body.appendChild(modal);
 
     // Initialize searchable selects
-    this.initSearchableSelects(modal);
+    this.initSelect2(modal);
 
     // Track conditions for this binding (initialize with existing)
     let conditions = binding.conditions ? JSON.parse(JSON.stringify(binding.conditions)) : [];
@@ -3932,7 +3785,7 @@ class ClimatePanelCard extends HTMLElement {
       <div class="card">
         <div class="card-header">
           <h2>⚙️ Basic Configuration</h2>
-          <button class="btn" data-action="edit-basic-config">✏️ Edit</button>
+          <button class="btn btn-primary btn-sm" data-action="edit-basic-config">✏️ Edit</button>
         </div>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
           <div class="list-item">
@@ -3994,7 +3847,7 @@ class ClimatePanelCard extends HTMLElement {
       <div class="card">
         <div class="card-header">
           <h2>🎯 Slots (${this.slots.length})</h2>
-          <button class="btn" data-action="add-slot">➕ Add Slot</button>
+          <button class="btn btn-primary" data-action="add-slot">➕ Add Slot</button>
         </div>
         ${this.slots.length === 0 ? `
           <div class="empty-state">
@@ -4035,7 +3888,7 @@ class ClimatePanelCard extends HTMLElement {
       <div class="card">
         <div class="card-header">
           <h2>🔗 Bindings (${this.bindings.length})</h2>
-          <button class="btn" data-action="add-binding">➕ Add Binding</button>
+          <button class="btn btn-primary" data-action="add-binding">➕ Add Binding</button>
         </div>
         ${this.bindings.length === 0 ? `
           <div class="empty-state">
