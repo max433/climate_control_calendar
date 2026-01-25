@@ -1098,6 +1098,144 @@ Users can achieve same functionality using native HA features:
 
 ---
 
+### D036: Template Support for Dynamic Climate Values
+
+**Date**: 2026-01-25
+**Milestone**: Post-v1.0 (Web UI Enhancement)
+**Status**: Active
+
+**Context**: Static climate values (temperature: 21.0) are inflexible. Users want climate to adapt to real-time conditions like outdoor temperature, user preferences via input helpers, or time-based calculations.
+
+**Decision**: **Support Jinja2 templates** in climate payload fields (temperature, target_temp_high, target_temp_low, humidity).
+
+**Implementation**:
+- Add `template_helper.py` with template detection and rendering functions
+- Detect templates by `{{ }}` markers in string values
+- Render templates every 60 seconds during engine evaluation
+- Type conversion ensures correct data types (float for temps, int for humidity)
+- Change detection compares rendered values to trigger re-application
+- Web UI accepts both numeric and template values in text inputs
+
+**Example**:
+```json
+{
+  "temperature": "{{ states('sensor.outdoor_temp') | float + 2 }}",
+  "humidity": "{{ 60 if states('sensor.outdoor_humidity') | int > 70 else 50 }}"
+}
+```
+
+**Rationale**:
+- **Adaptability**: Climate responds to real-time sensor data
+- **User Control**: Non-technical users adjust via input_number helpers
+- **Energy Efficiency**: Dynamic setbacks based on occupancy/weather
+- **Standard Tech**: Jinja2 already used throughout Home Assistant
+
+**Error Handling**:
+- Invalid syntax → Fallback to original value, log error
+- Render failure → Keep last known value, emit warning
+- Type conversion failure → Use fallback value
+
+**Alternatives Considered**:
+1. Static values only - Too inflexible for advanced users
+2. Custom expression language - Reinventing the wheel
+3. Automation-based workarounds - Poor UX, complex setup
+
+---
+
+### D037: Condition System for Smart Binding Activation
+
+**Date**: 2026-01-25
+**Milestone**: Post-v1.0 (Web UI Enhancement)
+**Status**: Active
+
+**Context**: Calendar event matching alone isn't always sufficient. Users want bindings to activate only when additional criteria are met (e.g., "only heat if outdoor temp < 15°C and window closed").
+
+**Decision**: **Support optional conditions on bindings** with 4 condition types: state, numeric_state, time, template.
+
+**Implementation**:
+- Add `condition_validator.py` for validation and evaluation
+- Use Home Assistant's native `condition.async_from_config()` for evaluation
+- Conditions evaluated every 60 seconds (same as templates)
+- ALL conditions must pass (AND logic) for binding to activate
+- Web UI provides visual condition builder with type-specific forms
+
+**Supported Types**:
+1. **State**: Check if entity equals specific state
+2. **Numeric State**: Compare numeric value with above/below thresholds
+3. **Time**: Time range (after/before) + weekday filter
+4. **Template**: Custom Jinja2 expression returning boolean
+
+**Example**:
+```json
+{
+  "conditions": [
+    {"type": "numeric_state", "entity_id": "sensor.outdoor_temp", "below": 15},
+    {"type": "state", "entity_id": "binary_sensor.window", "state": "off"}
+  ]
+}
+```
+
+**Rationale**:
+- **Intelligence**: Bindings react to context, not just calendar
+- **Energy Saving**: Avoid heating when window open or outdoor warm
+- **Flexibility**: 4 condition types cover most use cases
+- **Native Integration**: Reuses HA's battle-tested condition system
+
+**Behavior Notes**:
+- Conditions failing → Binding doesn't activate (entities keep last state)
+- Multiple bindings → Priority still resolves conflicts
+- Max 5 conditions per binding (performance limit)
+
+**Alternatives Considered**:
+1. No conditions - Users build complex automation workarounds
+2. OR logic support - Confusing, AND logic more intuitive
+3. Unlimited conditions - Risk of performance degradation
+
+---
+
+### D038: Web UI as Primary Configuration Interface
+
+**Date**: 2026-01-25
+**Milestone**: Post-v1.0 (Web UI Enhancement)
+**Status**: Active
+
+**Context**: Config flow GUI wizard (3-step setup) is limited for managing slots, bindings, templates, and conditions. Advanced features need richer interface.
+
+**Decision**: **Implement full-featured web panel** as primary configuration method.
+
+**Implementation**:
+- Custom Lovelace panel registered at `/climate-control-calendar`
+- Single-page app with 4 tabs: Config, Monitor, Charts, About
+- Full CRUD for slots and bindings via HTTP API endpoints
+- Visual condition builder with type-specific forms
+- Template support in text inputs with syntax hints
+- Entity selector dropdowns, priority inputs, pattern matching UI
+- Bilingual support (English + Italian) with i18n system
+
+**Features**:
+- **Config Tab**: Manage slots, bindings, global settings
+- **Monitor Tab**: Real-time dashboard with active events, slots, conditions
+- **Charts Tab**: Historical data visualization (future)
+- **About Tab**: Documentation links, version info
+
+**Rationale**:
+- **Rich UX**: Modal dialogs, tabs, visual builders better than config flow
+- **Advanced Features**: Templates and conditions need text inputs, not wizards
+- **Real-Time Feedback**: Monitor tab shows current state instantly
+- **Scalability**: Easier to add features vs. expanding config flow steps
+
+**Config Flow Deprecation**:
+- Config flow still used for initial setup (calendar/entity selection)
+- Advanced features (slots, bindings, templates) only via web UI
+- Config flow options flow simplified or removed
+
+**Alternatives Considered**:
+1. Expand config flow - Multi-step wizards become unwieldy
+2. YAML configuration - Violates D009 (GUI-first philosophy)
+3. Separate integration for UI - Fragmentation, poor UX
+
+---
+
 ## Future Decisions
 
 The following areas may require decisions in future milestones:
@@ -1105,9 +1243,10 @@ The following areas may require decisions in future milestones:
 ### Post-v1.0 (v1.1+)
 - Performance optimization targets (if performance issues reported)
 - Additional language support based on community demand
-- Advanced slot features (conditional payloads, dynamic values)
+- Advanced monitoring and analytics features
+- Historical data visualization in Charts tab
 
 ---
 
-**Last Updated**: 2026-01-16 (D032-D035: Post-v1.0 architecture refinement)
-**Next Review**: After flag removal implementation
+**Last Updated**: 2026-01-25 (D036-D038: Template, condition, and web UI support)
+**Next Review**: After user feedback on template and condition features

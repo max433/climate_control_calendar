@@ -65,6 +65,7 @@ Binding:
       Value: "Smart Working"
   🎯 Target Slot: slot_comfort_id
   🏠 Target Entities: [climate.studio, climate.bedroom] (optional)
+  ✅ Conditions: [state, numeric_state, time, template] (optional smart filters)
   ⚡ Priority: 10 (higher wins conflicts)
 ```
 
@@ -115,18 +116,22 @@ Slot:
   🆔 ID: slot_comfort_123
   🏷️ Label: "Comfort Mode"
   🌡️ Default Payload:
-      # Temperature settings (choose one approach)
-      temperature: 21              # Single temperature target
+      # Temperature settings (static or template)
+      temperature: 21                                    # Static value
+      temperature: "{{ states('sensor.outdoor') | float + 2 }}"  # Jinja2 template
+
       # OR for heat_cool mode:
-      target_temp_high: 25         # Maximum temperature
-      target_temp_low: 22          # Minimum temperature
+      target_temp_high: 25                               # Static
+      target_temp_high: "{{ states('input_number.max_temp') | float }}"  # Template
+      target_temp_low: 22                                # Static
 
       # HVAC control
       hvac_mode: heat              # heat, cool, heat_cool, auto, off, fan_only, dry
       preset_mode: comfort         # away, home, eco, boost, comfort, etc.
 
-      # Advanced climate control
-      humidity: 60                 # Target humidity (0-100%)
+      # Advanced climate control (templates supported)
+      humidity: 60                                       # Static
+      humidity: "{{ 60 if states('sensor.outdoor_humidity') | int > 70 else 50 }}"  # Template
       aux_heat: true               # Auxiliary/backup heat (for heat pumps)
       fan_mode: auto               # auto, low, medium, high, off
       swing_mode: both             # off, vertical, horizontal, both
@@ -355,6 +360,191 @@ Result:
 - Humidity control maintains comfort and prevents mold
 - Auxiliary heat improves efficiency on very cold days
 - Priority system allows weather-based overrides
+
+---
+
+## 🎨 Advanced Features
+
+### Template Support - Dynamic Climate Values
+
+**Make climate settings respond to real-time conditions with Jinja2 templates.**
+
+Instead of static values, you can use Home Assistant's template engine to calculate climate settings dynamically:
+
+```yaml
+Slot "Adaptive Heating":
+  Default Payload:
+    # Static approach
+    temperature: 21.0
+
+    # Template approach - adapt to outdoor temperature
+    temperature: "{{ states('sensor.outdoor_temp') | float + 2 }}"
+
+    # Complex logic with conditionals
+    humidity: "{{ 60 if states('sensor.outdoor_humidity') | int > 70 else 50 }}"
+
+    # Use input helpers for user control
+    temperature: "{{ states('input_number.target_temp') | float }}"
+```
+
+**Supported Template Fields:**
+- `temperature`: Main temperature target
+- `target_temp_high`: Maximum temperature (heat_cool mode)
+- `target_temp_low`: Minimum temperature (heat_cool mode)
+- `humidity`: Target humidity percentage
+
+**How Templates Work:**
+
+1. **Define Template** in slot payload (via Web UI text input)
+2. **Engine Evaluates** every 60 seconds during coordinator updates
+3. **Render to Value** using Home Assistant's template engine
+4. **Type Conversion** ensures correct data types (float for temps, int for humidity)
+5. **Change Detection** compares rendered value to previous
+6. **Re-apply if Changed** - Climate settings updated only when value changes
+
+**Example Use Cases:**
+
+| Scenario | Template | Benefit |
+|----------|----------|---------|
+| Outdoor compensation | `{{ states('sensor.outdoor_temp')\|float + 2 }}` | Warmer inside when colder outside |
+| User-adjustable | `{{ states('input_number.comfort_temp')\|float }}` | Non-technical users control via UI |
+| Energy saving | `{{ 18 if is_state('binary_sensor.away', 'on') else 21 }}` | Automatic setback when away |
+| Time-based | `{{ 23 if now().hour < 12 else 21 }}` | Morning boost, afternoon normal |
+
+**Error Handling:**
+- Invalid template syntax → Fallback to original value, log error
+- Render failure (missing sensor, etc.) → Keep last known value
+- Type conversion failure → Use fallback, emit warning
+
+**Performance:**
+- Templates re-evaluated every 60 seconds (same as event detection)
+- Cached rendering prevents redundant calculations
+- Change detection prevents unnecessary climate calls
+
+---
+
+### Condition Support - Smart Binding Activation
+
+**Add intelligent logic to bindings so they activate only when specific criteria are met.**
+
+Conditions act as filters on top of calendar event matching. Even if a calendar event matches the binding pattern, the binding only activates if all conditions pass (AND logic).
+
+```yaml
+Binding "Smart Heating":
+  Match Pattern: "WFH" (summary_contains)
+  Slot: "Comfort"
+  Priority: 10
+
+  Conditions:  # ALL must be true
+    - Type: numeric_state
+      Entity: sensor.outdoor_temp
+      Below: 15              # Only heat if outdoor < 15°C
+
+    - Type: state
+      Entity: binary_sensor.window_bedroom
+      State: 'off'           # Only if window closed
+
+    - Type: time
+      After: '06:00'
+      Before: '22:00'
+      Weekday: [mon, tue, wed, thu, fri]  # Work days only
+```
+
+**Supported Condition Types:**
+
+#### 1. State Condition
+Check if an entity is in a specific state:
+
+```yaml
+Type: state
+Entity: binary_sensor.presence
+State: 'on'
+```
+
+Use cases: Presence detection, door/window sensors, mode switches
+
+#### 2. Numeric State Condition
+Compare numeric sensor values with thresholds:
+
+```yaml
+Type: numeric_state
+Entity: sensor.outdoor_temp
+Above: 10      # Optional: minimum value
+Below: 25      # Optional: maximum value
+```
+
+Use cases: Temperature thresholds, humidity levels, battery levels, power consumption
+
+#### 3. Time Condition
+Activate only during specific time ranges and days:
+
+```yaml
+Type: time
+After: '08:00'       # Optional: start time
+Before: '17:00'      # Optional: end time
+Weekday: [mon, wed, fri]  # Optional: specific days (empty = all days)
+```
+
+Use cases: Work hours only, weekend schedules, night mode restrictions
+
+#### 4. Template Condition
+Custom logic using Jinja2 templates (must evaluate to true/false):
+
+```yaml
+Type: template
+Template: "{{ is_state('binary_sensor.workday', 'on') and states('sensor.temp') | float < 20 }}"
+```
+
+Use cases: Complex multi-sensor logic, custom calculations, advanced scenarios
+
+**How Conditions Work:**
+
+```
+Resolution Flow:
+1. 📅 Calendar event "WFH" becomes active
+2. 🔗 Binding matches pattern "WFH"
+3. ✅ CONDITION CHECK:
+     - Is outdoor_temp < 15? → YES
+     - Is window closed? → YES
+     - Is time 06:00-22:00 weekday? → YES
+   → All conditions pass (AND logic)
+4. ⚡ Binding activates with priority 10
+5. 🎚️ Slot "Comfort" applied to entities
+```
+
+**Behavior Notes:**
+
+- **Evaluated every 60s**: Conditions checked on each coordinator update
+- **AND logic**: ALL conditions must be true for binding to activate
+- **State persistence**: When conditions become false, entities keep their last applied state
+- **Priority still applies**: Multiple bindings with passing conditions resolve by priority
+- **Template support**: Conditions can include templates for dynamic thresholds
+
+**Example - Weather-Adaptive Heating:**
+
+```yaml
+Calendar Event: "Home All Day" (recurring daily)
+
+Binding 1 "Mild Weather":
+  Match: "Home All Day"
+  Conditions:
+    - outdoor_temp above 10
+    - outdoor_temp below 20
+  Slot: "Eco Mode" (19°C)
+  Priority: 5
+
+Binding 2 "Cold Weather":
+  Match: "Home All Day"
+  Conditions:
+    - outdoor_temp below 10
+  Slot: "Comfort Mode" (22°C)
+  Priority: 10    # Higher priority wins
+```
+
+Result: Same calendar event triggers different heating levels based on outdoor temperature.
+
+**Configuration:**
+Conditions are configured via the Web UI in the binding editor with a visual condition builder supporting all 4 condition types.
 
 ---
 
