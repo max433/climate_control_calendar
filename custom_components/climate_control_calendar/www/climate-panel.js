@@ -1195,8 +1195,8 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Tab: Basic Settings -->
       <div class="tab-content active" data-tab="basic">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Label *</strong>
-          <input type="text" id="label" required
+          <strong class="form-label">Label *</strong>
+          <input type="text" class="form-control" id="label" required
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., Night, Work Hours, Vacation">
           <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
@@ -1205,8 +1205,8 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Target Temperature (°C)</strong>
-          <input type="text" id="temperature"
+          <strong class="form-label">Target Temperature (°C)</strong>
+          <input type="text" class="form-control" id="temperature"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
             placeholder="e.g., 20.5 or {{ states('sensor.temp') }}">
           <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
@@ -1218,21 +1218,21 @@ class ClimatePanelCard extends HTMLElement {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <label style="display: block;">
-            <strong>Min Temperature (°C)</strong>
-            <input type="text" id="target_temp_low"
+            <strong class="form-label">Min Temperature (°C)</strong>
+            <input type="text" class="form-control" id="target_temp_low"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="18 or {{ ... }}">
           </label>
           <label style="display: block;">
-            <strong>Max Temperature (°C)</strong>
-            <input type="text" id="target_temp_high"
+            <strong class="form-label">Max Temperature (°C)</strong>
+            <input type="text" class="form-control" id="target_temp_high"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="22 or {{ ... }}">
           </label>
         </div>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>HVAC Mode</strong>
+          <strong class="form-label">HVAC Mode</strong>
           <select id="hvac_mode"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not set --</option>
@@ -1247,8 +1247,8 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Preset Mode</strong>
-          <input type="text" id="preset_mode"
+          <strong class="form-label">Preset Mode</strong>
+          <input type="text" class="form-control" id="preset_mode"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., eco, comfort, away">
           <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
@@ -1276,8 +1276,8 @@ class ClimatePanelCard extends HTMLElement {
               <div class="entity-override-form" style="display: none; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid #00d4ff;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                   <label style="display: block;">
-                    <strong>Temperature (°C)</strong>
-                    <input type="text" class="override-temperature" data-entity="${entityId}"
+                    <strong class="form-label">Temperature (°C)</strong>
+                    <input type="text" class="form-control" class="override-temperature" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="20 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1286,7 +1286,7 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <strong>HVAC Mode</strong>
+                    <strong class="form-label">HVAC Mode</strong>
                     <select class="override-hvac-mode" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                       <option value="">-- Use default --</option>
@@ -1301,8 +1301,8 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <strong>Min Temp (°C)</strong>
-                    <input type="text" class="override-temp-low" data-entity="${entityId}"
+                    <strong class="form-label">Min Temp (°C)</strong>
+                    <input type="text" class="form-control" class="override-temp-low" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="18 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1311,8 +1311,8 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <strong>Max Temp (°C)</strong>
-                    <input type="text" class="override-temp-high" data-entity="${entityId}"
+                    <strong class="form-label">Max Temp (°C)</strong>
+                    <input type="text" class="form-control" class="override-temp-high" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="22 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1321,8 +1321,8 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block; grid-column: 1 / -1;">
-                    <strong>Preset Mode</strong>
-                    <input type="text" class="override-preset" data-entity="${entityId}"
+                    <strong class="form-label">Preset Mode</strong>
+                    <input type="text" class="form-control" class="override-preset" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="eco or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1339,14 +1339,14 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Tab: Advanced -->
       <div class="tab-content" data-tab="advanced">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Humidity (%)</strong>
-          <input type="number" id="humidity" min="0" max="100" step="1"
+          <strong class="form-label">Humidity (%)</strong>
+          <input type="number" class="form-control" id="humidity" min="0" max="100" step="1"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="0-100">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Auxiliary Heat</strong>
+          <strong class="form-label">Auxiliary Heat</strong>
           <select id="aux_heat"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not configured --</option>
@@ -1356,21 +1356,21 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Fan Mode</strong>
-          <input type="text" id="fan_mode"
+          <strong class="form-label">Fan Mode</strong>
+          <input type="text" class="form-control" id="fan_mode"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., auto, low, medium, high">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Swing Mode</strong>
-          <input type="text" id="swing_mode"
+          <strong class="form-label">Swing Mode</strong>
+          <input type="text" class="form-control" id="swing_mode"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., off, vertical, horizontal, both">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Excluded Entities</strong>
+          <strong class="form-label">Excluded Entities</strong>
           <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
             ${allClimateEntities.map(ent => `
               <label style="display: block; margin: 5px 0;">
@@ -1856,14 +1856,14 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Tab: Basic Settings -->
       <div class="tab-content active" data-tab="basic">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Label *</strong>
-          <input type="text" id="label" required value="${slot.label || ''}"
+          <strong class="form-label">Label *</strong>
+          <input type="text" class="form-control" id="label" required value="${slot.label || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Target Temperature (°C)</strong>
-          <input type="text" id="temperature" value="${payload.temperature || ''}"
+          <strong class="form-label">Target Temperature (°C)</strong>
+          <input type="text" class="form-control" id="temperature" value="${payload.temperature || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
             placeholder="e.g., 20.5 or {{ states('sensor.temp') }}">
           <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
@@ -1875,21 +1875,21 @@ class ClimatePanelCard extends HTMLElement {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <label style="display: block;">
-            <strong>Min Temperature (°C)</strong>
-            <input type="text" id="target_temp_low" value="${payload.target_temp_low || ''}"
+            <strong class="form-label">Min Temperature (°C)</strong>
+            <input type="text" class="form-control" id="target_temp_low" value="${payload.target_temp_low || ''}"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="18 or {{ ... }}">
           </label>
           <label style="display: block;">
-            <strong>Max Temperature (°C)</strong>
-            <input type="text" id="target_temp_high" value="${payload.target_temp_high || ''}"
+            <strong class="form-label">Max Temperature (°C)</strong>
+            <input type="text" class="form-control" id="target_temp_high" value="${payload.target_temp_high || ''}"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="22 or {{ ... }}">
           </label>
         </div>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>HVAC Mode</strong>
+          <strong class="form-label">HVAC Mode</strong>
           <select id="hvac_mode"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not set --</option>
@@ -1904,8 +1904,8 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Preset Mode</strong>
-          <input type="text" id="preset_mode" value="${payload.preset_mode || ''}"
+          <strong class="form-label">Preset Mode</strong>
+          <input type="text" class="form-control" id="preset_mode" value="${payload.preset_mode || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., eco, comfort, away">
           <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
@@ -1937,8 +1937,8 @@ class ClimatePanelCard extends HTMLElement {
               <div class="entity-override-form" style="display: ${hasOverride ? 'block' : 'none'}; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid #00d4ff;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                   <label style="display: block;">
-                    <strong>Temperature (°C)</strong>
-                    <input type="text" class="override-temperature" data-entity="${entityId}" value="${override.temperature || ''}"
+                    <strong class="form-label">Temperature (°C)</strong>
+                    <input type="text" class="form-control" class="override-temperature" data-entity="${entityId}" value="${override.temperature || ''}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="20 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1947,7 +1947,7 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <strong>HVAC Mode</strong>
+                    <strong class="form-label">HVAC Mode</strong>
                     <select class="override-hvac-mode" data-entity="${entityId}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                       <option value="">-- Use default --</option>
@@ -1962,8 +1962,8 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <strong>Min Temp (°C)</strong>
-                    <input type="text" class="override-temp-low" data-entity="${entityId}" value="${override.target_temp_low || ''}"
+                    <strong class="form-label">Min Temp (°C)</strong>
+                    <input type="text" class="form-control" class="override-temp-low" data-entity="${entityId}" value="${override.target_temp_low || ''}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="18 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1972,8 +1972,8 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <strong>Max Temp (°C)</strong>
-                    <input type="text" class="override-temp-high" data-entity="${entityId}" value="${override.target_temp_high || ''}"
+                    <strong class="form-label">Max Temp (°C)</strong>
+                    <input type="text" class="form-control" class="override-temp-high" data-entity="${entityId}" value="${override.target_temp_high || ''}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="22 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -1982,8 +1982,8 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block; grid-column: 1 / -1;">
-                    <strong>Preset Mode</strong>
-                    <input type="text" class="override-preset" data-entity="${entityId}" value="${override.preset_mode || ''}"
+                    <strong class="form-label">Preset Mode</strong>
+                    <input type="text" class="form-control" class="override-preset" data-entity="${entityId}" value="${override.preset_mode || ''}"
                       style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="eco or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
@@ -2000,14 +2000,14 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Tab: Advanced -->
       <div class="tab-content" data-tab="advanced">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Humidity (%)</strong>
-          <input type="number" id="humidity" min="0" max="100" step="1" value="${payload.humidity || ''}"
+          <strong class="form-label">Humidity (%)</strong>
+          <input type="number" class="form-control" id="humidity" min="0" max="100" step="1" value="${payload.humidity || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="0-100">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Auxiliary Heat</strong>
+          <strong class="form-label">Auxiliary Heat</strong>
           <select id="aux_heat"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not configured --</option>
@@ -2017,21 +2017,21 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Fan Mode</strong>
-          <input type="text" id="fan_mode" value="${payload.fan_mode || ''}"
+          <strong class="form-label">Fan Mode</strong>
+          <input type="text" class="form-control" id="fan_mode" value="${payload.fan_mode || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., auto, low, medium, high">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Swing Mode</strong>
-          <input type="text" id="swing_mode" value="${payload.swing_mode || ''}"
+          <strong class="form-label">Swing Mode</strong>
+          <input type="text" class="form-control" id="swing_mode" value="${payload.swing_mode || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., off, vertical, horizontal, both">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Excluded Entities</strong>
+          <strong class="form-label">Excluded Entities</strong>
           <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
             ${allClimateEntities.map(ent => `
               <label style="display: block; margin: 5px 0;">
@@ -2387,7 +2387,7 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Basic Mode Container -->
       <div id="basic-mode-container">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Condition Type *</strong>
+          <strong class="form-label">Condition Type *</strong>
           <select id="condition_type"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="state">State - Check entity state</option>
@@ -2403,8 +2403,8 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Advanced Mode Container -->
       <div id="advanced-mode-container" style="display: none;">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Condition JSON *</strong>
-          <textarea id="condition-json" rows="8"
+          <strong class="form-label">Condition JSON *</strong>
+          <textarea class="form-control" id="condition-json" rows="8"
             style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px;"
             placeholder='{\n  "condition": "state",\n  "entity_id": "binary_sensor.window",\n  "state": "off"\n}'></textarea>
           <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
@@ -2433,7 +2433,7 @@ class ClimatePanelCard extends HTMLElement {
       if (type === 'state') {
         container.innerHTML = `
           <label style="display: block; margin-bottom: 15px;">
-            <strong>Entity *</strong>
+            <strong class="form-label">Entity *</strong>
             <select id="cond_entity_id" required
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
               ${allEntities.map(ent => `<option value="${ent}">${ent}</option>`).join('')}
@@ -2441,8 +2441,8 @@ class ClimatePanelCard extends HTMLElement {
           </label>
 
           <label style="display: block; margin-bottom: 15px;">
-            <strong>State *</strong>
-            <input type="text" id="cond_state" required
+            <strong class="form-label">State *</strong>
+            <input type="text" class="form-control" id="cond_state" required
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
               placeholder="e.g., on, off, home, away">
             <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
@@ -2453,7 +2453,7 @@ class ClimatePanelCard extends HTMLElement {
       } else if (type === 'numeric_state') {
         container.innerHTML = `
           <label style="display: block; margin-bottom: 15px;">
-            <strong>Entity *</strong>
+            <strong class="form-label">Entity *</strong>
             <select id="cond_entity_id" required
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
               ${allEntities.map(ent => `<option value="${ent}">${ent}</option>`).join('')}
@@ -2462,15 +2462,15 @@ class ClimatePanelCard extends HTMLElement {
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <label style="display: block;">
-              <strong>Above</strong>
-              <input type="number" id="cond_above" step="0.1"
+              <strong class="form-label">Above</strong>
+              <input type="number" class="form-control" id="cond_above" step="0.1"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Min value">
             </label>
 
             <label style="display: block;">
-              <strong>Below</strong>
-              <input type="number" id="cond_below" step="0.1"
+              <strong class="form-label">Below</strong>
+              <input type="number" class="form-control" id="cond_below" step="0.1"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Max value">
             </label>
@@ -2484,20 +2484,20 @@ class ClimatePanelCard extends HTMLElement {
         container.innerHTML = `
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
             <label style="display: block;">
-              <strong>After</strong>
+              <strong class="form-label">After</strong>
               <input type="time" id="cond_after"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             </label>
 
             <label style="display: block;">
-              <strong>Before</strong>
+              <strong class="form-label">Before</strong>
               <input type="time" id="cond_before"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             </label>
           </div>
 
           <label style="display: block; margin-bottom: 15px;">
-            <strong>Weekday</strong>
+            <strong class="form-label">Weekday</strong>
             <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 5px;">
               ${['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => `
                 <label style="display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; cursor: pointer;">
@@ -2518,8 +2518,8 @@ class ClimatePanelCard extends HTMLElement {
       } else if (type === 'template') {
         container.innerHTML = `
           <label style="display: block; margin-bottom: 15px;">
-            <strong>Template *</strong>
-            <textarea id="cond_template" required rows="4"
+            <strong class="form-label">Template *</strong>
+            <textarea class="form-control" id="cond_template" required rows="4"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="{{ states('sensor.temp') | float > 25 }}"></textarea>
             <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
@@ -2718,7 +2718,7 @@ class ClimatePanelCard extends HTMLElement {
 
       <div style="margin: 20px 0;">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Match Type *</strong>
+          <strong class="form-label">Match Type *</strong>
           <select id="match_type" required
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="summary_contains">Summary Contains</option>
@@ -2731,8 +2731,8 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Match Pattern *</strong>
-          <input type="text" id="match_value" required
+          <strong class="form-label">Match Pattern *</strong>
+          <input type="text" class="form-control" id="match_value" required
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., vacation, work, ^Night$">
           <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
@@ -2741,7 +2741,7 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Target Slot *</strong>
+          <strong class="form-label">Target Slot *</strong>
           <select id="slot_id" required
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             ${this.slots.map(slot => `
@@ -2781,7 +2781,7 @@ class ClimatePanelCard extends HTMLElement {
           </div>
           <div class="collapse-content">
             <label style="display: block; margin-bottom: 15px;">
-              <strong>Calendars</strong>
+              <strong class="form-label">Calendars</strong>
               <select id="calendars"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                 <option value="*">* All Calendars</option>
@@ -2795,8 +2795,8 @@ class ClimatePanelCard extends HTMLElement {
             </label>
 
             <label style="display: block; margin-bottom: 15px;">
-              <strong>Priority (0-100)</strong>
-              <input type="number" id="priority" min="0" max="100" step="1"
+              <strong class="form-label">Priority (0-100)</strong>
+              <input type="number" class="form-control" id="priority" min="0" max="100" step="1"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Leave empty to use calendar default">
               <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
@@ -2805,7 +2805,7 @@ class ClimatePanelCard extends HTMLElement {
             </label>
 
             <label style="display: block; margin-bottom: 15px;">
-              <strong>Target Entities</strong>
+              <strong class="form-label">Target Entities</strong>
               <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
                 ${allClimateEntities.map(ent => `
                   <label style="display: block; margin: 5px 0;">
@@ -3043,7 +3043,7 @@ class ClimatePanelCard extends HTMLElement {
 
       <div style="margin: 20px 0;">
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Match Type *</strong>
+          <strong class="form-label">Match Type *</strong>
           <select id="match_type" required
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="summary_contains" ${match.type === 'summary_contains' ? 'selected' : ''}>Summary Contains</option>
@@ -3053,13 +3053,13 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Match Pattern *</strong>
-          <input type="text" id="match_value" required value="${match.value || ''}"
+          <strong class="form-label">Match Pattern *</strong>
+          <input type="text" class="form-control" id="match_value" required value="${match.value || ''}"
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <strong>Target Slot *</strong>
+          <strong class="form-label">Target Slot *</strong>
           <select id="slot_id" required
             style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             ${this.slots.map(slot => `
@@ -3098,7 +3098,7 @@ class ClimatePanelCard extends HTMLElement {
           </div>
           <div class="collapse-content">
             <label style="display: block; margin-bottom: 15px;">
-              <strong>Calendars</strong>
+              <strong class="form-label">Calendars</strong>
               <select id="calendars"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                 <option value="*" ${binding.calendars === '*' ? 'selected' : ''}>* All Calendars</option>
@@ -3111,14 +3111,14 @@ class ClimatePanelCard extends HTMLElement {
             </label>
 
             <label style="display: block; margin-bottom: 15px;">
-              <strong>Priority (0-100)</strong>
-              <input type="number" id="priority" min="0" max="100" step="1" value="${binding.priority !== null && binding.priority !== undefined ? binding.priority : ''}"
+              <strong class="form-label">Priority (0-100)</strong>
+              <input type="number" class="form-control" id="priority" min="0" max="100" step="1" value="${binding.priority !== null && binding.priority !== undefined ? binding.priority : ''}"
                 style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Leave empty to use calendar default">
             </label>
 
             <label style="display: block; margin-bottom: 15px;">
-              <strong>Target Entities</strong>
+              <strong class="form-label">Target Entities</strong>
               <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
                 ${allClimateEntities.map(ent => `
                   <label style="display: block; margin: 5px 0;">
@@ -3985,15 +3985,15 @@ class ClimatePanelCard extends HTMLElement {
         <div style="margin: 20px 0;">
           <label style="display: block; margin-bottom: 15px;">
             <input type="checkbox" id="enabled" ${currentConfig.enabled ? 'checked' : ''}>
-            <strong>Enable this calendar</strong>
+            <strong class="form-label">Enable this calendar</strong>
             <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
               When disabled, events from this calendar will be ignored
             </div>
           </label>
 
           <label style="display: block; margin-bottom: 15px;">
-            <strong>Default Priority (0-100)</strong>
-            <input type="number" id="priority" min="0" max="100" value="${currentConfig.default_priority || 0}"
+            <strong class="form-label">Default Priority (0-100)</strong>
+            <input type="number" class="form-control" id="priority" min="0" max="100" value="${currentConfig.default_priority || 0}"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
               Higher priority calendars take precedence in conflicts
@@ -4001,8 +4001,8 @@ class ClimatePanelCard extends HTMLElement {
           </label>
 
           <label style="display: block; margin-bottom: 15px;">
-            <strong>Description (optional)</strong>
-            <textarea id="description" rows="3"
+            <strong class="form-label">Description (optional)</strong>
+            <textarea class="form-control" id="description" rows="3"
               style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             >${currentConfig.description || ''}</textarea>
             <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
@@ -4011,7 +4011,7 @@ class ClimatePanelCard extends HTMLElement {
           </label>
 
           <div style="background: rgba(0,212,255,0.1); padding: 10px; border-radius: 8px; border-left: 3px solid #00d4ff;">
-            <strong>📊 Stats:</strong> ${bindingCount} binding${bindingCount !== 1 ? 's' : ''} using this calendar
+            <strong class="form-label">📊 Stats:</strong> ${bindingCount} binding${bindingCount !== 1 ? 's' : ''} using this calendar
           </div>
         </div>
 
