@@ -228,6 +228,8 @@ class ClimatePanelCard extends HTMLElement {
     this.sidebarOpen = false;
     // I18n ready flag
     this.i18nReady = false;
+    // Theme state (light/dark)
+    this.theme = localStorage.getItem('climate_theme') || 'dark';
   }
 
   // Toggle debug mode
@@ -235,6 +237,14 @@ class ClimatePanelCard extends HTMLElement {
     this.debugEnabled = !this.debugEnabled;
     localStorage.setItem('climate_debug_enabled', this.debugEnabled);
     this.log('🔧', `Debug mode ${this.debugEnabled ? 'ENABLED' : 'DISABLED'}`);
+    this.render();
+  }
+
+  // Toggle theme (dark/light)
+  toggleTheme() {
+    this.theme = this.theme === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('climate_theme', this.theme);
+    this.log('🎨', `Theme switched to ${this.theme}`);
     this.render();
   }
 
@@ -574,6 +584,9 @@ class ClimatePanelCard extends HTMLElement {
     });
 
     this.shadowRoot.innerHTML = `
+      <!-- Bootstrap Custom CSS -->
+      <link rel="stylesheet" href="/local/climate_control_calendar/bootstrap-custom.css">
+
       <style>
         * {
           margin: 0;
@@ -584,6 +597,10 @@ class ClimatePanelCard extends HTMLElement {
         :host {
           display: block;
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+          color-scheme: ${this.theme};
+        }
+
+        :host([data-bs-theme="dark"]) {
           background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
           color: #ffffff;
           min-height: 100vh;
@@ -1010,6 +1027,13 @@ class ClimatePanelCard extends HTMLElement {
           <span class="nav-item-icon">ℹ️</span>
           ${this.t('navigation.about')}
         </div>
+
+        <div style="margin-top: auto; padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
+          <div class="nav-item" id="theme-toggle" style="cursor: pointer;">
+            <span class="nav-item-icon">${this.theme === 'dark' ? '🌙' : '☀️'}</span>
+            ${this.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
+          </div>
+        </div>
       </div>
 
       <div class="container">
@@ -1048,6 +1072,9 @@ class ClimatePanelCard extends HTMLElement {
       </div>
     `;
 
+    // Apply theme attribute
+    this.setAttribute('data-bs-theme', this.theme);
+
     // Update logs after render
     this.updateDebugLogs();
 
@@ -1065,6 +1092,11 @@ class ClimatePanelCard extends HTMLElement {
     const debugToggle = this.shadowRoot.querySelector('#debug-toggle');
     if (debugToggle) {
       debugToggle.addEventListener('click', () => this.toggleDebug());
+    }
+
+    const themeToggle = this.shadowRoot.querySelector('#theme-toggle');
+    if (themeToggle) {
+      themeToggle.addEventListener('click', () => this.toggleTheme());
     }
 
     const refreshBtn = this.shadowRoot.querySelector('#refresh-btn');
