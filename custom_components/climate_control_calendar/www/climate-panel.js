@@ -902,6 +902,10 @@ class ClimatePanelCard extends HTMLElement {
           <span class="nav-item-icon">ℹ️</span>
           ${this.t('navigation.about')}
         </div>
+        <div class="nav-item ${this.currentPage === 'test' ? 'active' : ''}" data-page="test">
+          <span class="nav-item-icon">🧪</span>
+          Bootstrap Test
+        </div>
 
         <div style="margin-top: auto; padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
           <div class="nav-item" id="theme-toggle" style="cursor: pointer;">
@@ -3538,6 +3542,8 @@ class ClimatePanelCard extends HTMLElement {
         return this.renderChartsPage();
       case 'about':
         return this.renderAboutPage();
+      case 'test':
+        return this.renderBootstrapTestPage();
       default:
         return this.renderConfigPage();
     }
@@ -3811,6 +3817,349 @@ class ClimatePanelCard extends HTMLElement {
             <a href="https://github.com/max433/climate_control_calendar" target="_blank" style="color: #00d4ff;">
               📦 GitHub Repository
             </a>
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  renderBootstrapTestPage() {
+    return `
+      <div class="card mb-3">
+        <div class="card-header">
+          <h2 class="h4 mb-0">🧪 Bootstrap 5.3.3 Test Page</h2>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Questa pagina di test mostra tutti i componenti Bootstrap per verificare che il CSS sia caricato correttamente nel shadow DOM.</p>
+          <p><strong>Tema corrente:</strong> <span class="badge bg-${this.theme === 'dark' ? 'dark' : 'light'}">${this.theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span></p>
+        </div>
+      </div>
+
+      <!-- Alerts -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Alerts</h3>
+        </div>
+        <div class="card-body">
+          <div class="alert alert-primary" role="alert">
+            💡 Primary alert - Used for general information
+          </div>
+          <div class="alert alert-success" role="alert">
+            ✅ Success alert - Operation completed successfully
+          </div>
+          <div class="alert alert-danger" role="alert">
+            ❌ Danger alert - Error occurred
+          </div>
+          <div class="alert alert-warning" role="alert">
+            ⚠️ Warning alert - Please pay attention
+          </div>
+          <div class="alert alert-info" role="alert">
+            ℹ️ Info alert - Additional information
+          </div>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Buttons</h3>
+        </div>
+        <div class="card-body">
+          <h6>Solid Buttons</h6>
+          <div class="mb-3">
+            <button class="btn btn-primary me-2">Primary</button>
+            <button class="btn btn-secondary me-2">Secondary</button>
+            <button class="btn btn-success me-2">Success</button>
+            <button class="btn btn-danger me-2">Danger</button>
+            <button class="btn btn-warning me-2">Warning</button>
+            <button class="btn btn-info me-2">Info</button>
+          </div>
+          <h6>Outline Buttons</h6>
+          <div class="mb-3">
+            <button class="btn btn-outline-primary me-2">Primary</button>
+            <button class="btn btn-outline-secondary me-2">Secondary</button>
+            <button class="btn btn-outline-success me-2">Success</button>
+            <button class="btn btn-outline-danger me-2">Danger</button>
+          </div>
+          <h6>Button Sizes</h6>
+          <div>
+            <button class="btn btn-primary btn-lg me-2">Large</button>
+            <button class="btn btn-primary me-2">Regular</button>
+            <button class="btn btn-primary btn-sm me-2">Small</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Form Controls -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Form Controls</h3>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label for="testInput" class="form-label">Text Input</label>
+            <input type="text" class="form-control" id="testInput" placeholder="Enter text here">
+            <div class="form-text">This is helper text for the input field</div>
+          </div>
+
+          <div class="mb-3">
+            <label for="testSelect" class="form-label">Select Dropdown</label>
+            <select class="form-select" id="testSelect">
+              <option selected>Choose an option...</option>
+              <option value="1">Option 1</option>
+              <option value="2">Option 2</option>
+              <option value="3">Option 3</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label for="testTextarea" class="form-label">Textarea</label>
+            <textarea class="form-control" id="testTextarea" rows="3" placeholder="Enter multiple lines"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label for="testNumber" class="form-label">Number Input</label>
+            <input type="number" class="form-control" id="testNumber" min="0" max="100" value="50">
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6">
+              <label for="testInput1" class="form-label">First Column</label>
+              <input type="text" class="form-control" id="testInput1" placeholder="First">
+            </div>
+            <div class="col-md-6">
+              <label for="testInput2" class="form-label">Second Column</label>
+              <input type="text" class="form-control" id="testInput2" placeholder="Second">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Checkboxes and Radios -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Checkboxes & Radios</h3>
+        </div>
+        <div class="card-body">
+          <h6>Checkboxes</h6>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="check1" checked>
+            <label class="form-check-label" for="check1">
+              Default checkbox (checked)
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="check2">
+            <label class="form-check-label" for="check2">
+              Another checkbox
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="check3" disabled>
+            <label class="form-check-label" for="check3">
+              Disabled checkbox
+            </label>
+          </div>
+
+          <h6 class="mt-3">Radio Buttons</h6>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="testRadio" id="radio1" checked>
+            <label class="form-check-label" for="radio1">
+              Default radio (checked)
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="testRadio" id="radio2">
+            <label class="form-check-label" for="radio2">
+              Second radio
+            </label>
+          </div>
+          <div class="form-check">
+            <input class="form-check-input" type="radio" name="testRadio" id="radio3" disabled>
+            <label class="form-check-label" for="radio3">
+              Disabled radio
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Badges -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Badges</h3>
+        </div>
+        <div class="card-body">
+          <h6>Colored Badges</h6>
+          <div class="mb-3">
+            <span class="badge bg-primary me-1">Primary</span>
+            <span class="badge bg-secondary me-1">Secondary</span>
+            <span class="badge bg-success me-1">Success</span>
+            <span class="badge bg-danger me-1">Danger</span>
+            <span class="badge bg-warning text-dark me-1">Warning</span>
+            <span class="badge bg-info me-1">Info</span>
+            <span class="badge bg-light text-dark me-1">Light</span>
+            <span class="badge bg-dark me-1">Dark</span>
+          </div>
+          <h6>Pill Badges</h6>
+          <div>
+            <span class="badge rounded-pill bg-primary me-1">🌡️ 22°C</span>
+            <span class="badge rounded-pill bg-success me-1">✅ Active</span>
+            <span class="badge rounded-pill bg-danger me-1">❌ Error</span>
+            <span class="badge rounded-pill bg-warning text-dark me-1">⚠️ Warning</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- List Groups -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">List Groups</h3>
+        </div>
+        <div class="card-body">
+          <h6>Basic List</h6>
+          <div class="list-group mb-3">
+            <div class="list-group-item">First item</div>
+            <div class="list-group-item">Second item</div>
+            <div class="list-group-item active">Active item</div>
+            <div class="list-group-item">Fourth item</div>
+          </div>
+
+          <h6>List with Badges</h6>
+          <div class="list-group mb-3">
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              Slots configured
+              <span class="badge bg-primary rounded-pill">5</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              Bindings active
+              <span class="badge bg-success rounded-pill">12</span>
+            </div>
+            <div class="list-group-item d-flex justify-content-between align-items-center">
+              Calendars
+              <span class="badge bg-info rounded-pill">3</span>
+            </div>
+          </div>
+
+          <h6>Complex List Items</h6>
+          <div class="list-group">
+            <div class="list-group-item">
+              <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                  <h5 class="mb-2">Night Mode Slot</h5>
+                  <div class="mb-2">
+                    <span class="badge bg-primary me-1">🌡️ 18°C</span>
+                    <span class="badge bg-success me-1">🔥 heat</span>
+                    <span class="badge bg-info me-1">⚡ Priority: 10</span>
+                  </div>
+                  <p class="mb-0 text-muted small">Active during night hours</p>
+                </div>
+                <div class="btn-group">
+                  <button class="btn btn-sm btn-outline-primary">✏️ Edit</button>
+                  <button class="btn btn-sm btn-outline-danger">🗑️ Delete</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Typography & Utilities -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Typography & Utilities</h3>
+        </div>
+        <div class="card-body">
+          <h1>Heading 1</h1>
+          <h2>Heading 2</h2>
+          <h3>Heading 3</h3>
+          <h4>Heading 4</h4>
+          <h5>Heading 5</h5>
+          <h6>Heading 6</h6>
+
+          <p class="text-primary">Primary text</p>
+          <p class="text-secondary">Secondary text</p>
+          <p class="text-success">Success text</p>
+          <p class="text-danger">Danger text</p>
+          <p class="text-warning">Warning text</p>
+          <p class="text-info">Info text</p>
+          <p class="text-muted">Muted text</p>
+
+          <div class="mb-2">
+            <span class="fw-bold">Bold text</span> |
+            <span class="fst-italic">Italic text</span> |
+            <span class="text-decoration-underline">Underlined text</span>
+          </div>
+
+          <div>
+            <code>inline code</code> |
+            <kbd>Keyboard input</kbd> |
+            <mark>Highlighted text</mark>
+          </div>
+        </div>
+      </div>
+
+      <!-- Spacing Utilities -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Spacing Utilities</h3>
+        </div>
+        <div class="card-body">
+          <div class="p-3 mb-2 bg-primary text-white">Padding: p-3</div>
+          <div class="p-2 mb-2 bg-secondary text-white">Padding: p-2</div>
+          <div class="p-1 mb-2 bg-success text-white">Padding: p-1</div>
+
+          <div class="mt-3 pt-3 border-top">
+            <div class="d-flex gap-2">
+              <div class="p-2 bg-info text-white">Item 1</div>
+              <div class="p-2 bg-info text-white">Item 2</div>
+              <div class="p-2 bg-info text-white">Item 3</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Grid System -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="h5 mb-0">Grid System</h3>
+        </div>
+        <div class="card-body">
+          <div class="row g-2 mb-2">
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="p-2 bg-primary text-white text-center">Col 1</div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="p-2 bg-secondary text-white text-center">Col 2</div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="p-2 bg-success text-white text-center">Col 3</div>
+            </div>
+            <div class="col-12 col-md-6 col-lg-3">
+              <div class="p-2 bg-danger text-white text-center">Col 4</div>
+            </div>
+          </div>
+
+          <div class="row g-2">
+            <div class="col-md-8">
+              <div class="p-2 bg-info text-white text-center">8 columns</div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-2 bg-warning text-dark text-center">4 columns</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary -->
+      <div class="card">
+        <div class="card-header bg-success text-white">
+          <h3 class="h5 mb-0">✅ Bootstrap Test Complete</h3>
+        </div>
+        <div class="card-body">
+          <p class="mb-0">
+            Se vedi tutti i componenti sopra con gli stili Bootstrap corretti (colori, spaziature, bordi arrotondati, ecc.),
+            allora Bootstrap 5.3.3 è caricato correttamente nel shadow DOM e possiamo procedere ad applicare questi stili
+            alle pagine reali dell'applicazione.
           </p>
         </div>
       </div>
