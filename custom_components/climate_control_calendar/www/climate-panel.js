@@ -453,6 +453,10 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Bootstrap 5.3.3 Official CSS -->
       <link rel="stylesheet" href="/local/climate_control_calendar/bootstrap.min.css">
 
+      <!-- Select2 CSS -->
+      <link rel="stylesheet" href="/local/climate_control_calendar/select2.min.css">
+      <link rel="stylesheet" href="/local/climate_control_calendar/select2-bootstrap-5-theme.min.css">
+
       <style>
         * {
           margin: 0;
@@ -864,6 +868,12 @@ class ClimatePanelCard extends HTMLElement {
           background: rgba(0, 212, 255, 0.7);
         }
       </style>
+
+      <!-- jQuery (required for Select2) -->
+      <script src="/local/climate_control_calendar/jquery.slim.min.js"></script>
+
+      <!-- Select2 JS -->
+      <script src="/local/climate_control_calendar/select2.min.js"></script>
 
       <!-- Hamburger Menu -->
       <div class="hamburger-menu ${this.sidebarOpen ? 'open' : ''}" id="hamburger-btn">
@@ -1760,21 +1770,49 @@ class ClimatePanelCard extends HTMLElement {
     return modal;
   }
 
-  // Initialize SearchableSelect on all select elements with many options
   // Initialize Select2 on select elements with many options
   initSelect2(container, minOptions = 5) {
-    // Select2 requires jQuery - check if available in shadow DOM context
-    // For now, we'll apply Bootstrap styling to selects and keep them native
-    // Select2 will be initialized in a future update when we solve shadow DOM + jQuery integration
+    // Check if jQuery is loaded
+    if (typeof this.shadowRoot.querySelector('script[src*="jquery"]') === 'undefined') {
+      console.warn('jQuery not loaded, skipping Select2 initialization');
+      return;
+    }
 
     const selects = container.querySelectorAll('select');
     selects.forEach(select => {
       // Add Bootstrap class
       select.classList.add('form-select');
 
-      // Add custom styling for selects with many options
+      // Skip if already initialized
+      if (select.dataset.select2Init === 'true') {
+        return;
+      }
+
+      // Skip HVAC/preset/fan/swing mode selects (few options)
+      if (select.id && (select.id.includes('hvac_mode') || select.id.includes('preset_mode') ||
+          select.id.includes('fan_mode') || select.id.includes('swing_mode'))) {
+        return;
+      }
+
+      // Initialize Select2 only on selects with many options
       if (select.options.length >= minOptions) {
-        select.style.cursor = 'pointer';
+        try {
+          // Use jQuery from shadow DOM
+          const $ = this.shadowRoot.ownerDocument.defaultView.$;
+
+          if ($ && $.fn && $.fn.select2) {
+            $(select).select2({
+              theme: 'bootstrap-5',
+              width: '100%',
+              dropdownParent: $(container),
+              placeholder: 'Type to search...',
+              allowClear: false
+            });
+            select.dataset.select2Init = 'true';
+          }
+        } catch (err) {
+          console.warn('Failed to initialize Select2:', err);
+        }
       }
     });
   }
