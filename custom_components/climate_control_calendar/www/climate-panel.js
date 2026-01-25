@@ -450,14 +450,13 @@ class ClimatePanelCard extends HTMLElement {
     });
 
     this.shadowRoot.innerHTML = `
-      <!-- Bootstrap 5.3.3 Official CSS -->
-      <link rel="stylesheet" href="/local/climate_control_calendar/bootstrap.min.css">
-
-      <!-- Select2 CSS -->
-      <link rel="stylesheet" href="/local/climate_control_calendar/select2.min.css">
-      <link rel="stylesheet" href="/local/climate_control_calendar/select2-bootstrap-5-theme.min.css">
-
       <style>
+        /* Import Bootstrap and Select2 via @import for shadow DOM compatibility */
+        @import url("/local/climate_control_calendar/bootstrap.min.css");
+        @import url("/local/climate_control_calendar/select2.min.css");
+        @import url("/local/climate_control_calendar/select2-bootstrap-5-theme.min.css");
+
+        /* Reset and base styles */
         * {
           margin: 0;
           padding: 0;
@@ -1162,7 +1161,7 @@ class ClimatePanelCard extends HTMLElement {
       const result = await this.evaluateTemplate(value);
 
       if (result.success) {
-        previewDiv.innerHTML = `✅ Current value: <strong style="color: #00d4ff;">${result.value}</label>`;
+        previewDiv.innerHTML = `✅ Current value: <strong style="color: #00d4ff;">${result.value}</strong>`;
         previewDiv.style.color = '#00ff88';
       } else {
         previewDiv.innerHTML = `❌ Error: ${result.error}`;
@@ -1194,42 +1193,47 @@ class ClimatePanelCard extends HTMLElement {
 
       <!-- Tab: Basic Settings -->
       <div class="tab-content active" data-tab="basic">
-        <div class="mb-3">
-          <label for="label" class="form-label">Label *</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Label *</strong>
           <input type="text" class="form-control" id="label" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., Night, Work Hours, Vacation">
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             A descriptive name for this slot
           </div>
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="temperature" class="form-label">Target Temperature (°C)</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Target Temperature (°C)</strong>
           <input type="text" class="form-control" id="temperature"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
             placeholder="e.g., 20.5 or {{ states('sensor.temp') }}">
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
             💡 Supports templates: <code style="color: #00d4ff;">{{ '{{ states("sensor.temp") }}' }}</code>
           </div>
-        </div>
+        </label>
 
-        <div class="alert alert-info text-center">OR (for heat_cool mode)</div>
+        <div style="color: #00d4ff; margin: 15px 0; text-align: center;">OR (for heat_cool mode)</div>
 
-        <div class="row g-2 mb-3">
-          <div class="col-md-6">
-            <label for="target_temp_low" class="form-label">Min Temperature (°C)</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+          <label style="display: block;">
+            <strong class="form-label">Min Temperature (°C)</strong>
             <input type="text" class="form-control" id="target_temp_low"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="18 or {{ ... }}">
-          </div>
-          <div class="col-md-6">
-            <label for="target_temp_high" class="form-label">Max Temperature (°C)</label>
+          </label>
+          <label style="display: block;">
+            <strong class="form-label">Max Temperature (°C)</strong>
             <input type="text" class="form-control" id="target_temp_high"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="22 or {{ ... }}">
-          </div>
+          </label>
         </div>
 
-        <div class="mb-3">
-          <label for="hvac_mode" class="form-label">HVAC Mode</label>
-          <select id="hvac_mode" class="form-select">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">HVAC Mode</strong>
+          <select id="hvac_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not set --</option>
             <option value="heat">🔥 Heat</option>
             <option value="cool">❄️ Cool</option>
@@ -1239,49 +1243,51 @@ class ClimatePanelCard extends HTMLElement {
             <option value="dry">💨 Dry</option>
             <option value="fan_only">🌀 Fan Only</option>
           </select>
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="preset_mode" class="form-label">Preset Mode</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Preset Mode</strong>
           <input type="text" class="form-control" id="preset_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., eco, comfort, away">
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             Device-specific preset (check your device capabilities)
           </div>
-        </div>
+        </label>
       </div>
 
       <!-- Tab: Entity Overrides -->
       <div class="tab-content" data-tab="overrides">
-        <div class="alert alert-info">
+        <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
           ℹ️ Override default settings for specific entities. Disabled entities will use the default settings from Basic tab.
         </div>
 
         <div id="entity-overrides-container">
           ${allClimateEntities.map(entityId => `
-            <div class="card mb-2" data-entity="${entityId}">
-              <div class="card-header">
-                <div class="form-check">
-                  <input type="checkbox" class="form-check-input override-toggle" id="override-${entityId}" data-entity="${entityId}">
-                  <label class="form-check-label fw-bold" for="override-${entityId}">
-                    ${entityId}
-                  </label>
-                </div>
+            <div class="entity-override-item" data-entity="${entityId}">
+              <div class="entity-override-header">
+                <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
+                  <input type="checkbox" class="override-toggle" data-entity="${entityId}"
+                    style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
+                  <span style="font-weight: bold;">${entityId}</span>
+                </label>
               </div>
-              <div class="card-body entity-override-form" style="display: none;">
-                <div class="row g-2">
-                  <div class="col-md-6">
-                    <label class="form-label">Temperature (°C)</label>
-                    <input type="text" class="form-control form-control-sm override-temperature" data-entity="${entityId}"
+              <div class="entity-override-form" style="display: none; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid #00d4ff;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <label style="display: block;">
+                    <strong class="form-label">Temperature (°C)</strong>
+                    <input type="text" class="form-control" class="override-temperature" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="20 or {{ ... }}">
-                    <div class="form-text">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
                     </div>
-                  </div>
+                  </label>
 
-                  <div class="col-md-6">
-                    <label class="form-label">HVAC Mode</label>
-                    <select class="form-select form-select-sm override-hvac-mode" data-entity="${entityId}">
+                  <label style="display: block;">
+                    <strong class="form-label">HVAC Mode</strong>
+                    <select class="override-hvac-mode" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                       <option value="">-- Use default --</option>
                       <option value="heat">🔥 Heat</option>
                       <option value="cool">❄️ Cool</option>
@@ -1291,34 +1297,37 @@ class ClimatePanelCard extends HTMLElement {
                       <option value="dry">💨 Dry</option>
                       <option value="fan_only">🌀 Fan Only</option>
                     </select>
-                  </div>
+                  </label>
 
-                  <div class="col-md-6">
-                    <label class="form-label">Min Temp (°C)</label>
-                    <input type="text" class="form-control form-control-sm override-temp-low" data-entity="${entityId}"
+                  <label style="display: block;">
+                    <strong class="form-label">Min Temp (°C)</strong>
+                    <input type="text" class="form-control" class="override-temp-low" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="18 or {{ ... }}">
-                    <div class="form-text">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
                     </div>
-                  </div>
+                  </label>
 
-                  <div class="col-md-6">
-                    <label class="form-label">Max Temp (°C)</label>
-                    <input type="text" class="form-control form-control-sm override-temp-high" data-entity="${entityId}"
+                  <label style="display: block;">
+                    <strong class="form-label">Max Temp (°C)</strong>
+                    <input type="text" class="form-control" class="override-temp-high" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="22 or {{ ... }}">
-                    <div class="form-text">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
                     </div>
-                  </div>
+                  </label>
 
-                  <div class="col-12">
-                    <label class="form-label">Preset Mode</label>
-                    <input type="text" class="form-control form-control-sm override-preset" data-entity="${entityId}"
+                  <label style="display: block; grid-column: 1 / -1;">
+                    <strong class="form-label">Preset Mode</strong>
+                    <input type="text" class="form-control" class="override-preset" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="eco or {{ ... }}">
-                    <div class="form-text">
+                    <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
                     </div>
-                  </div>
+                  </label>
                 </div>
               </div>
             </div>
@@ -1328,54 +1337,56 @@ class ClimatePanelCard extends HTMLElement {
 
       <!-- Tab: Advanced -->
       <div class="tab-content" data-tab="advanced">
-        <div class="mb-3">
-          <label for="humidity" class="form-label">Humidity (%)</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Humidity (%)</strong>
           <input type="number" class="form-control" id="humidity" min="0" max="100" step="1"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="0-100">
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="aux_heat" class="form-label">Auxiliary Heat</label>
-          <select id="aux_heat" class="form-select">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Auxiliary Heat</strong>
+          <select id="aux_heat"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not configured --</option>
             <option value="on">On</option>
             <option value="off">Off</option>
           </select>
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="fan_mode" class="form-label">Fan Mode</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Fan Mode</strong>
           <input type="text" class="form-control" id="fan_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., auto, low, medium, high">
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="swing_mode" class="form-label">Swing Mode</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Swing Mode</strong>
           <input type="text" class="form-control" id="swing_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., off, vertical, horizontal, both">
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label class="form-label">Excluded Entities</label>
-          <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Excluded Entities</strong>
+          <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
             ${allClimateEntities.map(ent => `
-              <div class="form-check">
-                <input type="checkbox" class="form-check-input" name="excluded_entities" id="excl-${ent}" value="${ent}">
-                <label class="form-check-label" for="excl-${ent}">
-                  ${ent}
-                </label>
-              </div>
+              <label style="display: block; margin: 5px 0;">
+                <input type="checkbox" name="excluded_entities" value="${ent}">
+                ${ent}
+              </label>
             `).join('')}
           </div>
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             These entities won't be affected by this slot at all
           </div>
-        </div>
+        </label>
       </div>
 
-      <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
-      <div class="d-flex gap-2 mt-3">
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button id="save-btn" class="btn btn-primary">💾 Save</button>
         <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
@@ -1844,13 +1855,15 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Tab: Basic Settings -->
       <div class="tab-content active" data-tab="basic">
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Label *</label>
-          <input type="text" class="form-control" id="label" required value="${slot.label || ''}">
+          <strong class="form-label">Label *</strong>
+          <input type="text" class="form-control" id="label" required value="${slot.label || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Target Temperature (°C)</label>
+          <strong class="form-label">Target Temperature (°C)</strong>
           <input type="text" class="form-control" id="temperature" value="${payload.temperature || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
             placeholder="e.g., 20.5 or {{ states('sensor.temp') }}">
           <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
             💡 Supports templates: <code style="color: #00d4ff;">{{ '{{ states("sensor.temp") }}' }}</code>
@@ -1861,20 +1874,23 @@ class ClimatePanelCard extends HTMLElement {
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
           <label style="display: block;">
-            <label class="form-label">Min Temperature (°C)</label>
+            <strong class="form-label">Min Temperature (°C)</strong>
             <input type="text" class="form-control" id="target_temp_low" value="${payload.target_temp_low || ''}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="18 or {{ ... }}">
           </label>
           <label style="display: block;">
-            <label class="form-label">Max Temperature (°C)</label>
+            <strong class="form-label">Max Temperature (°C)</strong>
             <input type="text" class="form-control" id="target_temp_high" value="${payload.target_temp_high || ''}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="22 or {{ ... }}">
           </label>
         </div>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">HVAC Mode</label>
-          <select id="hvac_mode">
+          <strong class="form-label">HVAC Mode</strong>
+          <select id="hvac_mode"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not set --</option>
             <option value="heat" ${payload.hvac_mode === 'heat' ? 'selected' : ''}>🔥 Heat</option>
             <option value="cool" ${payload.hvac_mode === 'cool' ? 'selected' : ''}>❄️ Cool</option>
@@ -1887,8 +1903,9 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Preset Mode</label>
+          <strong class="form-label">Preset Mode</strong>
           <input type="text" class="form-control" id="preset_mode" value="${payload.preset_mode || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., eco, comfort, away">
           <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             Device-specific preset (check your device capabilities)
@@ -1910,7 +1927,8 @@ class ClimatePanelCard extends HTMLElement {
             <div class="entity-override-item" data-entity="${entityId}">
               <div class="entity-override-header">
                 <label style="display: flex; align-items: center; cursor: pointer; user-select: none;">
-                  <input type="checkbox" class="override-toggle" data-entity="${entityId}" ${hasOverride ? 'checked' : ''}>
+                  <input type="checkbox" class="override-toggle" data-entity="${entityId}" ${hasOverride ? 'checked' : ''}
+                    style="margin-right: 10px; width: 20px; height: 20px; cursor: pointer;">
                   <span style="font-weight: bold;">${entityId}</span>
                   ${hasOverride ? '<span style="margin-left: 10px; color: #00d4ff; font-size: 0.9em;">✓ Customized</span>' : ''}
                 </label>
@@ -1918,8 +1936,9 @@ class ClimatePanelCard extends HTMLElement {
               <div class="entity-override-form" style="display: ${hasOverride ? 'block' : 'none'}; margin-top: 10px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; border-left: 3px solid #00d4ff;">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                   <label style="display: block;">
-                    <label class="form-label">Temperature (°C)</label>
+                    <strong class="form-label">Temperature (°C)</strong>
                     <input type="text" class="form-control" class="override-temperature" data-entity="${entityId}" value="${override.temperature || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="20 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
@@ -1927,8 +1946,9 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <label class="form-label">HVAC Mode</label>
-                    <select class="override-hvac-mode" data-entity="${entityId}">
+                    <strong class="form-label">HVAC Mode</strong>
+                    <select class="override-hvac-mode" data-entity="${entityId}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                       <option value="">-- Use default --</option>
                       <option value="heat" ${override.hvac_mode === 'heat' ? 'selected' : ''}>🔥 Heat</option>
                       <option value="cool" ${override.hvac_mode === 'cool' ? 'selected' : ''}>❄️ Cool</option>
@@ -1941,8 +1961,9 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <label class="form-label">Min Temp (°C)</label>
+                    <strong class="form-label">Min Temp (°C)</strong>
                     <input type="text" class="form-control" class="override-temp-low" data-entity="${entityId}" value="${override.target_temp_low || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="18 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
@@ -1950,8 +1971,9 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block;">
-                    <label class="form-label">Max Temp (°C)</label>
+                    <strong class="form-label">Max Temp (°C)</strong>
                     <input type="text" class="form-control" class="override-temp-high" data-entity="${entityId}" value="${override.target_temp_high || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="22 or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
@@ -1959,8 +1981,9 @@ class ClimatePanelCard extends HTMLElement {
                   </label>
 
                   <label style="display: block; grid-column: 1 / -1;">
-                    <label class="form-label">Preset Mode</label>
+                    <strong class="form-label">Preset Mode</strong>
                     <input type="text" class="form-control" class="override-preset" data-entity="${entityId}" value="${override.preset_mode || ''}"
+                      style="width: 100%; padding: 6px; margin-top: 3px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
                       placeholder="eco or {{ ... }}">
                     <div style="color: #888; font-size: 0.75em; margin-top: 3px;">
                       💡 <code>{{ states(...) }}</code>
@@ -1976,14 +1999,16 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Tab: Advanced -->
       <div class="tab-content" data-tab="advanced">
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Humidity (%)</label>
+          <strong class="form-label">Humidity (%)</strong>
           <input type="number" class="form-control" id="humidity" min="0" max="100" step="1" value="${payload.humidity || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="0-100">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Auxiliary Heat</label>
-          <select id="aux_heat">
+          <strong class="form-label">Auxiliary Heat</strong>
+          <select id="aux_heat"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="">-- Not configured --</option>
             <option value="on" ${payload.aux_heat === true ? 'selected' : ''}>On</option>
             <option value="off" ${payload.aux_heat === false ? 'selected' : ''}>Off</option>
@@ -1991,19 +2016,21 @@ class ClimatePanelCard extends HTMLElement {
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Fan Mode</label>
+          <strong class="form-label">Fan Mode</strong>
           <input type="text" class="form-control" id="fan_mode" value="${payload.fan_mode || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., auto, low, medium, high">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Swing Mode</label>
+          <strong class="form-label">Swing Mode</strong>
           <input type="text" class="form-control" id="swing_mode" value="${payload.swing_mode || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., off, vertical, horizontal, both">
         </label>
 
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Excluded Entities</label>
+          <strong class="form-label">Excluded Entities</strong>
           <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
             ${allClimateEntities.map(ent => `
               <label style="display: block; margin: 5px 0;">
@@ -2352,15 +2379,16 @@ class ClimatePanelCard extends HTMLElement {
         <span style="color: #888; font-size: 0.9em;">💡 Use Advanced Mode for complex conditions or custom JSON</span>
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
           <span style="font-weight: bold; color: #00d4ff;">Advanced Mode</span>
-          <input type="checkbox" id="advanced-mode-toggle">
+          <input type="checkbox" id="advanced-mode-toggle" style="width: 20px; height: 20px; cursor: pointer;">
         </label>
       </div>
 
       <!-- Basic Mode Container -->
       <div id="basic-mode-container">
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Condition Type *</label>
-          <select id="condition_type">
+          <strong class="form-label">Condition Type *</strong>
+          <select id="condition_type"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="state">State - Check entity state</option>
             <option value="numeric_state">Numeric State - Compare numeric value</option>
             <option value="time">Time - Check time range/weekday</option>
@@ -2374,8 +2402,9 @@ class ClimatePanelCard extends HTMLElement {
       <!-- Advanced Mode Container -->
       <div id="advanced-mode-container" style="display: none;">
         <label style="display: block; margin-bottom: 15px;">
-          <label class="form-label">Condition JSON *</label>
+          <strong class="form-label">Condition JSON *</strong>
           <textarea class="form-control" id="condition-json" rows="8"
+            style="width: 100%; padding: 10px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace; font-size: 13px;"
             placeholder='{\n  "condition": "state",\n  "entity_id": "binary_sensor.window",\n  "state": "off"\n}'></textarea>
           <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
             Enter condition as JSON. Supports all Home Assistant condition types: state, numeric_state, time, template, and, or, not, zone, device, etc.
@@ -2403,15 +2432,17 @@ class ClimatePanelCard extends HTMLElement {
       if (type === 'state') {
         container.innerHTML = `
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">Entity *</label>
-            <select id="cond_entity_id" required>
+            <strong class="form-label">Entity *</strong>
+            <select id="cond_entity_id" required
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
               ${allEntities.map(ent => `<option value="${ent}">${ent}</option>`).join('')}
             </select>
           </label>
 
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">State *</label>
+            <strong class="form-label">State *</strong>
             <input type="text" class="form-control" id="cond_state" required
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
               placeholder="e.g., on, off, home, away">
             <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
               Example: sensor.presence = "home"
@@ -2421,22 +2452,25 @@ class ClimatePanelCard extends HTMLElement {
       } else if (type === 'numeric_state') {
         container.innerHTML = `
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">Entity *</label>
-            <select id="cond_entity_id" required>
+            <strong class="form-label">Entity *</strong>
+            <select id="cond_entity_id" required
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
               ${allEntities.map(ent => `<option value="${ent}">${ent}</option>`).join('')}
             </select>
           </label>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
             <label style="display: block;">
-              <label class="form-label">Above</label>
+              <strong class="form-label">Above</strong>
               <input type="number" class="form-control" id="cond_above" step="0.1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Min value">
             </label>
 
             <label style="display: block;">
-              <label class="form-label">Below</label>
+              <strong class="form-label">Below</strong>
               <input type="number" class="form-control" id="cond_below" step="0.1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Max value">
             </label>
           </div>
@@ -2449,22 +2483,24 @@ class ClimatePanelCard extends HTMLElement {
         container.innerHTML = `
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
             <label style="display: block;">
-              <label class="form-label">After</label>
-              <input type="time" id="cond_after">
+              <strong class="form-label">After</strong>
+              <input type="time" id="cond_after"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             </label>
 
             <label style="display: block;">
-              <label class="form-label">Before</label>
-              <input type="time" id="cond_before">
+              <strong class="form-label">Before</strong>
+              <input type="time" id="cond_before"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             </label>
           </div>
 
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">Weekday</label>
+            <strong class="form-label">Weekday</strong>
             <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 5px;">
               ${['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => `
                 <label style="display: flex; flex-direction: column; align-items: center; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 4px; cursor: pointer;">
-                  <input type="checkbox" name="cond_weekday" value="${day}">
+                  <input type="checkbox" name="cond_weekday" value="${day}" style="margin-bottom: 5px;">
                   <span style="font-size: 0.8em;">${day.toUpperCase()}</span>
                 </label>
               `).join('')}
@@ -2481,8 +2517,9 @@ class ClimatePanelCard extends HTMLElement {
       } else if (type === 'template') {
         container.innerHTML = `
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">Template *</label>
+            <strong class="form-label">Template *</strong>
             <textarea class="form-control" id="cond_template" required rows="4"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px; font-family: 'Courier New', monospace;"
               placeholder="{{ states('sensor.temp') | float > 25 }}"></textarea>
             <div style="color: #888; font-size: 0.85em; margin-top: 5px;">
               Jinja2 template that must evaluate to true<br>
@@ -2676,41 +2713,44 @@ class ClimatePanelCard extends HTMLElement {
       .sort();
 
     const modal = this.createModal(`
-      <h2 class="text-primary mb-3">➕ ${this.t('pages.config.bindings.add')}</h2>
+      <h2 style="margin-top: 0; color: #00d4ff;">➕ ${this.t('pages.config.bindings.add')}</h2>
 
-      <div>
-        <div class="mb-3">
-          <label for="match_type" class="form-label">Match Type *</label>
-          <select id="match_type" class="form-select" required>
+      <div style="margin: 20px 0;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Match Type *</strong>
+          <select id="match_type" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="summary_contains">Summary Contains</option>
             <option value="summary">Exact Summary Match</option>
             <option value="regex">Regular Expression</option>
           </select>
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             How to match calendar events
           </div>
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="match_value" class="form-label">Match Pattern *</label>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Match Pattern *</strong>
           <input type="text" class="form-control" id="match_value" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             placeholder="e.g., vacation, work, ^Night$">
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             Text or pattern to match in event summary
           </div>
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="slot_id" class="form-label">Target Slot *</label>
-          <select id="slot_id" class="form-select" required>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Target Slot *</strong>
+          <select id="slot_id" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             ${this.slots.map(slot => `
               <option value="${slot.id}">${slot.label} (${slot.id})</option>
             `).join('')}
           </select>
-          <div class="form-text">
+          <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
             Which slot to activate when this pattern matches
           </div>
-        </div>
+        </label>
 
         <div class="collapse-section">
           <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
@@ -2718,15 +2758,16 @@ class ClimatePanelCard extends HTMLElement {
             <span class="collapse-icon">▼</span>
           </div>
           <div class="collapse-content">
-            <div class="alert alert-info">
+            <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
               ℹ️ Binding activates only when ALL conditions are met (AND logic). Leave empty for always active.
             </div>
 
-            <div id="conditions-list" class="mb-3">
+            <div id="conditions-list" style="margin-bottom: 15px;">
               <!-- Conditions will be added here dynamically -->
             </div>
 
-            <button type="button" id="add-condition-btn" class="btn btn-outline-primary btn-sm">
+            <button type="button" id="add-condition-btn"
+              style="padding: 8px 15px; background: rgba(0,212,255,0.2); color: #00d4ff; border: 1px solid #00d4ff; border-radius: 4px; cursor: pointer;">
               ➕ Add Condition
             </button>
           </div>
@@ -2738,51 +2779,51 @@ class ClimatePanelCard extends HTMLElement {
             <span class="collapse-icon">▼</span>
           </div>
           <div class="collapse-content">
-            <div class="mb-3">
-              <label for="calendars" class="form-label">Calendars</label>
-              <select id="calendars" class="form-select">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong class="form-label">Calendars</strong>
+              <select id="calendars"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                 <option value="*">* All Calendars</option>
                 ${this.calendars.map(cal => `
                   <option value="${cal}">${cal}</option>
                 `).join('')}
               </select>
-              <div class="form-text">
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
                 Which calendar(s) to monitor for this binding
               </div>
-            </div>
+            </label>
 
-            <div class="mb-3">
-              <label for="priority" class="form-label">Priority (0-100)</label>
+            <label style="display: block; margin-bottom: 15px;">
+              <strong class="form-label">Priority (0-100)</strong>
               <input type="number" class="form-control" id="priority" min="0" max="100" step="1"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Leave empty to use calendar default">
-              <div class="form-text">
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
                 Higher priority wins in conflicts (empty = use calendar default)
               </div>
-            </div>
+            </label>
 
-            <div class="mb-3">
-              <label class="form-label">Target Entities</label>
-              <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong class="form-label">Target Entities</strong>
+              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
                 ${allClimateEntities.map(ent => `
-                  <div class="form-check">
-                    <input type="checkbox" class="form-check-input" name="target_entities" id="add-target-${ent}" value="${ent}">
-                    <label class="form-check-label" for="add-target-${ent}">
-                      ${ent}
-                    </label>
-                  </div>
+                  <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="target_entities" value="${ent}">
+                    ${ent}
+                  </label>
                 `).join('')}
               </div>
-              <div class="form-text">
+              <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
                 Specific entities for this binding (empty = all configured)
               </div>
-            </div>
+            </label>
           </div>
         </div>
       </div>
 
-      <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
-      <div class="d-flex gap-2 mt-3">
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button id="save-btn" class="btn btn-primary">💾 Save</button>
         <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
@@ -2996,34 +3037,37 @@ class ClimatePanelCard extends HTMLElement {
       .sort();
 
     const modal = this.createModal(`
-      <h2 class="text-primary mb-3">✏️ Edit Binding</h2>
-      <p class="text-muted mb-3">ID: ${bindingId}</p>
+      <h2 style="margin-top: 0; color: #00d4ff;">✏️ Edit Binding</h2>
+      <p style="color: #888; margin-bottom: 20px;">ID: ${bindingId}</p>
 
-      <div>
-        <div class="mb-3">
-          <label for="match_type" class="form-label">Match Type *</label>
-          <select id="match_type" class="form-select" required>
+      <div style="margin: 20px 0;">
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Match Type *</strong>
+          <select id="match_type" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <option value="summary_contains" ${match.type === 'summary_contains' ? 'selected' : ''}>Summary Contains</option>
             <option value="summary" ${match.type === 'summary' ? 'selected' : ''}>Exact Summary Match</option>
             <option value="regex" ${match.type === 'regex' ? 'selected' : ''}>Regular Expression</option>
           </select>
-        </div>
+        </label>
 
-        <div class="mb-3">
-          <label for="match_value" class="form-label">Match Pattern *</label>
-          <input type="text" class="form-control" id="match_value" required value="${match.value || ''}">
-        </div>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Match Pattern *</strong>
+          <input type="text" class="form-control" id="match_value" required value="${match.value || ''}"
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
+        </label>
 
-        <div class="mb-3">
-          <label for="slot_id" class="form-label">Target Slot *</label>
-          <select id="slot_id" class="form-select" required>
+        <label style="display: block; margin-bottom: 15px;">
+          <strong class="form-label">Target Slot *</strong>
+          <select id="slot_id" required
+            style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             ${this.slots.map(slot => `
               <option value="${slot.id}" ${binding.slot_id === slot.id ? 'selected' : ''}>
                 ${slot.label} (${slot.id})
               </option>
             `).join('')}
           </select>
-        </div>
+        </label>
 
         <div class="collapse-section ${binding.conditions && binding.conditions.length > 0 ? 'open' : ''}">
           <div class="collapse-header" onclick="this.parentElement.classList.toggle('open')">
@@ -3031,15 +3075,16 @@ class ClimatePanelCard extends HTMLElement {
             <span class="collapse-icon">▼</span>
           </div>
           <div class="collapse-content">
-            <div class="alert alert-info">
+            <div style="color: #888; margin-bottom: 15px; padding: 10px; background: rgba(0,212,255,0.1); border-radius: 8px;">
               ℹ️ Binding activates only when ALL conditions are met (AND logic). Leave empty for always active.
             </div>
 
-            <div id="conditions-list" class="mb-3">
+            <div id="conditions-list" style="margin-bottom: 15px;">
               <!-- Conditions will be added here dynamically -->
             </div>
 
-            <button type="button" id="add-condition-btn" class="btn btn-outline-primary btn-sm">
+            <button type="button" id="add-condition-btn"
+              style="padding: 8px 15px; background: rgba(0,212,255,0.2); color: #00d4ff; border: 1px solid #00d4ff; border-radius: 4px; cursor: pointer;">
               ➕ Add Condition
             </button>
           </div>
@@ -3051,9 +3096,10 @@ class ClimatePanelCard extends HTMLElement {
             <span class="collapse-icon">▼</span>
           </div>
           <div class="collapse-content">
-            <div class="mb-3">
-              <label for="calendars" class="form-label">Calendars</label>
-              <select id="calendars" class="form-select">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong class="form-label">Calendars</strong>
+              <select id="calendars"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
                 <option value="*" ${binding.calendars === '*' ? 'selected' : ''}>* All Calendars</option>
                 ${this.calendars.map(cal => `
                   <option value="${cal}" ${binding.calendars === cal ? 'selected' : ''}>
@@ -3061,34 +3107,33 @@ class ClimatePanelCard extends HTMLElement {
                   </option>
                 `).join('')}
               </select>
-            </div>
+            </label>
 
-            <div class="mb-3">
-              <label for="priority" class="form-label">Priority (0-100)</label>
+            <label style="display: block; margin-bottom: 15px;">
+              <strong class="form-label">Priority (0-100)</strong>
               <input type="number" class="form-control" id="priority" min="0" max="100" step="1" value="${binding.priority !== null && binding.priority !== undefined ? binding.priority : ''}"
+                style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
                 placeholder="Leave empty to use calendar default">
-            </div>
+            </label>
 
-            <div class="mb-3">
-              <label class="form-label">Target Entities</label>
-              <div class="border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+            <label style="display: block; margin-bottom: 15px;">
+              <strong class="form-label">Target Entities</strong>
+              <div style="max-height: 150px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid rgba(255,255,255,0.2);">
                 ${allClimateEntities.map(ent => `
-                  <div class="form-check">
-                    <input type="checkbox" class="form-check-input" name="target_entities" id="target-${ent}" value="${ent}" ${targetEntities.includes(ent) ? 'checked' : ''}>
-                    <label class="form-check-label" for="target-${ent}">
-                      ${ent}
-                    </label>
-                  </div>
+                  <label style="display: block; margin: 5px 0;">
+                    <input type="checkbox" name="target_entities" value="${ent}" ${targetEntities.includes(ent) ? 'checked' : ''}>
+                    ${ent}
+                  </label>
                 `).join('')}
               </div>
-            </div>
+            </label>
           </div>
         </div>
       </div>
 
-      <div id="error-message" class="alert alert-danger" style="display: none;"></div>
+      <div id="error-message" style="color: #ff4444; margin: 10px 0; display: none;"></div>
 
-      <div class="d-flex gap-2 mt-3">
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
         <button id="save-btn" class="btn btn-primary">💾 Save</button>
         <button id="cancel-btn" class="btn btn-secondary">❌ Cancel</button>
       </div>
@@ -3819,39 +3864,35 @@ class ClimatePanelCard extends HTMLElement {
       const mode = payload.hvac_mode || 'N/A';
 
       return `
-        <div class="list-group-item">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="flex-grow-1">
-              <h5 class="mb-2">${slot.label || 'Unnamed Slot'}</h5>
-              <div class="mb-2">
-                <span class="badge bg-primary me-1">🌡️ ${temp}°C</span>
-                <span class="badge bg-info me-1">🔥 ${mode}</span>
-                ${payload.preset_mode ? `<span class="badge bg-secondary me-1">⚙️ ${payload.preset_mode}</span>` : ''}
-                ${payload.humidity ? `<span class="badge bg-info me-1">💧 ${payload.humidity}%</span>` : ''}
-              </div>
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-sm btn-outline-primary" data-action="edit-slot" data-id="${slot.id}">✏️ Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete-slot" data-id="${slot.id}">🗑️ Delete</button>
-            </div>
+        <div class="list-item">
+          <h3>${slot.label || 'Unnamed Slot'}</h3>
+          <div>
+            <span class="badge">🌡️ ${temp}°C</span>
+            <span class="badge">🔥 ${mode}</span>
+            ${payload.preset_mode ? `<span class="badge">⚙️ ${payload.preset_mode}</span>` : ''}
+            ${payload.humidity ? `<span class="badge">💧 ${payload.humidity}%</span>` : ''}
+          </div>
+          <div class="actions">
+            <button class="btn btn-small" data-action="edit-slot" data-id="${slot.id}">✏️ Edit</button>
+            <button class="btn btn-small btn-danger" data-action="delete-slot" data-id="${slot.id}">🗑️ Delete</button>
           </div>
         </div>
       `;
     }).join('');
 
     return `
-      <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">🎯 Slots (${this.slots.length})</h2>
-          <button class="btn btn-primary btn-sm" data-action="add-slot">➕ Add Slot</button>
+      <div class="card">
+        <div class="card-header">
+          <h2>🎯 Slots (${this.slots.length})</h2>
+          <button class="btn btn-primary" data-action="add-slot">➕ Add Slot</button>
         </div>
         ${this.slots.length === 0 ? `
-          <div class="card-body text-center text-muted">
-            <div class="fs-1">📭</div>
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
             <p>No slots configured yet</p>
-            <p class="text-secondary">Click "Add Slot" to create one</p>
+            <p style="margin-top: 10px; color: #666;">Click "Add Slot" to create one</p>
           </div>
-        ` : `<div class="list-group list-group-flush">${slotsList}</div>`}
+        ` : slotsList}
       </div>
     `;
   }
@@ -3865,38 +3906,34 @@ class ClimatePanelCard extends HTMLElement {
       const slotLabel = slot?.label || binding.slot_id;
 
       return `
-        <div class="list-group-item">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="flex-grow-1">
-              <h5 class="mb-2">${matchValue || 'Unnamed'}</h5>
-              <div class="mb-2">
-                <span class="badge bg-primary me-1">📋 ${matchType}</span>
-                <span class="badge bg-success me-1">🎯 ${slotLabel}</span>
-                <span class="badge bg-warning me-1">⚡ Priority: ${priority}</span>
-              </div>
-            </div>
-            <div class="btn-group">
-              <button class="btn btn-sm btn-outline-primary" data-action="edit-binding" data-id="${binding.id}">✏️ Edit</button>
-              <button class="btn btn-sm btn-outline-danger" data-action="delete-binding" data-id="${binding.id}">🗑️ Delete</button>
-            </div>
+        <div class="list-item">
+          <h3>${matchValue || 'Unnamed'}</h3>
+          <div>
+            <span class="badge">📋 ${matchType}</span>
+            <span class="badge">🎯 ${slotLabel}</span>
+            <span class="badge">⚡ Priority: ${priority}</span>
+          </div>
+          <div class="actions">
+            <button class="btn btn-small" data-action="edit-binding" data-id="${binding.id}">✏️ Edit</button>
+            <button class="btn btn-small btn-danger" data-action="delete-binding" data-id="${binding.id}">🗑️ Delete</button>
           </div>
         </div>
       `;
     }).join('');
 
     return `
-      <div class="card mb-3">
-        <div class="card-header d-flex justify-content-between align-items-center">
-          <h2 class="h5 mb-0">🔗 Bindings (${this.bindings.length})</h2>
-          <button class="btn btn-primary btn-sm" data-action="add-binding">➕ Add Binding</button>
+      <div class="card">
+        <div class="card-header">
+          <h2>🔗 Bindings (${this.bindings.length})</h2>
+          <button class="btn btn-primary" data-action="add-binding">➕ Add Binding</button>
         </div>
         ${this.bindings.length === 0 ? `
-          <div class="card-body text-center text-muted">
-            <div class="fs-1">📭</div>
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
             <p>No bindings configured yet</p>
-            <p class="text-secondary">Click "Add Binding" to create one</p>
+            <p style="margin-top: 10px; color: #666;">Click "Add Binding" to create one</p>
           </div>
-        ` : `<div class="list-group list-group-flush">${bindingsList}</div>`}
+        ` : bindingsList}
       </div>
     `;
   }
@@ -3947,23 +3984,25 @@ class ClimatePanelCard extends HTMLElement {
         <div style="margin: 20px 0;">
           <label style="display: block; margin-bottom: 15px;">
             <input type="checkbox" id="enabled" ${currentConfig.enabled ? 'checked' : ''}>
-            <label class="form-label">Enable this calendar</label>
+            <strong class="form-label">Enable this calendar</strong>
             <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
               When disabled, events from this calendar will be ignored
             </div>
           </label>
 
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">Default Priority (0-100)</label>
-            <input type="number" class="form-control" id="priority" min="0" max="100" value="${currentConfig.default_priority || 0}">
+            <strong class="form-label">Default Priority (0-100)</strong>
+            <input type="number" class="form-control" id="priority" min="0" max="100" value="${currentConfig.default_priority || 0}"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;">
             <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
               Higher priority calendars take precedence in conflicts
             </div>
           </label>
 
           <label style="display: block; margin-bottom: 15px;">
-            <label class="form-label">Description (optional)</label>
+            <strong class="form-label">Description (optional)</strong>
             <textarea class="form-control" id="description" rows="3"
+              style="width: 100%; padding: 8px; margin-top: 5px; background: rgba(0,0,0,0.3); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 4px;"
             >${currentConfig.description || ''}</textarea>
             <div style="color: #888; font-size: 0.9em; margin-top: 5px;">
               A note to help you remember what this calendar is for
@@ -3971,7 +4010,7 @@ class ClimatePanelCard extends HTMLElement {
           </label>
 
           <div style="background: rgba(0,212,255,0.1); padding: 10px; border-radius: 8px; border-left: 3px solid #00d4ff;">
-            <label class="form-label">📊 Stats:</label> ${bindingCount} binding${bindingCount !== 1 ? 's' : ''} using this calendar
+            <strong class="form-label">📊 Stats:</strong> ${bindingCount} binding${bindingCount !== 1 ? 's' : ''} using this calendar
           </div>
         </div>
 
@@ -4066,12 +4105,10 @@ class ClimatePanelCard extends HTMLElement {
   renderCalendars() {
     if (this.calendars.length === 0) {
       return `
-        <div class="card mb-3">
-          <div class="card-header">
-            <h2 class="h5 mb-0">📅 Calendars</h2>
-          </div>
-          <div class="card-body text-center text-muted">
-            <div class="fs-1">📭</div>
+        <div class="card">
+          <h2>📅 Calendars</h2>
+          <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
             <p>No calendars configured</p>
           </div>
         </div>
@@ -4088,31 +4125,27 @@ class ClimatePanelCard extends HTMLElement {
       ).length;
 
       return `
-        <div class="list-group-item">
-          <div class="d-flex justify-content-between align-items-start">
-            <div class="flex-grow-1">
-              <h5 class="mb-2">${cal} ${!enabled ? '<span class="badge bg-secondary">Disabled</span>' : ''}</h5>
-              <div class="mb-2">
-                <span class="badge ${enabled ? 'bg-success' : 'bg-danger'} me-1">${enabled ? '✅ Enabled' : '❌ Disabled'}</span>
-                <span class="badge bg-warning me-1">⚡ Priority: ${priority}</span>
-                <span class="badge bg-info me-1">🔗 ${bindingCount} binding${bindingCount !== 1 ? 's' : ''}</span>
-              </div>
-              ${description ? `<div class="text-muted fst-italic small">${description}</div>` : ''}
-            </div>
-            <button class="btn btn-sm btn-outline-primary" data-action="edit-calendar" data-id="${cal}">✏️ Edit</button>
+        <div class="list-item">
+          <h3>${cal} ${!enabled ? '(Disabled)' : ''}</h3>
+          <div>
+            <span class="badge">${enabled ? '✅ Enabled' : '❌ Disabled'}</span>
+            <span class="badge">⚡ Priority: ${priority}</span>
+            <span class="badge">🔗 ${bindingCount} binding${bindingCount !== 1 ? 's' : ''}</span>
+          </div>
+          ${description ? `<div style="margin-top: 8px; color: #888; font-style: italic;">${description}</div>` : ''}
+          <div class="actions">
+            <button class="btn btn-small" data-action="edit-calendar" data-id="${cal}">✏️ Edit</button>
           </div>
         </div>
       `;
     }).join('');
 
     return `
-      <div class="card mb-3">
+      <div class="card">
         <div class="card-header">
-          <h2 class="h5 mb-0">📅 Calendars (${this.calendars.length})</h2>
+          <h2>📅 Calendars (${this.calendars.length})</h2>
         </div>
-        <div class="list-group list-group-flush">
-          ${calendarsList}
-        </div>
+        ${calendarsList}
       </div>
     `;
   }
