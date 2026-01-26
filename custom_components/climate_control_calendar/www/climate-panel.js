@@ -340,8 +340,6 @@ class ClimatePanelCard extends HTMLElement {
     this.sidebarOpen = false;
     // I18n ready flag
     this.i18nReady = false;
-    // Theme state (light/dark)
-    this.theme = localStorage.getItem('climate_theme') || 'dark';
     // CSS loaded flag
     this.cssLoaded = false;
   }
@@ -351,14 +349,6 @@ class ClimatePanelCard extends HTMLElement {
     this.debugEnabled = !this.debugEnabled;
     localStorage.setItem('climate_debug_enabled', this.debugEnabled);
     this.log('🔧', `Debug mode ${this.debugEnabled ? 'ENABLED' : 'DISABLED'}`);
-    this.render();
-  }
-
-  // Toggle theme (dark/light)
-  toggleTheme() {
-    this.theme = this.theme === 'dark' ? 'light' : 'dark';
-    localStorage.setItem('climate_theme', this.theme);
-    this.log('🎨', `Theme switched to ${this.theme}`);
     this.render();
   }
 
@@ -862,10 +852,25 @@ class ClimatePanelCard extends HTMLElement {
           50% { opacity: 0.5; }
         }
 
+        /* Card container (for DEBUG console and other content) */
+        .card {
+          background: var(--card-background-color, #fff);
+          border-radius: 12px;
+          padding: 24px;
+          margin-bottom: 20px;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .card h2 {
+          margin: 0 0 20px 0;
+          color: var(--primary-text-color, #212121);
+          font-size: 1.5em;
+        }
+
         /* Custom Debug Logs */
         .debug-logs {
-          background: var(--bs-secondary-bg, #e9ecef);
-          border: 1px solid var(--bs-border-color, #dee2e6);
+          background: var(--primary-background-color, #fafafa);
+          border: 1px solid var(--divider-color, #e0e0e0);
           border-radius: 6px;
           padding: 15px;
           max-height: 400px;
@@ -877,7 +882,7 @@ class ClimatePanelCard extends HTMLElement {
         .log-entry {
           margin-bottom: 10px;
           padding-bottom: 10px;
-          border-bottom: 1px solid var(--bs-border-color-translucent, rgba(0,0,0,0.1));
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
         }
 
         .log-entry:last-child {
@@ -885,20 +890,21 @@ class ClimatePanelCard extends HTMLElement {
         }
 
         .log-time {
-          color: var(--bs-secondary, #6c757d);
+          color: var(--secondary-text-color, #757575);
           margin-right: 10px;
         }
 
         .log-message {
-          color: var(--bs-body-color, #212529);
+          color: var(--primary-text-color, #212121);
         }
 
         .log-data {
-          background: var(--bs-light, #f8f9fa);
+          background: var(--card-background-color, #fff);
           padding: 10px;
           margin-top: 5px;
           border-radius: 4px;
-          color: var(--bs-primary, #0d6efd);
+          border: 1px solid var(--divider-color, #e0e0e0);
+          color: var(--primary-color, #03a9f4);
           font-size: 0.9em;
           overflow-x: auto;
         }
@@ -1068,13 +1074,6 @@ class ClimatePanelCard extends HTMLElement {
           <span class="nav-item-icon">ℹ️</span>
           ${this.t('navigation.about')}
         </div>
-
-        <div style="margin-top: auto; padding: 15px; border-top: 1px solid rgba(255,255,255,0.1);">
-          <div class="nav-item" id="theme-toggle" style="cursor: pointer;">
-            <span class="nav-item-icon">${this.theme === 'dark' ? '🌙' : '☀️'}</span>
-            ${this.theme === 'dark' ? 'Dark Mode' : 'Light Mode'}
-          </div>
-        </div>
       </div>
 
       <div class="container">
@@ -1102,7 +1101,7 @@ class ClimatePanelCard extends HTMLElement {
         <div class="card">
           <h2>🐛 Debug Console</h2>
           <div class="debug-logs">
-            ${this.logs.length === 0 ? '<div style="color: #888;">Waiting for logs...</div>' : ''}
+            ${this.logs.length === 0 ? '<div style="color: var(--secondary-text-color, #757575);">Waiting for logs...</div>' : ''}
           </div>
         </div>
         ` : ''}
@@ -1112,9 +1111,6 @@ class ClimatePanelCard extends HTMLElement {
         </div>
       </div>
     `;
-
-    // Apply theme attribute
-    this.setAttribute('data-bs-theme', this.theme);
 
     // Update logs after render
     this.updateDebugLogs();
@@ -1133,11 +1129,6 @@ class ClimatePanelCard extends HTMLElement {
     const debugToggle = this.shadowRoot.querySelector('#debug-toggle');
     if (debugToggle) {
       debugToggle.addEventListener('click', () => this.toggleDebug());
-    }
-
-    const themeToggle = this.shadowRoot.querySelector('#theme-toggle');
-    if (themeToggle) {
-      themeToggle.addEventListener('click', () => this.toggleTheme());
     }
 
     const refreshBtn = this.shadowRoot.querySelector('#refresh-btn');
