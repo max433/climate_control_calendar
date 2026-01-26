@@ -984,6 +984,6 @@ class AdvancedPanel extends LitElement {
   }
 }
 
-customElements.define('advanced-panel', AdvancedPanel);
+customElements.define('advanced-lit-card', AdvancedPanel);
 
-console.log('✅ Advanced LitElement component registered');
+console.log('✅ Advanced LitElement component registered as panel: advanced-lit-card');

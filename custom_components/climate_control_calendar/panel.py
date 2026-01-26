@@ -72,6 +72,27 @@ async def async_register_panel(hass: HomeAssistant) -> None:
             DOMAIN
         )
 
+        # Step 4: Register Advanced Demo Panel (protected test page)
+        _LOGGER.warning("📋 Registering Advanced Demo panel...")
+        async_register_built_in_panel(
+            hass,
+            component_name="custom",
+            sidebar_title="🚀 Advanced Demo",
+            sidebar_icon="mdi:test-tube",
+            frontend_url_path=f"{DOMAIN}_advanced",
+            config={
+                "name": "advanced-lit-card",
+                "_panel_custom": {
+                    "name": "advanced-lit-card",
+                    "embed_iframe": True,
+                    "trust": False,
+                    "js_url": f"/{DOMAIN}/static/advanced-lit-panel.js?v={VERSION}",
+                }
+            },
+            require_admin=False,
+        )
+        _LOGGER.warning("✅ Advanced Demo panel registered at /%s_advanced", DOMAIN)
+
     except Exception as err:
         _LOGGER.error(
             "Failed to register Climate Control Calendar panel: %s",
@@ -86,12 +107,20 @@ async def async_unregister_panel(hass: HomeAssistant) -> None:
     from homeassistant.components.frontend import async_remove_panel
 
     try:
-        # Check if panel exists before removing
+        # Check if main panel exists before removing
         if hass.data.get("frontend_panels", {}).get(DOMAIN):
             _LOGGER.info("Removing Climate Control Calendar panel")
             async_remove_panel(hass, DOMAIN)
         else:
             _LOGGER.debug("Panel %s not found, skipping removal", DOMAIN)
+
+        # Check if advanced demo panel exists before removing
+        advanced_panel_path = f"{DOMAIN}_advanced"
+        if hass.data.get("frontend_panels", {}).get(advanced_panel_path):
+            _LOGGER.info("Removing Advanced Demo panel")
+            async_remove_panel(hass, advanced_panel_path)
+        else:
+            _LOGGER.debug("Panel %s not found, skipping removal", advanced_panel_path)
 
     except Exception as err:
         _LOGGER.error(
