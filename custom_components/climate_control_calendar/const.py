@@ -5,7 +5,7 @@ from typing import Final
 DOMAIN: Final = "climate_control_calendar"
 
 # Version for cache busting
-VERSION: Final = "1.1.0-webui-alpha.44"
+VERSION: Final = "1.1.0-webui-alpha.45"
 
 # Config flow steps
 CONF_CALENDAR_ENTITIES: Final = "calendar_entities"  # Changed from singular to plural (Decision D033)

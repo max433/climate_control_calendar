@@ -103,19 +103,35 @@ async function loadAndDefineLitComponent() {
       }
 
       injectHAThemeVars() {
-        // Debug: check where HA defines theme variables
-        const htmlStyles = getComputedStyle(document.documentElement);
-        const bodyStyles = getComputedStyle(document.body);
+        // We're in an iframe - HA theme vars are in parent document
+        let sourceDoc = document;
+        let sourceType = 'iframe';
+
+        // Try to access parent document (if same-origin)
+        try {
+          if (window.parent && window.parent !== window && window.parent.document) {
+            sourceDoc = window.parent.document;
+            sourceType = 'parent';
+          }
+        } catch (e) {
+          console.log('⚠️ Cannot access parent document (cross-origin):', e.message);
+        }
+
+        // Get computed styles from documentElement (html) of the source document
+        const htmlStyles = getComputedStyle(sourceDoc.documentElement);
+        const bodyStyles = getComputedStyle(sourceDoc.body);
 
         // Try to find where --primary-color is defined
         const htmlPrimary = htmlStyles.getPropertyValue('--primary-color');
         const bodyPrimary = bodyStyles.getPropertyValue('--primary-color');
 
         console.log('🔍 Theme Debug:', {
+          'source': sourceType,
           'html --primary-color': htmlPrimary,
           'body --primary-color': bodyPrimary,
-          'html class': document.documentElement.className,
-          'body class': document.body.className
+          'html class': sourceDoc.documentElement.className,
+          'body class': sourceDoc.body.className,
+          'data-theme': sourceDoc.documentElement.getAttribute('data-theme') || 'none'
         });
 
         // Use whichever has the color (html or body)
@@ -163,11 +179,28 @@ async function loadAndDefineLitComponent() {
         cssText += '}';
 
         themeStyle.textContent = cssText;
-        console.log(`✅ HA theme variables injected from ${source}:`, injectedCount, 'vars');
-        console.log('📋 CSS injected:', cssText);
+        console.log(`✅ HA theme variables injected from ${sourceType}/${source}:`, injectedCount, 'vars');
+        if (injectedCount > 0) {
+          console.log('📋 First 3 vars:', {
+            'primary-color': sourceStyles.getPropertyValue('--primary-color'),
+            'card-background': sourceStyles.getPropertyValue('--card-background-color'),
+            'primary-text': sourceStyles.getPropertyValue('--primary-text-color')
+          });
+        }
       }
 
       setupThemeObserver() {
+        // Determine which document to observe (parent or iframe)
+        let targetDoc = document;
+        try {
+          if (window.parent && window.parent !== window && window.parent.document) {
+            targetDoc = window.parent.document;
+            console.log('👀 Observing parent document for theme changes');
+          }
+        } catch (e) {
+          console.log('👀 Observing iframe document for theme changes');
+        }
+
         // Watch for theme changes on both html and body
         const observer = new MutationObserver(() => {
           console.log('🔄 Theme change detected, re-injecting vars...');
@@ -175,13 +208,13 @@ async function loadAndDefineLitComponent() {
         });
 
         // Observe html element (documentElement)
-        observer.observe(document.documentElement, {
+        observer.observe(targetDoc.documentElement, {
           attributes: true,
-          attributeFilter: ['class', 'style']
+          attributeFilter: ['class', 'style', 'data-theme']
         });
 
         // Observe body element
-        observer.observe(document.body, {
+        observer.observe(targetDoc.body, {
           attributes: true,
           attributeFilter: ['class', 'style']
         });
