@@ -3793,25 +3793,24 @@ class ClimatePanelCard extends HTMLElement {
         <div class="card-body">
           <p class="text-muted">Scegli quale test vuoi provare:</p>
 
-          <h5>LitElement Tests (Custom Elements)</h5>
+          <h5>LitElement Tests - SOLO PER TEST TECNICI</h5>
+          <div class="alert alert-warning">
+            <strong>⚠️ Attenzione:</strong> Questi link sono pubblici (NON protetti da login). Usare solo per test tecnici.
+          </div>
           <div class="list-group mb-3">
             <a href="/climate_control_calendar/static/test-lit.html" target="_blank" class="list-group-item list-group-item-action">
               <strong>test-lit.html</strong> - LitElement con import CDN ✅ FUNZIONA
             </a>
-            <a href="/climate_control_calendar/static/advanced-lit.html" target="_blank" class="list-group-item list-group-item-action list-group-item-primary">
-              <strong>🚀 advanced-lit.html</strong> - Advanced LitElement Component (NUOVO)
-              <br><small>Mostra tutti i componenti UI: forms, tabs, badges, alerts, charts, timeline</small>
-            </a>
             <a href="/climate_control_calendar/static/test-lit-v2.html" target="_blank" class="list-group-item list-group-item-action">
-              <strong>test-lit-v2.html</strong> - Vanilla Custom Element (dovrebbe sempre funzionare)
+              <strong>test-lit-v2.html</strong> - Vanilla Custom Element
             </a>
             <a href="/climate_control_calendar/static/test-lit-v3.html" target="_blank" class="list-group-item list-group-item-action">
-              <strong>test-lit-v3.html</strong> - Dynamic import da HA bundle (cerca Lit di HA)
+              <strong>test-lit-v3.html</strong> - Dynamic import da HA bundle
             </a>
           </div>
 
-          <div class="alert alert-info">
-            <strong>💡 Istruzioni:</strong> Clicca sui link sopra per aprire i test in una nuova tab.
+          <div class="alert alert-success">
+            <strong>✅ Test completato:</strong> CDN import funziona! Pronto per refactoring a LitElement protetto.
             Controlla la console (F12) per vedere quale approccio riesce a caricare LitElement.
           </div>
         </div>
