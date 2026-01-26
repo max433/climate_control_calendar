@@ -96,6 +96,8 @@ class ClimatePanelCard extends HTMLElement {
     this.i18nReady = false;
     // Theme state (light/dark)
     this.theme = localStorage.getItem('climate_theme') || 'dark';
+    // CSS loaded flag
+    this.cssLoaded = false;
   }
 
   // Toggle debug mode
@@ -239,9 +241,61 @@ class ClimatePanelCard extends HTMLElement {
     }
   }
 
+  // Load external CSS using adoptedStyleSheets API
+  async loadExternalCSS() {
+    if (this.cssLoaded) {
+      this.log('ℹ️', 'CSS already loaded, skipping');
+      return;
+    }
+
+    this.log('📦', 'Loading external CSS via adoptedStyleSheets...');
+
+    try {
+      const cssFiles = [
+        '/local/climate_control_calendar/bootstrap.min.css',
+        '/local/climate_control_calendar/select2.min.css',
+        '/local/climate_control_calendar/select2-bootstrap-5-theme.min.css'
+      ];
+
+      const sheets = [];
+
+      for (const url of cssFiles) {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            this.log('⚠️', `Failed to load ${url}: ${response.status}`);
+            continue;
+          }
+          const cssText = await response.text();
+          const sheet = new CSSStyleSheet();
+          await sheet.replace(cssText);
+          sheets.push(sheet);
+          this.log('✅', `Loaded CSS: ${url.split('/').pop()} (${(cssText.length / 1024).toFixed(1)} KB)`);
+        } catch (err) {
+          this.log('❌', `Error loading ${url}:`, err.message);
+        }
+      }
+
+      if (sheets.length > 0) {
+        this.shadowRoot.adoptedStyleSheets = sheets;
+        this.cssLoaded = true;
+        this.log('🎨', `Applied ${sheets.length} stylesheets via adoptedStyleSheets`);
+      } else {
+        this.log('⚠️', 'No stylesheets loaded');
+      }
+    } catch (error) {
+      this.log('❌', 'Failed to load external CSS', error);
+    }
+  }
+
   // Called when element is connected to the page
-  connectedCallback() {
+  async connectedCallback() {
     this.log('🎨', 'Panel connected to page');
+
+    // Load external CSS first
+    await this.loadExternalCSS();
+
+    // Then render
     this.render();
 
     // Start update interval for time
@@ -451,10 +505,8 @@ class ClimatePanelCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
-        /* Import Bootstrap and Select2 via @import for shadow DOM compatibility */
-        @import url("/local/climate_control_calendar/bootstrap.min.css");
-        @import url("/local/climate_control_calendar/select2.min.css");
-        @import url("/local/climate_control_calendar/select2-bootstrap-5-theme.min.css");
+        /* External CSS loaded via adoptedStyleSheets API */
+        /* Bootstrap, Select2, and Select2-Bootstrap-5-theme */
 
         /* Reset and base styles */
         * {
