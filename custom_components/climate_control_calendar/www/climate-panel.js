@@ -73,6 +73,7 @@ let LitElement, html, css;
 let litElementLoaded = false;
 let AboutPage; // Will be defined after Lit loads
 let ChartsPage; // Will be defined after Lit loads
+let MonitorPage; // Will be defined after Lit loads
 
 // Load LitElement from CDN and define components
 async function loadLitElement() {
@@ -386,6 +387,385 @@ function defineComponents() {
     }
   };
 
+  // Monitor Page Component
+  MonitorPage = class extends HAThemeMixin(LitElement) {
+    static get properties() {
+      return {
+        statusData: { type: Object },
+        slots: { type: Array }
+      };
+    }
+
+    constructor() {
+      super();
+      this.statusData = null;
+      this.slots = [];
+    }
+
+    static get styles() {
+      return css`
+        :host {
+          display: block;
+        }
+
+        .card {
+          background: var(--card-background-color, #fff);
+          border-radius: 12px;
+          padding: 24px;
+          margin-bottom: 20px;
+          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
+        }
+
+        h2 {
+          margin: 0 0 20px 0;
+          color: var(--primary-text-color, #212121);
+          font-size: 1.5em;
+        }
+
+        h3 {
+          margin: 0 0 8px 0;
+          color: var(--primary-text-color, #212121);
+          font-size: 1.1em;
+        }
+
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 15px;
+          margin-bottom: 20px;
+        }
+
+        .summary-card {
+          background: var(--card-background-color, #fff);
+          border-radius: 12px;
+          padding: 20px;
+          text-align: center;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+          border: 1px solid var(--divider-color, #e0e0e0);
+        }
+
+        .summary-card h3 {
+          color: var(--primary-color, #03a9f4);
+          margin: 0 0 10px 0;
+          font-size: 1em;
+        }
+
+        .summary-value {
+          font-size: 2.5em;
+          font-weight: bold;
+          color: var(--primary-text-color, #212121);
+        }
+
+        .empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--secondary-text-color, #757575);
+        }
+
+        .empty-state-icon {
+          font-size: 3em;
+          opacity: 0.3;
+          margin-bottom: 15px;
+        }
+
+        .list-item {
+          background: var(--primary-background-color, #fafafa);
+          border-left: 4px solid var(--primary-color, #03a9f4);
+          padding: 16px;
+          margin: 12px 0;
+          border-radius: 6px;
+        }
+
+        .list-item p {
+          color: var(--secondary-text-color, #757575);
+          margin: 10px 0 0 0;
+        }
+
+        .badge {
+          display: inline-block;
+          background: var(--primary-background-color, #fafafa);
+          border: 1px solid var(--divider-color, #e0e0e0);
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 0.85em;
+          margin: 4px 4px 4px 0;
+          color: var(--primary-text-color, #212121);
+        }
+
+        .climate-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+          gap: 15px;
+        }
+
+        .climate-card {
+          background: var(--primary-background-color, #fafafa);
+          border-left: 4px solid var(--success-color, #43a047);
+          padding: 16px;
+          border-radius: 6px;
+        }
+
+        .climate-card.off {
+          border-left-color: var(--disabled-text-color, #888);
+        }
+
+        .temperature {
+          font-size: 1.5em;
+          margin: 10px 0;
+          font-weight: bold;
+        }
+
+        .temperature.on {
+          color: var(--success-color, #43a047);
+        }
+
+        .temperature.off {
+          color: var(--disabled-text-color, #888);
+        }
+
+        .meta {
+          font-size: 0.85em;
+          color: var(--secondary-text-color, #757575);
+          margin-top: 8px;
+        }
+
+        .engine-status {
+          padding: 15px;
+          background: var(--primary-background-color, #fafafa);
+          border-radius: 8px;
+          border: 1px solid var(--divider-color, #e0e0e0);
+        }
+
+        .engine-status > div {
+          margin: 8px 0;
+          color: var(--primary-text-color, #212121);
+        }
+
+        .engine-status .label {
+          color: var(--primary-color, #03a9f4);
+          margin-right: 8px;
+        }
+
+        .engine-status .value-yes {
+          color: var(--success-color, #43a047);
+        }
+
+        .engine-status .value-no {
+          color: var(--error-color, #f44336);
+        }
+
+        .loading {
+          text-align: center;
+          padding: 40px 20px;
+          color: var(--secondary-text-color, #757575);
+        }
+      `;
+    }
+
+    formatDateTime(isoString) {
+      if (!isoString) return 'N/A';
+      try {
+        const date = new Date(isoString);
+        return date.toLocaleString('it-IT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+      } catch (e) {
+        return isoString;
+      }
+    }
+
+    formatTimeAgo(isoString) {
+      if (!isoString) return 'N/A';
+      try {
+        const date = new Date(isoString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+
+        if (seconds < 60) return `${seconds}s ago`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+        return `${Math.floor(seconds / 86400)}d ago`;
+      } catch (e) {
+        return isoString;
+      }
+    }
+
+    getHvacModeIcon(mode) {
+      const icons = {
+        'heat': '🔥',
+        'cool': '❄️',
+        'heat_cool': '🔄',
+        'auto': '🤖',
+        'off': '⭕',
+        'dry': '💨',
+        'fan_only': '🌀',
+      };
+      return icons[mode] || '❓';
+    }
+
+    getHvacActionIcon(action) {
+      const icons = {
+        'heating': '🔥',
+        'cooling': '❄️',
+        'idle': '⏸️',
+        'off': '⭕',
+        'drying': '💨',
+        'fan': '🌀',
+      };
+      return icons[action] || '❓';
+    }
+
+    render() {
+      if (!this.statusData) {
+        return html`
+          <div class="card">
+            <h2>📊 Real-Time Monitoring</h2>
+            <p class="loading">Loading status data...</p>
+          </div>
+        `;
+      }
+
+      const { active_events, climate_states, matched_bindings, engine_state, summary } = this.statusData;
+
+      return html`
+        <!-- Summary Cards -->
+        <div class="summary-grid">
+          <div class="summary-card">
+            <h3>📅 Active Events</h3>
+            <div class="summary-value">${summary.active_events_count}</div>
+          </div>
+          <div class="summary-card">
+            <h3>🌡️ Climates ON</h3>
+            <div class="summary-value">${summary.climates_on}/${summary.total_climates}</div>
+          </div>
+          <div class="summary-card">
+            <h3>🔗 Matched Bindings</h3>
+            <div class="summary-value">${matched_bindings.length}</div>
+          </div>
+        </div>
+
+        <!-- Active Calendar Events -->
+        <div class="card">
+          <h2>📅 Active Calendar Events (${active_events.length})</h2>
+          ${active_events.length === 0 ? html`
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <p>No active events at the moment</p>
+            </div>
+          ` : html`
+            ${active_events.map(event => html`
+              <div class="list-item">
+                <h3>${event.summary || 'Unnamed Event'}</h3>
+                <div>
+                  <span class="badge">📅 ${event.calendar_id.split('.')[1]}</span>
+                  ${event.all_day ? html`<span class="badge">🕐 All Day</span>` : ''}
+                </div>
+                ${event.description ? html`<p>${event.description}</p>` : ''}
+                <div class="meta">
+                  <div>⏰ Start: ${this.formatDateTime(event.start)}</div>
+                  <div>⏰ End: ${this.formatDateTime(event.end)}</div>
+                  ${event.location ? html`<div>📍 ${event.location}</div>` : ''}
+                </div>
+              </div>
+            `)}
+          `}
+        </div>
+
+        <!-- Climate Entities Status -->
+        <div class="card">
+          <h2>🌡️ Climate Entities Status (${climate_states.length})</h2>
+          ${climate_states.length === 0 ? html`
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <p>No climate entities configured</p>
+            </div>
+          ` : html`
+            <div class="climate-grid">
+              ${climate_states.map(climate => this.renderClimateCard(climate))}
+            </div>
+          `}
+        </div>
+
+        <!-- Matched Bindings -->
+        ${matched_bindings.length > 0 ? html`
+          <div class="card">
+            <h2>🔗 Currently Matched Bindings (${matched_bindings.length})</h2>
+            ${matched_bindings.map(binding => {
+              const slot = this.slots.find(s => s.id === binding.slot_id);
+              return html`
+                <div class="list-item">
+                  <h3>${binding.match?.value || 'Unnamed'}</h3>
+                  <div>
+                    <span class="badge">🎯 Slot: ${slot?.label || binding.slot_id}</span>
+                    <span class="badge">📋 ${binding.match?.type}</span>
+                    <span class="badge">⚡ Priority: ${binding.priority || 0}</span>
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+        ` : ''}
+
+        <!-- Engine State -->
+        <div class="card">
+          <h2>⚙️ Engine Status</h2>
+          <div class="engine-status">
+            <div>
+              <span class="label">Engine Active:</span>
+              <span class="${engine_state.has_engine ? 'value-yes' : 'value-no'}">
+                ${engine_state.has_engine ? '✅ Yes' : '❌ No'}
+              </span>
+            </div>
+            ${engine_state.last_evaluation ? html`
+              <div>
+                <span class="label">Last Evaluation:</span>
+                <span>${this.formatDateTime(engine_state.last_evaluation)}</span>
+              </div>
+            ` : ''}
+            <div>
+              <span class="label">Timestamp:</span>
+              <span>${this.formatDateTime(this.statusData.timestamp)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    renderClimateCard(climate) {
+      const temp = climate.attributes.current_temperature;
+      const targetTemp = climate.attributes.temperature;
+      const hvacMode = climate.state;
+      const hvacAction = climate.attributes.hvac_action;
+      const isOn = hvacMode !== 'off';
+
+      return html`
+        <div class="climate-card ${isOn ? '' : 'off'}">
+          <h3>${climate.entity_id.split('.')[1].replace(/_/g, ' ')}</h3>
+          <div class="temperature ${isOn ? 'on' : 'off'}">
+            ${temp !== null && temp !== undefined ? `${temp}°C` : 'N/A'}
+            ${targetTemp !== null && targetTemp !== undefined ? ` → ${targetTemp}°C` : ''}
+          </div>
+          <div>
+            <span class="badge">${this.getHvacModeIcon(hvacMode)} ${hvacMode.toUpperCase()}</span>
+            ${hvacAction ? html`<span class="badge">${this.getHvacActionIcon(hvacAction)} ${hvacAction}</span>` : ''}
+          </div>
+          ${climate.attributes.preset_mode ? html`
+            <div style="margin-top: 8px;">
+              <span class="badge">⚙️ ${climate.attributes.preset_mode}</span>
+            </div>
+          ` : ''}
+          <div class="meta">
+            Updated: ${this.formatTimeAgo(climate.last_updated)}
+          </div>
+        </div>
+      `;
+    }
+  };
+
   console.log('✅ Lit components defined');
 }
 
@@ -663,6 +1043,11 @@ class ClimatePanelCard extends HTMLElement {
       if (!customElements.get('charts-page')) {
         customElements.define('charts-page', ChartsPage);
         console.log('✅ charts-page component registered');
+      }
+      // Register Monitor component
+      if (!customElements.get('monitor-page')) {
+        customElements.define('monitor-page', MonitorPage);
+        console.log('✅ monitor-page component registered');
       }
     } catch (error) {
       console.error('❌ Failed to load Lit components:', error);
@@ -3918,6 +4303,21 @@ class ClimatePanelCard extends HTMLElement {
   }
 
   renderMonitorPage() {
+    // Use LitElement component if available
+    if (customElements.get('monitor-page')) {
+      // Update component with current data after render
+      setTimeout(() => {
+        const monitorComponent = this.shadowRoot.querySelector('monitor-page');
+        if (monitorComponent) {
+          monitorComponent.statusData = this.statusData;
+          monitorComponent.slots = this.slots;
+        }
+      }, 100);
+
+      return `<monitor-page></monitor-page>`;
+    }
+
+    // Fallback to old rendering if Lit not loaded
     if (!this.statusData) {
       return `
         <div class="card">
