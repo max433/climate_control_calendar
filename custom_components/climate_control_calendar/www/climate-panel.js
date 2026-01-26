@@ -103,8 +103,24 @@ async function loadAndDefineLitComponent() {
       }
 
       injectHAThemeVars() {
-        // Get computed styles from document body (where HA sets the theme)
+        // Debug: check where HA defines theme variables
+        const htmlStyles = getComputedStyle(document.documentElement);
         const bodyStyles = getComputedStyle(document.body);
+
+        // Try to find where --primary-color is defined
+        const htmlPrimary = htmlStyles.getPropertyValue('--primary-color');
+        const bodyPrimary = bodyStyles.getPropertyValue('--primary-color');
+
+        console.log('🔍 Theme Debug:', {
+          'html --primary-color': htmlPrimary,
+          'body --primary-color': bodyPrimary,
+          'html class': document.documentElement.className,
+          'body class': document.body.className
+        });
+
+        // Use whichever has the color (html or body)
+        const sourceStyles = htmlPrimary ? htmlStyles : bodyStyles;
+        const source = htmlPrimary ? 'html' : 'body';
 
         // List of HA CSS variables we want to inherit
         const haVars = [
@@ -136,24 +152,35 @@ async function loadAndDefineLitComponent() {
 
         // Build CSS with all HA variables
         let cssText = ':host {\n';
+        let injectedCount = 0;
         haVars.forEach(varName => {
-          const value = bodyStyles.getPropertyValue(varName);
+          const value = sourceStyles.getPropertyValue(varName);
           if (value) {
             cssText += `  ${varName}: ${value};\n`;
+            injectedCount++;
           }
         });
         cssText += '}';
 
         themeStyle.textContent = cssText;
-        console.log('✅ HA theme variables injected into shadow DOM');
+        console.log(`✅ HA theme variables injected from ${source}:`, injectedCount, 'vars');
+        console.log('📋 CSS injected:', cssText);
       }
 
       setupThemeObserver() {
-        // Watch for theme changes on document.body
+        // Watch for theme changes on both html and body
         const observer = new MutationObserver(() => {
+          console.log('🔄 Theme change detected, re-injecting vars...');
           this.injectHAThemeVars();
         });
 
+        // Observe html element (documentElement)
+        observer.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ['class', 'style']
+        });
+
+        // Observe body element
         observer.observe(document.body, {
           attributes: true,
           attributeFilter: ['class', 'style']
@@ -472,62 +499,9 @@ class ClimatePanelCard extends HTMLElement {
     }
   }
 
-  // Load external CSS by inserting <style> tags
-  async loadExternalCSS() {
-    if (this.cssLoaded) {
-      this.log('ℹ️', 'CSS already loaded, skipping');
-      return;
-    }
-
-    this.log('📦', 'Loading external CSS via <style> tag injection...');
-
-    try {
-      const cssFiles = [
-        '/climate_control_calendar/static/bootstrap.min.css',
-        '/climate_control_calendar/static/select2.min.css',
-        '/climate_control_calendar/static/select2-bootstrap-5-theme.min.css'
-      ];
-
-      let loadedCount = 0;
-
-      for (const url of cssFiles) {
-        try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            this.log('⚠️', `Failed to load ${url}: ${response.status}`);
-            continue;
-          }
-          const cssText = await response.text();
-
-          // Create <style> element and insert CSS
-          const styleEl = document.createElement('style');
-          styleEl.textContent = cssText;
-          this.shadowRoot.insertBefore(styleEl, this.shadowRoot.firstChild);
-
-          loadedCount++;
-          this.log('✅', `Loaded CSS: ${url.split('/').pop()} (${(cssText.length / 1024).toFixed(1)} KB)`);
-        } catch (err) {
-          this.log('❌', `Error loading ${url}:`, err.message);
-        }
-      }
-
-      if (loadedCount > 0) {
-        this.cssLoaded = true;
-        this.log('🎨', `Applied ${loadedCount} stylesheets via <style> tag injection`);
-      } else {
-        this.log('⚠️', 'No stylesheets loaded');
-      }
-    } catch (error) {
-      this.log('❌', 'Failed to load external CSS', error);
-    }
-  }
-
   // Called when element is connected to the page
   async connectedCallback() {
     this.log('🎨', 'Panel connected to page');
-
-    // Load external CSS first
-    await this.loadExternalCSS();
 
     // Load LitElement test component
     await loadAndDefineLitComponent();
