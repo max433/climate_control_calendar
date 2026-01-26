@@ -358,6 +358,82 @@ class ClimatePanelCard extends HTMLElement {
     this.render();
   }
 
+  // Inject HA theme variables into shadow DOM
+  injectHAThemeVars() {
+    // Access parent document (HA main frame)
+    let sourceDoc = document;
+    try {
+      if (window.parent && window.parent !== window && window.parent.document) {
+        sourceDoc = window.parent.document;
+      }
+    } catch (e) {
+      console.warn('⚠️ Cannot access parent document for theme vars');
+    }
+
+    const htmlStyles = getComputedStyle(sourceDoc.documentElement);
+    const bodyStyles = getComputedStyle(sourceDoc.body);
+    const htmlPrimary = htmlStyles.getPropertyValue('--primary-color');
+    const sourceStyles = htmlPrimary ? htmlStyles : bodyStyles;
+
+    const haVars = [
+      '--primary-color', '--accent-color', '--text-primary-color',
+      '--primary-background-color', '--card-background-color',
+      '--primary-text-color', '--secondary-text-color', '--disabled-text-color',
+      '--divider-color', '--success-color', '--warning-color', '--error-color',
+      '--info-color', '--ha-card-border-radius', '--ha-card-box-shadow', '--secondary-color'
+    ];
+
+    let themeStyle = this.shadowRoot.querySelector('#ha-theme-vars');
+    if (!themeStyle) {
+      themeStyle = document.createElement('style');
+      themeStyle.id = 'ha-theme-vars';
+      this.shadowRoot.appendChild(themeStyle);
+    }
+
+    let cssText = ':host {\n';
+    haVars.forEach(varName => {
+      const value = sourceStyles.getPropertyValue(varName);
+      if (value) cssText += `  ${varName}: ${value};\n`;
+    });
+    cssText += '}';
+    themeStyle.textContent = cssText;
+
+    console.log('🎨 HA theme variables injected into main component');
+  }
+
+  // Setup theme observer to watch for theme changes
+  setupThemeObserver() {
+    let targetDoc = document;
+    try {
+      if (window.parent && window.parent !== window && window.parent.document) {
+        targetDoc = window.parent.document;
+      }
+    } catch (e) {
+      console.warn('⚠️ Cannot access parent document for theme observer');
+    }
+
+    if (this._themeObserver) {
+      this._themeObserver.disconnect();
+    }
+
+    const observer = new MutationObserver(() => {
+      console.log('🎨 Theme change detected, re-injecting variables');
+      this.injectHAThemeVars();
+    });
+
+    observer.observe(targetDoc.documentElement, {
+      attributes: true,
+      attributeFilter: ['class', 'style', 'data-theme']
+    });
+    observer.observe(targetDoc.body, {
+      attributes: true,
+      attributeFilter: ['class', 'style']
+    });
+
+    this._themeObserver = observer;
+    console.log('👁️ Theme observer setup complete');
+  }
+
   // Navigate to page
   navigateTo(page) {
     this.currentPage = page;
@@ -481,6 +557,10 @@ class ClimatePanelCard extends HTMLElement {
   async connectedCallback() {
     this.log('🎨', 'Panel connected to page');
 
+    // Inject HA theme variables and setup observer
+    this.injectHAThemeVars();
+    this.setupThemeObserver();
+
     // Load LitElement and register components
     try {
       await loadLitElement();
@@ -516,6 +596,9 @@ class ClimatePanelCard extends HTMLElement {
     }
     if (this.statusRefreshInterval) {
       clearInterval(this.statusRefreshInterval);
+    }
+    if (this._themeObserver) {
+      this._themeObserver.disconnect();
     }
   }
 
@@ -725,15 +808,15 @@ class ClimatePanelCard extends HTMLElement {
           position: relative;
         }
 
-        /* Custom Hamburger Menu (not Bootstrap) */
+        /* Custom Hamburger Menu */
         .hamburger-menu {
           position: fixed;
           top: 20px;
           left: 20px;
           width: 40px;
           height: 40px;
-          background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.2);
-          border: 1px solid rgba(var(--bs-primary-rgb, 13, 110, 253), 0.5);
+          background: var(--card-background-color, #fff);
+          border: 1px solid var(--divider-color, #e0e0e0);
           border-radius: 8px;
           cursor: pointer;
           display: flex;
@@ -743,16 +826,19 @@ class ClimatePanelCard extends HTMLElement {
           gap: 5px;
           z-index: 1001;
           transition: all 0.3s;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
         }
 
         .hamburger-menu:hover {
-          background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.4);
+          background: var(--primary-background-color, #fafafa);
+          border-color: var(--primary-color, #03a9f4);
+          box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
         }
 
         .hamburger-line {
           width: 24px;
           height: 2px;
-          background: var(--bs-primary, #0d6efd);
+          background: var(--primary-color, #03a9f4);
           transition: all 0.3s;
         }
 
@@ -768,20 +854,20 @@ class ClimatePanelCard extends HTMLElement {
           transform: rotate(-45deg) translateY(-7px);
         }
 
-        /* Custom Sidebar (not Bootstrap) */
+        /* Custom Sidebar */
         .sidebar {
           position: fixed;
           top: 0;
           left: ${this.sidebarOpen ? '0' : '-280px'};
           width: 280px;
           height: 100%;
-          background: var(--bs-body-bg, #fff);
-          border-right: 1px solid var(--bs-border-color, #dee2e6);
+          background: var(--card-background-color, #fff);
+          border-right: 1px solid var(--divider-color, #e0e0e0);
           transition: left 0.3s ease;
           z-index: 1000;
           overflow-y: auto;
           padding: 80px 20px 20px 20px;
-          box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+          box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
         }
 
         .sidebar-overlay {
@@ -802,18 +888,19 @@ class ClimatePanelCard extends HTMLElement {
           cursor: pointer;
           transition: all 0.2s;
           border-left: 3px solid transparent;
-          color: var(--bs-body-color, #212529);
+          color: var(--primary-text-color, #212121);
         }
 
         .nav-item:hover {
-          background: var(--bs-light, #f8f9fa);
-          border-left-color: var(--bs-primary, #0d6efd);
+          background: var(--primary-background-color, #fafafa);
+          border-left-color: var(--primary-color, #03a9f4);
         }
 
         .nav-item.active {
-          background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
-          border-left-color: var(--bs-primary, #0d6efd);
+          background: var(--primary-background-color, #fafafa);
+          border-left-color: var(--primary-color, #03a9f4);
           font-weight: 600;
+          color: var(--primary-color, #03a9f4);
         }
 
         .nav-item-icon {
@@ -830,11 +917,28 @@ class ClimatePanelCard extends HTMLElement {
         }
 
         .status-badge {
-          background: rgba(var(--bs-primary-rgb, 13, 110, 253), 0.1);
-          border: 1px solid rgba(var(--bs-primary-rgb, 13, 110, 253), 0.3);
+          background: var(--card-background-color, #fff);
+          border: 1px solid var(--divider-color, #e0e0e0);
           border-radius: 8px;
           padding: 8px 12px;
           font-size: 0.875rem;
+          color: var(--primary-text-color, #212121);
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-badge:hover {
+          background: var(--primary-background-color, #fafafa);
+          cursor: default;
+        }
+
+        .status-badge[style*="cursor: pointer"] {
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+
+        .status-badge[style*="cursor: pointer"]:hover {
+          border-color: var(--primary-color, #03a9f4);
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
         }
 
         .status-dot {
@@ -842,7 +946,7 @@ class ClimatePanelCard extends HTMLElement {
           width: 8px;
           height: 8px;
           border-radius: 50%;
-          background: var(--bs-success, #198754);
+          background: var(--success-color, #43a047);
           animation: pulse 2s infinite;
           margin-right: 8px;
         }
@@ -913,7 +1017,7 @@ class ClimatePanelCard extends HTMLElement {
         .empty-state {
           text-align: center;
           padding: 40px 20px;
-          color: var(--bs-secondary, #6c757d);
+          color: var(--secondary-text-color, #757575);
         }
 
         .empty-state-icon {
@@ -928,11 +1032,11 @@ class ClimatePanelCard extends HTMLElement {
           width: 100%;
         }
 
-        /* Tab Navigation (custom) */
+        /* Tab Navigation */
         .tabs-nav {
           display: flex;
           gap: 0;
-          border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
           margin-bottom: 20px;
         }
 
@@ -943,18 +1047,18 @@ class ClimatePanelCard extends HTMLElement {
           border-bottom: 2px solid transparent;
           cursor: pointer;
           font-size: 0.95em;
-          color: var(--bs-secondary, #6c757d);
+          color: var(--secondary-text-color, #757575);
           transition: all 0.2s;
         }
 
         .tab-btn:hover {
-          color: var(--bs-primary, #0d6efd);
-          background: var(--bs-light, #f8f9fa);
+          color: var(--primary-color, #03a9f4);
+          background: var(--primary-background-color, #fafafa);
         }
 
         .tab-btn.active {
-          color: var(--bs-primary, #0d6efd);
-          border-bottom-color: var(--bs-primary, #0d6efd);
+          color: var(--primary-color, #03a9f4);
+          border-bottom-color: var(--primary-color, #03a9f4);
           font-weight: 600;
         }
 
@@ -966,26 +1070,28 @@ class ClimatePanelCard extends HTMLElement {
           display: block;
         }
 
-        /* Collapse sections (custom) */
+        /* Collapse sections */
         .collapse-section {
           margin: 15px 0;
-          border: 1px solid var(--bs-border-color, #dee2e6);
+          border: 1px solid var(--divider-color, #e0e0e0);
           border-radius: 6px;
           overflow: hidden;
         }
 
         .collapse-header {
           padding: 12px 15px;
-          background: var(--bs-light, #f8f9fa);
+          background: var(--primary-background-color, #fafafa);
           cursor: pointer;
           display: flex;
           justify-content: space-between;
           align-items: center;
           font-weight: 500;
+          color: var(--primary-text-color, #212121);
         }
 
         .collapse-header:hover {
-          background: var(--bs-secondary-bg, #e9ecef);
+          background: var(--card-background-color, #fff);
+          border-bottom: 1px solid var(--divider-color, #e0e0e0);
         }
 
         .collapse-icon {
@@ -1022,21 +1128,22 @@ class ClimatePanelCard extends HTMLElement {
         }
 
         .modal-content {
-          background: var(--bs-body-bg, #fff);
+          background: var(--card-background-color, #fff);
           border-radius: 8px;
           padding: 20px;
           max-width: 800px;
           width: 100%;
           max-height: 90vh;
           overflow-y: auto;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+          border: 1px solid var(--divider-color, #e0e0e0);
         }
 
         /* Live time indicator */
         .live-time {
           font-family: 'Courier New', monospace;
           font-weight: bold;
-          color: var(--bs-success, #198754);
+          color: var(--success-color, #43a047);
         }
       </style>
 
