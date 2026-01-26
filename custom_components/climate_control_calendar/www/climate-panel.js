@@ -365,15 +365,20 @@ class ClimatePanelCard extends HTMLElement {
     try {
       if (window.parent && window.parent !== window && window.parent.document) {
         sourceDoc = window.parent.document;
+        console.log('🎨 Using parent document for theme vars');
+      } else {
+        console.log('🎨 Using current document for theme vars');
       }
     } catch (e) {
-      console.warn('⚠️ Cannot access parent document for theme vars');
+      console.warn('⚠️ Cannot access parent document for theme vars:', e);
     }
 
     const htmlStyles = getComputedStyle(sourceDoc.documentElement);
     const bodyStyles = getComputedStyle(sourceDoc.body);
     const htmlPrimary = htmlStyles.getPropertyValue('--primary-color');
     const sourceStyles = htmlPrimary ? htmlStyles : bodyStyles;
+
+    console.log('🎨 Source for CSS vars:', htmlPrimary ? 'documentElement' : 'body');
 
     const haVars = [
       '--primary-color', '--accent-color', '--text-primary-color',
@@ -387,18 +392,29 @@ class ClimatePanelCard extends HTMLElement {
     if (!themeStyle) {
       themeStyle = document.createElement('style');
       themeStyle.id = 'ha-theme-vars';
-      this.shadowRoot.appendChild(themeStyle);
+      // Insert at the beginning so other styles can override if needed
+      this.shadowRoot.insertBefore(themeStyle, this.shadowRoot.firstChild);
+      console.log('🎨 Created new theme style element');
     }
 
-    let cssText = ':host {\n';
+    // Apply to both :host and * to ensure inheritance
+    let cssText = ':host, * {\n';
+    let varCount = 0;
     haVars.forEach(varName => {
       const value = sourceStyles.getPropertyValue(varName);
-      if (value) cssText += `  ${varName}: ${value};\n`;
+      if (value) {
+        cssText += `  ${varName}: ${value};\n`;
+        varCount++;
+        // Log first few for debugging
+        if (varCount <= 5) {
+          console.log(`  ${varName}: ${value}`);
+        }
+      }
     });
     cssText += '}';
     themeStyle.textContent = cssText;
 
-    console.log('🎨 HA theme variables injected into main component');
+    console.log(`🎨 Injected ${varCount} HA theme variables into main component`);
   }
 
   // Setup theme observer to watch for theme changes
@@ -557,8 +573,7 @@ class ClimatePanelCard extends HTMLElement {
   async connectedCallback() {
     this.log('🎨', 'Panel connected to page');
 
-    // Inject HA theme variables and setup observer
-    this.injectHAThemeVars();
+    // Setup theme observer
     this.setupThemeObserver();
 
     // Load LitElement and register components
@@ -573,8 +588,11 @@ class ClimatePanelCard extends HTMLElement {
       console.error('❌ Failed to load Lit components:', error);
     }
 
-    // Render
+    // Render (this clears shadowRoot.innerHTML)
     this.render();
+
+    // Inject HA theme variables AFTER render (otherwise render() clears them)
+    this.injectHAThemeVars();
 
     // Start update interval for time
     this.updateInterval = setInterval(() => this.updateTime(), 1000);
@@ -1261,6 +1279,9 @@ class ClimatePanelCard extends HTMLElement {
         this.handleAction(action, id);
       });
     });
+
+    // Re-inject HA theme variables after render (render clears shadowRoot)
+    this.injectHAThemeVars();
   }
 
   async handleAction(action, id) {
