@@ -72,6 +72,7 @@ const i18n = new I18n();
 let LitElement, html, css;
 let litElementLoaded = false;
 let AboutPage; // Will be defined after Lit loads
+let ChartsPage; // Will be defined after Lit loads
 
 // Load LitElement from CDN and define components
 async function loadLitElement() {
@@ -306,6 +307,80 @@ function defineComponents() {
               📦 GitHub Repository
             </a>
           </p>
+        </div>
+      `;
+    }
+  };
+
+  // Charts Page Component
+  ChartsPage = class extends HAThemeMixin(LitElement) {
+    static get styles() {
+      return css`
+        :host {
+          display: block;
+        }
+
+        .card {
+          background: var(--card-background-color, #fff);
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
+        }
+
+        h2 {
+          margin: 0 0 24px 0;
+          color: var(--primary-text-color, #212121);
+          font-size: 1.5em;
+        }
+
+        .placeholder {
+          color: var(--secondary-text-color, #757575);
+          text-align: center;
+          padding: 40px 20px;
+          line-height: 1.8;
+        }
+
+        .placeholder-icon {
+          font-size: 4em;
+          margin-bottom: 20px;
+          opacity: 0.3;
+        }
+
+        .feature-list {
+          list-style: none;
+          padding: 0;
+          margin: 20px 0 0 0;
+        }
+
+        .feature-list li {
+          margin: 8px 0;
+          color: var(--secondary-text-color, #757575);
+        }
+
+        .feature-list li::before {
+          content: "• ";
+          color: var(--primary-color, #03a9f4);
+          font-weight: bold;
+          margin-right: 8px;
+        }
+      `;
+    }
+
+    render() {
+      return html`
+        <div class="card">
+          <h2>📈 Charts & Statistics</h2>
+          <div class="placeholder">
+            <div class="placeholder-icon">📊</div>
+            <p>Charts and statistics dashboard coming soon!</p>
+            <p>This will show:</p>
+            <ul class="feature-list">
+              <li>Temperature history graphs</li>
+              <li>Usage statistics</li>
+              <li>Event frequency charts</li>
+              <li>Energy consumption trends</li>
+            </ul>
+          </div>
         </div>
       `;
     }
@@ -583,6 +658,11 @@ class ClimatePanelCard extends HTMLElement {
       if (!customElements.get('about-page')) {
         customElements.define('about-page', AboutPage);
         console.log('✅ about-page component registered');
+      }
+      // Register Charts component
+      if (!customElements.get('charts-page')) {
+        customElements.define('charts-page', ChartsPage);
+        console.log('✅ charts-page component registered');
       }
     } catch (error) {
       console.error('❌ Failed to load Lit components:', error);
@@ -4045,6 +4125,12 @@ class ClimatePanelCard extends HTMLElement {
   }
 
   renderChartsPage() {
+    // Use LitElement component if available
+    if (customElements.get('charts-page')) {
+      return `<charts-page></charts-page>`;
+    }
+
+    // Fallback to old rendering if Lit not loaded
     return `
       <div class="card">
         <h2>📈 Charts & Statistics</h2>
