@@ -3788,10 +3788,37 @@ class ClimatePanelCard extends HTMLElement {
     return `
       <div class="card mb-3">
         <div class="card-header">
-          <h2 class="h4 mb-0">🧪 Bootstrap 5.3.3 Test Page</h2>
+          <h2 class="h4 mb-0">🧪 Test Pages</h2>
         </div>
         <div class="card-body">
-          <p class="text-muted">Questa pagina di test mostra tutti i componenti Bootstrap per verificare che il CSS sia caricato correttamente nel shadow DOM.</p>
+          <p class="text-muted">Scegli quale test vuoi provare:</p>
+
+          <h5>LitElement Tests (Custom Elements)</h5>
+          <div class="list-group mb-3">
+            <a href="/climate_control_calendar/static/test-lit.html" target="_blank" class="list-group-item list-group-item-action">
+              <strong>test-lit.html</strong> - LitElement con import CDN (può essere bloccato)
+            </a>
+            <a href="/climate_control_calendar/static/test-lit-v2.html" target="_blank" class="list-group-item list-group-item-action">
+              <strong>test-lit-v2.html</strong> - Vanilla Custom Element (dovrebbe sempre funzionare)
+            </a>
+            <a href="/climate_control_calendar/static/test-lit-v3.html" target="_blank" class="list-group-item list-group-item-action">
+              <strong>test-lit-v3.html</strong> - Dynamic import da HA bundle (cerca Lit di HA)
+            </a>
+          </div>
+
+          <div class="alert alert-info">
+            <strong>💡 Istruzioni:</strong> Clicca sui link sopra per aprire i test in una nuova tab.
+            Controlla la console (F12) per vedere quale approccio riesce a caricare LitElement.
+          </div>
+        </div>
+      </div>
+
+      <div class="card mb-3">
+        <div class="card-header">
+          <h2 class="h4 mb-0">🧪 Bootstrap 5.3.3 Test (Current)</h2>
+        </div>
+        <div class="card-body">
+          <p class="text-muted">Questa pagina mostra i componenti Bootstrap caricati nel shadow DOM.</p>
           <p><strong>Tema corrente:</strong> <span class="badge bg-${this.theme === 'dark' ? 'dark' : 'light'}">${this.theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span></p>
         </div>
       </div>
