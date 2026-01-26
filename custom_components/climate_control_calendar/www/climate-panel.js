@@ -99,33 +99,43 @@ async function loadAndDefineLitComponent() {
           :host {
             display: block;
             padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--card-background-color, #fff);
             border-radius: 12px;
             margin: 20px 0;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
+            border: 1px solid var(--divider-color, #e0e0e0);
           }
 
           .card {
-            background: white;
+            background: transparent;
             border-radius: 8px;
             padding: 20px;
           }
 
           h2 {
             margin: 0 0 16px 0;
-            color: #667eea;
+            color: var(--primary-color, #03a9f4);
             font-size: 24px;
           }
 
           p {
             margin: 12px 0;
-            color: #333;
+            color: var(--primary-text-color, #212121);
             font-size: 16px;
           }
 
+          ul {
+            color: var(--primary-text-color, #212121);
+          }
+
+          li {
+            margin: 8px 0;
+            color: var(--secondary-text-color, #757575);
+          }
+
           button {
-            background: #667eea;
-            color: white;
+            background: var(--primary-color, #03a9f4);
+            color: var(--text-primary-color, #fff);
             border: none;
             padding: 12px 24px;
             border-radius: 6px;
@@ -137,20 +147,28 @@ async function loadAndDefineLitComponent() {
           }
 
           button:hover {
-            background: #764ba2;
+            opacity: 0.9;
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          }
+
+          button:nth-child(2) {
+            background: var(--accent-color, #ff9800);
+          }
+
+          button:nth-child(3) {
+            background: var(--secondary-color, #5f6368);
           }
 
           .counter {
             font-size: 48px;
             font-weight: bold;
-            color: #667eea;
+            color: var(--primary-color, #03a9f4);
             margin: 20px 0;
           }
 
           .success {
-            background: #4caf50;
+            background: var(--success-color, #4caf50);
             padding: 12px;
             border-radius: 6px;
             color: white;
