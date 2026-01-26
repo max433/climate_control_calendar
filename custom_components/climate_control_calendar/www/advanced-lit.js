@@ -1,6 +1,11 @@
 /**
  * Advanced LitElement Component - Demo for Climate Control Calendar
  * Shows various UI elements useful for future development
+ *
+ * External Libraries:
+ * - LitElement 3.x (CDN)
+ * - Chart.js 4.x (CDN)
+ * - Tom-Select (searchable select, CDN)
  */
 
 import { LitElement, html, css } from 'https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js';
@@ -14,6 +19,7 @@ class AdvancedPanel extends LitElement {
       textInput: { type: String },
       numberInput: { type: Number },
       selectValue: { type: String },
+      searchableSelectValue: { type: String },
       multiSelectValues: { type: Array },
       checkboxes: { type: Object },
       radioValue: { type: String },
@@ -23,7 +29,10 @@ class AdvancedPanel extends LitElement {
       colorValue: { type: String },
       textareaValue: { type: String },
       // Collapsed sections
-      collapsedSections: { type: Object }
+      collapsedSections: { type: Object },
+      // Chart & libraries loaded
+      chartLoaded: { type: Boolean },
+      timelineLoaded: { type: Boolean }
     };
   }
 
@@ -121,7 +130,19 @@ class AdvancedPanel extends LitElement {
 
       /* Form Controls */
       .form-group {
-        margin: 16px 0;
+        margin: 24px 0;
+        padding: 12px 0;
+      }
+
+      .form-group:first-child {
+        margin-top: 0;
+      }
+
+      .form-group small {
+        display: block;
+        margin-top: 6px;
+        color: var(--secondary-text-color, #757575);
+        font-size: 13px;
       }
 
       label {
@@ -381,6 +402,75 @@ class AdvancedPanel extends LitElement {
         color: #b71c1c;
       }
 
+      /* Tom-Select (Searchable Select) */
+      .ts-wrapper {
+        margin-top: 6px;
+      }
+
+      .ts-control {
+        padding: 10px 12px !important;
+        border: 2px solid var(--divider-color, #e0e0e0) !important;
+        border-radius: 4px !important;
+        background: var(--card-background-color, #fff) !important;
+        color: var(--primary-text-color, #212121) !important;
+      }
+
+      .ts-dropdown {
+        border: 2px solid var(--primary-color, #03a9f4) !important;
+        border-radius: 4px !important;
+        background: var(--card-background-color, #fff) !important;
+      }
+
+      .ts-dropdown .option {
+        color: var(--primary-text-color, #212121) !important;
+      }
+
+      .ts-dropdown .option.active {
+        background: var(--primary-color, #03a9f4) !important;
+        color: var(--text-primary-color, #fff) !important;
+      }
+
+      /* Chart Container */
+      .chart-container {
+        position: relative;
+        height: 300px;
+        margin: 20px 0;
+        padding: 10px;
+        background: var(--card-background-color, #fff);
+        border-radius: 8px;
+      }
+
+      /* Timeline Container */
+      .timeline-container {
+        position: relative;
+        min-height: 300px;
+        margin: 20px 0;
+        padding: 20px;
+        background: var(--card-background-color, #fff);
+        border-radius: 8px;
+        border: 1px solid var(--divider-color, #e0e0e0);
+      }
+
+      .timeline-item {
+        position: relative;
+        padding: 16px;
+        margin: 12px 0;
+        border-left: 4px solid var(--primary-color, #03a9f4);
+        background: rgba(3, 169, 244, 0.05);
+        border-radius: 4px;
+      }
+
+      .timeline-item .time {
+        font-size: 12px;
+        color: var(--secondary-text-color, #757575);
+        font-weight: bold;
+        margin-bottom: 4px;
+      }
+
+      .timeline-item .content {
+        color: var(--primary-text-color, #212121);
+      }
+
       /* Chart Placeholder */
       .chart-placeholder {
         background: linear-gradient(135deg, rgba(3, 169, 244, 0.1), rgba(76, 175, 80, 0.1));
@@ -411,6 +501,7 @@ class AdvancedPanel extends LitElement {
     this.textInput = '';
     this.numberInput = 20;
     this.selectValue = '';
+    this.searchableSelectValue = '';
     this.multiSelectValues = [];
     this.checkboxes = { opt1: true, opt2: false, opt3: false };
     this.radioValue = 'option1';
@@ -420,6 +511,133 @@ class AdvancedPanel extends LitElement {
     this.colorValue = '#03a9f4';
     this.textareaValue = '';
     this.collapsedSections = { section1: false, section2: false, section3: false };
+    this.chartLoaded = false;
+    this.timelineLoaded = false;
+    this.chart = null;
+    this.tomSelect = null;
+  }
+
+  async firstUpdated() {
+    // Load external libraries
+    await this.loadExternalLibraries();
+  }
+
+  async loadExternalLibraries() {
+    try {
+      // Load Tom-Select CSS
+      const tomSelectCSS = document.createElement('link');
+      tomSelectCSS.rel = 'stylesheet';
+      tomSelectCSS.href = 'https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.bootstrap5.min.css';
+      this.shadowRoot.appendChild(tomSelectCSS);
+
+      // Load Tom-Select JS
+      const tomSelectScript = document.createElement('script');
+      tomSelectScript.src = 'https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js';
+      tomSelectScript.onload = () => {
+        console.log('✅ Tom-Select loaded');
+        this.initTomSelect();
+      };
+      this.shadowRoot.appendChild(tomSelectScript);
+
+      // Load Chart.js
+      const chartScript = document.createElement('script');
+      chartScript.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+      chartScript.onload = () => {
+        console.log('✅ Chart.js loaded');
+        this.chartLoaded = true;
+        this.requestUpdate();
+      };
+      this.shadowRoot.appendChild(chartScript);
+
+      this.timelineLoaded = true;
+    } catch (error) {
+      console.error('Error loading external libraries:', error);
+    }
+  }
+
+  initTomSelect() {
+    const selectElement = this.shadowRoot.querySelector('#searchable-select');
+    if (selectElement && window.TomSelect) {
+      this.tomSelect = new TomSelect(selectElement, {
+        create: false,
+        sortField: {
+          field: "text",
+          direction: "asc"
+        },
+        placeholder: 'Search and select...',
+        onChange: (value) => {
+          this.searchableSelectValue = value;
+          this.requestUpdate();
+        }
+      });
+    }
+  }
+
+  updated(changedProperties) {
+    super.updated(changedProperties);
+
+    // Initialize chart when tab changes to advanced and chart is loaded
+    if (changedProperties.has('activeTab') && this.activeTab === 'advanced' && this.chartLoaded && !this.chart) {
+      setTimeout(() => this.initChart(), 100);
+    }
+  }
+
+  initChart() {
+    const canvas = this.shadowRoot.querySelector('#temperatureChart');
+    if (!canvas || !window.Chart) return;
+
+    const ctx = canvas.getContext('2d');
+    this.chart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '24:00'],
+        datasets: [
+          {
+            label: 'Temperature (°C)',
+            data: [18, 17, 19, 22, 23, 21, 19],
+            borderColor: 'rgb(3, 169, 244)',
+            backgroundColor: 'rgba(3, 169, 244, 0.1)',
+            tension: 0.4,
+            fill: true
+          },
+          {
+            label: 'Target (°C)',
+            data: [20, 20, 21, 22, 22, 21, 20],
+            borderColor: 'rgb(76, 175, 80)',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            tension: 0.4,
+            fill: true,
+            borderDash: [5, 5]
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+          },
+          title: {
+            display: true,
+            text: '24h Temperature History'
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: false,
+            min: 15,
+            max: 25,
+            ticks: {
+              callback: function(value) {
+                return value + '°C';
+              }
+            }
+          }
+        }
+      }
+    });
   }
 
   render() {
@@ -508,7 +726,7 @@ class AdvancedPanel extends LitElement {
         </div>
 
         <div class="form-group">
-          <label>Select Dropdown</label>
+          <label>Select Dropdown (Standard)</label>
           <select @change=${(e) => this.selectValue = e.target.value}>
             <option value="">Choose an option...</option>
             <option value="heat">🔥 Heat Mode</option>
@@ -517,6 +735,30 @@ class AdvancedPanel extends LitElement {
             <option value="off">⭕ Off</option>
           </select>
           <small>Selected: ${this.selectValue || '(none)'}</small>
+        </div>
+
+        <div class="form-group">
+          <label>Searchable Select (Tom-Select) 🔍</label>
+          <select id="searchable-select">
+            <option value="">Search and select...</option>
+            <option value="climate.bedroom">🛏️ Climate - Bedroom</option>
+            <option value="climate.living_room">🛋️ Climate - Living Room</option>
+            <option value="climate.kitchen">🍳 Climate - Kitchen</option>
+            <option value="climate.bathroom">🚿 Climate - Bathroom</option>
+            <option value="climate.office">💼 Climate - Office</option>
+            <option value="sensor.temperature_bedroom">🌡️ Sensor - Bedroom Temp</option>
+            <option value="sensor.temperature_living">🌡️ Sensor - Living Room Temp</option>
+            <option value="sensor.humidity_bedroom">💧 Sensor - Bedroom Humidity</option>
+            <option value="sensor.humidity_living">💧 Sensor - Living Room Humidity</option>
+            <option value="switch.heater_bedroom">🔥 Switch - Bedroom Heater</option>
+            <option value="switch.heater_living">🔥 Switch - Living Room Heater</option>
+            <option value="switch.ac_bedroom">❄️ Switch - Bedroom AC</option>
+            <option value="switch.ac_living">❄️ Switch - Living Room AC</option>
+          </select>
+          <small>Selected: ${this.searchableSelectValue || '(none)'}</small>
+          <div class="alert alert-info" style="margin-top: 8px; padding: 8px 12px; font-size: 13px;">
+            <strong>✨ Features:</strong> Type to search, keyboard navigation, mobile-friendly
+          </div>
         </div>
 
         <div class="form-group">
@@ -655,34 +897,84 @@ class AdvancedPanel extends LitElement {
           </div>
         `)}
 
-        <h3>Chart Placeholder (Chart.js Integration)</h3>
-        <div class="chart-placeholder">
-          <div class="icon">📊</div>
-          <h3>Chart Area</h3>
-          <p>Chart.js integration ready</p>
-          <p style="font-size: 12px;">Can display: Line, Bar, Pie, Doughnut, Area charts</p>
-        </div>
+        <h3>📊 Chart.js - Temperature History</h3>
+        ${this.chartLoaded ? html`
+          <div class="chart-container">
+            <canvas id="temperatureChart"></canvas>
+          </div>
+          <div class="alert alert-success">
+            <strong>✅ Chart.js Working!</strong> Interactive temperature chart with multiple datasets.
+          </div>
+        ` : html`
+          <div class="alert alert-info">
+            ⏳ Loading Chart.js library...
+          </div>
+        `}
 
-        <h3>Timeline Placeholder</h3>
-        <div class="chart-placeholder">
-          <div class="icon">📅</div>
-          <h3>Timeline Area</h3>
-          <p>Timeline component ready</p>
-          <p style="font-size: 12px;">Can display: Events, schedules, bindings over time</p>
-        </div>
+        <h3>📅 Timeline - Climate Events</h3>
+        ${this.timelineLoaded ? html`
+          <div class="timeline-container">
+            <div class="timeline-item">
+              <div class="time">00:00 - 06:00</div>
+              <div class="content">
+                <strong>🌙 Night Mode</strong> - Temperature: 18°C
+                <br><small>Climate mode: Heat, Fan: Low</small>
+              </div>
+            </div>
+            <div class="timeline-item" style="border-left-color: var(--warning-color);">
+              <div class="time">06:00 - 08:00</div>
+              <div class="content">
+                <strong>☀️ Morning</strong> - Temperature: 21°C
+                <br><small>Climate mode: Heat, Fan: Medium</small>
+              </div>
+            </div>
+            <div class="timeline-item" style="border-left-color: var(--success-color);">
+              <div class="time">08:00 - 18:00</div>
+              <div class="content">
+                <strong>🏢 Day Mode</strong> - Temperature: 22°C
+                <br><small>Climate mode: Auto, Fan: Auto</small>
+              </div>
+            </div>
+            <div class="timeline-item" style="border-left-color: var(--error-color);">
+              <div class="time">18:00 - 22:00</div>
+              <div class="content">
+                <strong>🌆 Evening</strong> - Temperature: 21°C
+                <br><small>Climate mode: Heat, Fan: Low</small>
+              </div>
+            </div>
+            <div class="timeline-item">
+              <div class="time">22:00 - 24:00</div>
+              <div class="content">
+                <strong>🌙 Night Prepare</strong> - Temperature: 19°C
+                <br><small>Climate mode: Heat, Fan: Low</small>
+              </div>
+            </div>
+          </div>
+          <div class="alert alert-success">
+            <strong>✅ Timeline Working!</strong> Shows climate schedule with time slots and events.
+          </div>
+        ` : html`
+          <div class="alert alert-info">
+            ⏳ Loading Timeline...
+          </div>
+        `}
       </div>
 
       <div class="card">
         <div class="card-header">
-          <h2>✅ Next Steps</h2>
+          <h2>✅ Component Status</h2>
         </div>
-        <div class="alert alert-info">
-          <strong>Ready for Integration!</strong><br>
-          • LitElement working with CDN import<br>
-          • All form controls functional<br>
-          • Reactive state management working<br>
-          • Using HA CSS variables for theming<br>
-          • Ready to add Chart.js, Select2, Timeline libraries
+        <div class="alert alert-success">
+          <strong>🎉 All Features Working!</strong><br>
+          • ✅ LitElement with CDN import<br>
+          • ✅ All form controls functional<br>
+          • ✅ Searchable/filterable select (Tom-Select)<br>
+          • ✅ Interactive charts (Chart.js)<br>
+          • ✅ Timeline component<br>
+          • ✅ Reactive state management<br>
+          • ✅ HA CSS variables for theming<br>
+          • ✅ Collapsible sections<br>
+          • ✅ Mobile-responsive layout
         </div>
       </div>
     `;
