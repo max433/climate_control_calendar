@@ -3796,7 +3796,11 @@ class ClimatePanelCard extends HTMLElement {
           <h5>LitElement Tests (Custom Elements)</h5>
           <div class="list-group mb-3">
             <a href="/climate_control_calendar/static/test-lit.html" target="_blank" class="list-group-item list-group-item-action">
-              <strong>test-lit.html</strong> - LitElement con import CDN (può essere bloccato)
+              <strong>test-lit.html</strong> - LitElement con import CDN ✅ FUNZIONA
+            </a>
+            <a href="/climate_control_calendar/static/advanced-lit.html" target="_blank" class="list-group-item list-group-item-action list-group-item-primary">
+              <strong>🚀 advanced-lit.html</strong> - Advanced LitElement Component (NUOVO)
+              <br><small>Mostra tutti i componenti UI: forms, tabs, badges, alerts, charts, timeline</small>
             </a>
             <a href="/climate_control_calendar/static/test-lit-v2.html" target="_blank" class="list-group-item list-group-item-action">
               <strong>test-lit-v2.html</strong> - Vanilla Custom Element (dovrebbe sempre funzionare)
