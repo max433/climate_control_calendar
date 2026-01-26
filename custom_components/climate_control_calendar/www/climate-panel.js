@@ -252,9 +252,9 @@ class ClimatePanelCard extends HTMLElement {
 
     try {
       const cssFiles = [
-        '/local/climate_control_calendar/bootstrap.min.css',
-        '/local/climate_control_calendar/select2.min.css',
-        '/local/climate_control_calendar/select2-bootstrap-5-theme.min.css'
+        '/climate_control_calendar/static/bootstrap.min.css',
+        '/climate_control_calendar/static/select2.min.css',
+        '/climate_control_calendar/static/select2-bootstrap-5-theme.min.css'
       ];
 
       const sheets = [];
@@ -921,10 +921,10 @@ class ClimatePanelCard extends HTMLElement {
       </style>
 
       <!-- jQuery (required for Select2) -->
-      <script src="/local/climate_control_calendar/jquery.slim.min.js"></script>
+      <script src="/climate_control_calendar/static/jquery.slim.min.js"></script>
 
       <!-- Select2 JS -->
-      <script src="/local/climate_control_calendar/select2.min.js"></script>
+      <script src="/climate_control_calendar/static/select2.min.js"></script>
 
       <!-- Hamburger Menu -->
       <div class="hamburger-menu ${this.sidebarOpen ? 'open' : ''}" id="hamburger-btn">
