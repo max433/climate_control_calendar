@@ -94,6 +94,81 @@ async function loadAndDefineLitComponent() {
         };
       }
 
+      connectedCallback() {
+        super.connectedCallback();
+        // Inject HA CSS variables into shadow DOM
+        this.injectHAThemeVars();
+        // Listen for theme changes
+        this.setupThemeObserver();
+      }
+
+      injectHAThemeVars() {
+        // Get computed styles from document body (where HA sets the theme)
+        const bodyStyles = getComputedStyle(document.body);
+
+        // List of HA CSS variables we want to inherit
+        const haVars = [
+          '--primary-color',
+          '--accent-color',
+          '--text-primary-color',
+          '--primary-background-color',
+          '--card-background-color',
+          '--primary-text-color',
+          '--secondary-text-color',
+          '--disabled-text-color',
+          '--divider-color',
+          '--success-color',
+          '--warning-color',
+          '--error-color',
+          '--info-color',
+          '--ha-card-border-radius',
+          '--ha-card-box-shadow',
+          '--secondary-color'
+        ];
+
+        // Create or get style element for theme vars
+        let themeStyle = this.shadowRoot.querySelector('#ha-theme-vars');
+        if (!themeStyle) {
+          themeStyle = document.createElement('style');
+          themeStyle.id = 'ha-theme-vars';
+          this.shadowRoot.appendChild(themeStyle);
+        }
+
+        // Build CSS with all HA variables
+        let cssText = ':host {\n';
+        haVars.forEach(varName => {
+          const value = bodyStyles.getPropertyValue(varName);
+          if (value) {
+            cssText += `  ${varName}: ${value};\n`;
+          }
+        });
+        cssText += '}';
+
+        themeStyle.textContent = cssText;
+        console.log('✅ HA theme variables injected into shadow DOM');
+      }
+
+      setupThemeObserver() {
+        // Watch for theme changes on document.body
+        const observer = new MutationObserver(() => {
+          this.injectHAThemeVars();
+        });
+
+        observer.observe(document.body, {
+          attributes: true,
+          attributeFilter: ['class', 'style']
+        });
+
+        this._themeObserver = observer;
+      }
+
+      disconnectedCallback() {
+        super.disconnectedCallback();
+        if (this._themeObserver) {
+          this._themeObserver.disconnect();
+        }
+      }
+
       static get styles() {
         return css`
           :host {
