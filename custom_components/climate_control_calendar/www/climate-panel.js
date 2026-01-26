@@ -241,14 +241,14 @@ class ClimatePanelCard extends HTMLElement {
     }
   }
 
-  // Load external CSS using adoptedStyleSheets API
+  // Load external CSS by inserting <style> tags
   async loadExternalCSS() {
     if (this.cssLoaded) {
       this.log('ℹ️', 'CSS already loaded, skipping');
       return;
     }
 
-    this.log('📦', 'Loading external CSS via adoptedStyleSheets...');
+    this.log('📦', 'Loading external CSS via <style> tag injection...');
 
     try {
       const cssFiles = [
@@ -257,7 +257,7 @@ class ClimatePanelCard extends HTMLElement {
         '/climate_control_calendar/static/select2-bootstrap-5-theme.min.css'
       ];
 
-      const sheets = [];
+      let loadedCount = 0;
 
       for (const url of cssFiles) {
         try {
@@ -267,19 +267,22 @@ class ClimatePanelCard extends HTMLElement {
             continue;
           }
           const cssText = await response.text();
-          const sheet = new CSSStyleSheet();
-          await sheet.replace(cssText);
-          sheets.push(sheet);
+
+          // Create <style> element and insert CSS
+          const styleEl = document.createElement('style');
+          styleEl.textContent = cssText;
+          this.shadowRoot.insertBefore(styleEl, this.shadowRoot.firstChild);
+
+          loadedCount++;
           this.log('✅', `Loaded CSS: ${url.split('/').pop()} (${(cssText.length / 1024).toFixed(1)} KB)`);
         } catch (err) {
           this.log('❌', `Error loading ${url}:`, err.message);
         }
       }
 
-      if (sheets.length > 0) {
-        this.shadowRoot.adoptedStyleSheets = sheets;
+      if (loadedCount > 0) {
         this.cssLoaded = true;
-        this.log('🎨', `Applied ${sheets.length} stylesheets via adoptedStyleSheets`);
+        this.log('🎨', `Applied ${loadedCount} stylesheets via <style> tag injection`);
       } else {
         this.log('⚠️', 'No stylesheets loaded');
       }
