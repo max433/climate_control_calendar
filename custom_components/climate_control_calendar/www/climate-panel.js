@@ -68,6 +68,144 @@ class I18n {
 // Global i18n instance
 const i18n = new I18n();
 
+// LitElement test component - Load and define
+let LitTestCard = null;
+
+async function loadAndDefineLitComponent() {
+  if (LitTestCard) {
+    console.log('✅ LitElement already loaded');
+    return;
+  }
+
+  try {
+    console.log('⏳ Loading LitElement from CDN...');
+
+    // Dynamic import of LitElement
+    const { LitElement, html, css } = await import('https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js');
+
+    console.log('✅ LitElement loaded, creating test component...');
+
+    // Define test component
+    class LitTestCardComponent extends LitElement {
+      static get properties() {
+        return {
+          counter: { type: Number },
+          message: { type: String }
+        };
+      }
+
+      static get styles() {
+        return css`
+          :host {
+            display: block;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          }
+
+          .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+          }
+
+          h2 {
+            margin: 0 0 16px 0;
+            color: #667eea;
+            font-size: 24px;
+          }
+
+          p {
+            margin: 12px 0;
+            color: #333;
+            font-size: 16px;
+          }
+
+          button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 8px 4px;
+            transition: all 0.2s;
+          }
+
+          button:hover {
+            background: #764ba2;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+          }
+
+          .counter {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+          }
+
+          .success {
+            background: #4caf50;
+            padding: 12px;
+            border-radius: 6px;
+            color: white;
+            margin: 12px 0;
+          }
+        `;
+      }
+
+      constructor() {
+        super();
+        this.counter = 0;
+        this.message = 'LitElement is working in protected panel! 🎉';
+      }
+
+      render() {
+        return html`
+          <div class="card">
+            <h2>✨ LitElement Test Component</h2>
+            <div class="success">
+              <strong>✅ SUCCESS:</strong> ${this.message}
+            </div>
+            <p>This component is:</p>
+            <ul>
+              <li>✅ Built with LitElement 3.x</li>
+              <li>✅ Loaded from CDN dynamically</li>
+              <li>✅ Protected (requires HA login)</li>
+              <li>✅ Has reactive state management</li>
+              <li>✅ Uses Shadow DOM with scoped CSS</li>
+            </ul>
+
+            <div class="counter">Counter: ${this.counter}</div>
+
+            <div>
+              <button @click=${() => this.counter++}>➕ Increment</button>
+              <button @click=${() => this.counter--}>➖ Decrement</button>
+              <button @click=${() => this.counter = 0}>🔄 Reset</button>
+            </div>
+
+            <p style="margin-top: 20px; font-size: 14px; color: #666;">
+              <strong>Next Step:</strong> If this works correctly, we can proceed with full refactoring to LitElement!
+            </p>
+          </div>
+        `;
+      }
+    }
+
+    customElements.define('lit-test-card', LitTestCardComponent);
+    LitTestCard = LitTestCardComponent;
+    console.log('✅ lit-test-card component registered');
+
+  } catch (error) {
+    console.error('❌ Failed to load LitElement:', error);
+  }
+}
+
 class ClimatePanelCard extends HTMLElement {
   constructor() {
     super();
@@ -297,6 +435,9 @@ class ClimatePanelCard extends HTMLElement {
 
     // Load external CSS first
     await this.loadExternalCSS();
+
+    // Load LitElement test component
+    await loadAndDefineLitComponent();
 
     // Then render
     this.render();
@@ -896,6 +1037,9 @@ class ClimatePanelCard extends HTMLElement {
             🐛 ${this.t('status_bar.debug')}: ${this.debugEnabled ? 'ON' : 'OFF'}
           </div>
         </div>
+
+        <!-- LitElement Test Component -->
+        <lit-test-card></lit-test-card>
 
         ${this.debugEnabled ? `
         <div class="card">
