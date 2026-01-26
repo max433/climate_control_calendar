@@ -68,6 +68,244 @@ class I18n {
 // Global i18n instance
 const i18n = new I18n();
 
+// LitElement utilities and components
+let LitElement, html, css;
+let litElementLoaded = false;
+
+// Load LitElement from CDN
+async function loadLitElement() {
+  if (litElementLoaded) {
+    return { LitElement, html, css };
+  }
+
+  try {
+    console.log('⏳ Loading LitElement from CDN...');
+    const lit = await import('https://cdn.jsdelivr.net/gh/lit/dist@3/core/lit-core.min.js');
+    LitElement = lit.LitElement;
+    html = lit.html;
+    css = lit.css;
+    litElementLoaded = true;
+    console.log('✅ LitElement loaded successfully');
+    return { LitElement, html, css };
+  } catch (error) {
+    console.error('❌ Failed to load LitElement:', error);
+    throw error;
+  }
+}
+
+// Mixin for HA theme support in LitElement components
+function HAThemeMixin(BaseClass) {
+  return class extends BaseClass {
+    connectedCallback() {
+      super.connectedCallback();
+      this.injectHAThemeVars();
+      this.setupThemeObserver();
+    }
+
+    disconnectedCallback() {
+      super.disconnectedCallback();
+      if (this._themeObserver) {
+        this._themeObserver.disconnect();
+      }
+    }
+
+    injectHAThemeVars() {
+      // Access parent document (HA main frame)
+      let sourceDoc = document;
+      try {
+        if (window.parent && window.parent !== window && window.parent.document) {
+          sourceDoc = window.parent.document;
+        }
+      } catch (e) {
+        // Cross-origin, use iframe document
+      }
+
+      const htmlStyles = getComputedStyle(sourceDoc.documentElement);
+      const bodyStyles = getComputedStyle(sourceDoc.body);
+      const htmlPrimary = htmlStyles.getPropertyValue('--primary-color');
+      const sourceStyles = htmlPrimary ? htmlStyles : bodyStyles;
+
+      // HA CSS variables to inject
+      const haVars = [
+        '--primary-color', '--accent-color', '--text-primary-color',
+        '--primary-background-color', '--card-background-color',
+        '--primary-text-color', '--secondary-text-color', '--disabled-text-color',
+        '--divider-color', '--success-color', '--warning-color', '--error-color',
+        '--info-color', '--ha-card-border-radius', '--ha-card-box-shadow', '--secondary-color'
+      ];
+
+      let themeStyle = this.shadowRoot.querySelector('#ha-theme-vars');
+      if (!themeStyle) {
+        themeStyle = document.createElement('style');
+        themeStyle.id = 'ha-theme-vars';
+        this.shadowRoot.appendChild(themeStyle);
+      }
+
+      let cssText = ':host {\n';
+      haVars.forEach(varName => {
+        const value = sourceStyles.getPropertyValue(varName);
+        if (value) cssText += `  ${varName}: ${value};\n`;
+      });
+      cssText += '}';
+      themeStyle.textContent = cssText;
+    }
+
+    setupThemeObserver() {
+      let targetDoc = document;
+      try {
+        if (window.parent && window.parent !== window && window.parent.document) {
+          targetDoc = window.parent.document;
+        }
+      } catch (e) {}
+
+      const observer = new MutationObserver(() => this.injectHAThemeVars());
+      observer.observe(targetDoc.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+      });
+      observer.observe(targetDoc.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style']
+      });
+      this._themeObserver = observer;
+    }
+  };
+}
+
+// About Page Component
+class AboutPage extends HAThemeMixin(LitElement) {
+  static get properties() {
+    return {
+      haVersion: { type: String },
+      calendarsCount: { type: Number },
+      climateCount: { type: Number },
+      slotsCount: { type: Number },
+      bindingsCount: { type: Number },
+      dryRun: { type: Boolean },
+      debugMode: { type: Boolean }
+    };
+  }
+
+  static get styles() {
+    return css`
+      :host {
+        display: block;
+      }
+
+      .card {
+        background: var(--card-background-color, #fff);
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
+      }
+
+      h2 {
+        margin: 0 0 24px 0;
+        color: var(--primary-text-color, #212121);
+        font-size: 1.5em;
+      }
+
+      h3 {
+        color: var(--primary-color, #03a9f4);
+        margin: 24px 0 12px 0;
+        font-size: 1.1em;
+      }
+
+      p {
+        color: var(--primary-text-color, #212121);
+        margin: 8px 0;
+        line-height: 1.5;
+      }
+
+      ul {
+        color: var(--secondary-text-color, #757575);
+        margin: 8px 0;
+        padding-left: 24px;
+      }
+
+      li {
+        margin: 6px 0;
+      }
+
+      .config-box {
+        background: var(--primary-background-color, #fafafa);
+        padding: 16px;
+        border-radius: 8px;
+        margin: 12px 0;
+        border: 1px solid var(--divider-color, #e0e0e0);
+      }
+
+      .config-box > div {
+        margin: 8px 0;
+        color: var(--primary-text-color, #212121);
+      }
+
+      a {
+        color: var(--primary-color, #03a9f4);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+    `;
+  }
+
+  constructor() {
+    super();
+    this.haVersion = 'unknown';
+    this.calendarsCount = 0;
+    this.climateCount = 0;
+    this.slotsCount = 0;
+    this.bindingsCount = 0;
+    this.dryRun = false;
+    this.debugMode = false;
+  }
+
+  render() {
+    return html`
+      <div class="card">
+        <h2>ℹ️ About Climate Control Calendar</h2>
+
+        <h3>Version</h3>
+        <p>Web UI Alpha (v${this.haVersion})</p>
+
+        <h3>Description</h3>
+        <p>Climate Control Calendar is a Home Assistant custom integration that automatically controls your climate devices based on calendar events.</p>
+
+        <h3>Features</h3>
+        <ul>
+          <li>Calendar-based climate automation</li>
+          <li>Flexible slot system for climate presets</li>
+          <li>Event matching with regex support</li>
+          <li>Multi-calendar support</li>
+          <li>Priority-based conflict resolution</li>
+          <li>Dry run mode for testing</li>
+        </ul>
+
+        <h3>Current Configuration</h3>
+        <div class="config-box">
+          <div>📅 Calendars: ${this.calendarsCount}</div>
+          <div>🌡️ Climate Entities: ${this.climateCount}</div>
+          <div>🎯 Slots: ${this.slotsCount}</div>
+          <div>🔗 Bindings: ${this.bindingsCount}</div>
+          <div>🔧 Dry Run: ${this.dryRun ? 'Enabled' : 'Disabled'}</div>
+          <div>🐛 Debug: ${this.debugMode ? 'Enabled' : 'Disabled'}</div>
+        </div>
+
+        <h3>Links</h3>
+        <p>
+          <a href="https://github.com/max433/climate_control_calendar" target="_blank">
+            📦 GitHub Repository
+          </a>
+        </p>
+      </div>
+    `;
+  }
+}
+
+// Will be registered after LitElement is loaded
+
 class ClimatePanelCard extends HTMLElement {
   constructor() {
     super();
@@ -244,6 +482,18 @@ class ClimatePanelCard extends HTMLElement {
   // Called when element is connected to the page
   async connectedCallback() {
     this.log('🎨', 'Panel connected to page');
+
+    // Load LitElement and register components
+    try {
+      await loadLitElement();
+      // Register About component
+      if (!customElements.get('about-page')) {
+        customElements.define('about-page', AboutPage);
+        console.log('✅ about-page component registered');
+      }
+    } catch (error) {
+      console.error('❌ Failed to load Lit components:', error);
+    }
 
     // Render
     this.render();
@@ -3684,6 +3934,26 @@ class ClimatePanelCard extends HTMLElement {
   }
 
   renderAboutPage() {
+    // Use LitElement component if available
+    if (customElements.get('about-page')) {
+      // Update component with current data after render
+      setTimeout(() => {
+        const aboutComponent = this.shadowRoot.querySelector('about-page');
+        if (aboutComponent) {
+          aboutComponent.haVersion = this.hass?.config?.version || 'unknown';
+          aboutComponent.calendarsCount = this.calendars.length;
+          aboutComponent.climateCount = this.climate_entities.length;
+          aboutComponent.slotsCount = this.slots.length;
+          aboutComponent.bindingsCount = this.bindings.length;
+          aboutComponent.dryRun = this.dry_run;
+          aboutComponent.debugMode = this.debug_mode;
+        }
+      }, 100);
+
+      return `<about-page></about-page>`;
+    }
+
+    // Fallback to old rendering if Lit not loaded
     return `
       <div class="card">
         <h2>ℹ️ About Climate Control Calendar</h2>
