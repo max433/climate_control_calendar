@@ -198,15 +198,17 @@ The integration is developed in four major milestones, each building upon the pr
 
 Features planned for future versions after stable 1.0 release:
 
-### Version 1.1
-- Multi-calendar support (calendar hierarchy)
-- Slot templates (reusable configurations)
-- Advanced scheduling (date ranges, exceptions)
+### Version 1.1 (In Progress - alpha.23)
+- ✅ Multi-calendar support (calendar hierarchy) - Completed
+- ✅ Jinja2 template support for dynamic climate values - Completed
+- ✅ Conditional binding activation (conditions system) - Completed
+- ✅ Web UI for full configuration management - Completed
+- 🔄 Advanced scheduling (date ranges, exceptions) - Planned
 
 ### Version 1.2
 - Zone-based control (different rooms, different calendars)
 - Climate entity grouping
-- Conditional slot activation (based on weather, occupancy)
+- Enhanced condition system (OR logic support, condition groups)
 
 ### Version 2.0
 - Machine learning for optimal scheduling
@@ -323,12 +325,35 @@ We welcome contributions in these areas:
 
 ---
 
-**Last Updated**: 2026-01-10 (v1.0.0 Release - All Milestones Completed!)
-**Next Review**: Post-release based on user feedback
+**Last Updated**: 2026-01-25 (Web UI, Templates, and Conditions - v1.1.0 alpha)
+**Next Review**: Post-implementation based on testing
 
 ---
 
 ## Changelog
+
+### 2026-01-25 - Web UI, Templates, and Conditions Release 🚀
+- **Post-v1.0 Enhancement**: Advanced features implementation
+- Implemented full-featured Web UI panel at `/climate-control-calendar`
+  - 4-tab interface: Config, Monitor, Charts, About
+  - Complete CRUD for slots and bindings via HTTP API
+  - Real-time monitoring dashboard with active events
+  - Bilingual support (English + Italian) with i18n system
+- Added Jinja2 template support for dynamic climate values
+  - Created `template_helper.py` with template detection and rendering
+  - Support for temperature, target_temp_high, target_temp_low, humidity fields
+  - Re-evaluation every 60s with change detection
+  - Web UI text inputs accept both static values and `{{ }}` templates
+- Implemented smart condition system for binding activation
+  - Created `condition_validator.py` with 4 condition types (state, numeric_state, time, template)
+  - Visual condition builder in Web UI with type-specific forms
+  - ALL conditions must pass (AND logic) for binding activation
+  - Integration with HA native condition evaluator
+- Enhanced engine.py with async condition evaluation and template rendering
+- Enhanced binding_manager.py with condition filtering in resolution flow
+- Updated documentation (README, ARCHITECTURE, decisions.md)
+- Documented 3 new architectural decisions (D036-D038)
+- Version bumped to 1.1.0-alpha.23
 
 ### 2026-01-10 (Evening Final) - v1.0.0 Release 🎉
 - **Milestone 4 Completed**: Documentation, testing, and localization

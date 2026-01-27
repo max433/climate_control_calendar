@@ -14,12 +14,15 @@ from .const import (
     SERVICE_ADD_BINDING,
     SERVICE_REMOVE_BINDING,
     SERVICE_LIST_BINDINGS,
+    SERVICE_GET_CONFIG,
     DATA_COORDINATOR,
     DATA_ENGINE,
     DATA_EVENT_EMITTER,
     DATA_BINDING_MANAGER,
+    DATA_CONFIG,
     CONF_SLOTS,
     CONF_BINDINGS,
+    CONF_CALENDAR_ENTITIES,
     SLOT_ID,
     SLOT_LABEL,
     SLOT_CLIMATE_PAYLOAD,
@@ -301,6 +304,43 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         _LOGGER.warning("No binding manager found")
         return {"bindings": []}
 
+    async def handle_get_config(call: ServiceCall) -> dict[str, Any]:
+        """
+        Handle get_config service call - returns full configuration for frontend.
+
+        Returns:
+            Dict with slots, bindings, and calendar entities
+        """
+        _LOGGER.info("Service call: get_config (for frontend)")
+
+        # Get first available config entry data
+        for entry_data in hass.data.get(DOMAIN, {}).values():
+            config = entry_data.get(DATA_CONFIG, {})
+
+            slots = config.get(CONF_SLOTS, [])
+            bindings = config.get(CONF_BINDINGS, [])
+            calendars = config.get(CONF_CALENDAR_ENTITIES, [])
+
+            _LOGGER.info(
+                "Returning config: slots=%d, bindings=%d, calendars=%d",
+                len(slots),
+                len(bindings),
+                len(calendars),
+            )
+
+            return {
+                "slots": slots,
+                "bindings": bindings,
+                "calendars": calendars,
+            }
+
+        _LOGGER.warning("No config data found")
+        return {
+            "slots": [],
+            "bindings": [],
+            "calendars": [],
+        }
+
     # Register services
     hass.services.async_register(
         DOMAIN,
@@ -339,8 +379,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         supports_response=True,  # This service returns data
     )
 
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_CONFIG,
+        handle_get_config,
+        schema=vol.Schema({}),  # No parameters needed
+        supports_response=True,  # This service returns data
+    )
+
     _LOGGER.info(
-        "Services registered: add_slot, remove_slot, add_binding, remove_binding, list_bindings"
+        "Services registered: add_slot, remove_slot, add_binding, remove_binding, list_bindings, get_config"
     )
 
 
@@ -357,6 +405,7 @@ async def async_unload_services(hass: HomeAssistant) -> None:
         hass.services.async_remove(DOMAIN, SERVICE_REMOVE_SLOT)
         hass.services.async_remove(DOMAIN, SERVICE_ADD_BINDING)
         hass.services.async_remove(DOMAIN, SERVICE_REMOVE_BINDING)
+        hass.services.async_remove(DOMAIN, SERVICE_GET_CONFIG)
         hass.services.async_remove(DOMAIN, SERVICE_LIST_BINDINGS)
 
         _LOGGER.info("Services unregistered")

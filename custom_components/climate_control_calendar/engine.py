@@ -19,6 +19,7 @@ from .const import (
     LOG_PREFIX_DRY_RUN,
 )
 from .events import EventEmitter
+from .template_helper import render_climate_payload
 
 if TYPE_CHECKING:
     from .applier import ClimatePayloadApplier
@@ -72,6 +73,10 @@ class ClimateControlEngine:
         # Format: dict[entity_id] = (slot_id, binding_id)
         self._previous_applied_state: dict[str, tuple[str, str]] = {}
 
+        # Track previous rendered payloads for template change detection
+        # Format: dict[entity_id] = rendered_payload_dict
+        self._previous_applied_payloads: dict[str, dict[str, Any]] = {}
+
         _LOGGER.info(
             "%s Engine initialized | Dry Run: %s | Debug: %s | Bindings: %s | Applier: %s",
             LOG_PREFIX_ENGINE,
@@ -81,7 +86,7 @@ class ClimateControlEngine:
             "enabled" if applier else "disabled",
         )
 
-    def resolve_slots_for_active_events(
+    async def resolve_slots_for_active_events(
         self,
         active_events: list[dict[str, Any]],
         available_slots: list[dict[str, Any]],
@@ -135,7 +140,7 @@ class ClimateControlEngine:
                 )
 
             # Resolve slot for this event via binding manager (returns 4-tuple or None)
-            result = self.binding_manager.resolve_slot_for_event(
+            result = await self.binding_manager.resolve_slot_for_event(
                 event=event,
                 calendar_id=calendar_id,
                 available_slots=available_slots,
@@ -222,7 +227,7 @@ class ClimateControlEngine:
             )
 
         # Slot resolution via bindings (Decision D032: Event-driven architecture)
-        resolved_bindings = self.resolve_slots_for_active_events(
+        resolved_bindings = await self.resolve_slots_for_active_events(
             active_events=active_events,
             available_slots=slots,
         )
@@ -329,22 +334,49 @@ class ClimateControlEngine:
         # Now compare current_state with _previous_applied_state and apply only changes
         entities_to_apply_changes: list[tuple[str, str, dict[str, Any], dict[str, Any], str, dict[str, str]]] = []
 
-        # Check for new/changed bindings
+        # Check for new/changed bindings or changed payloads
         for entity_id, (slot_id, binding_id, slot, target_entities, event_summary, binding_metadata) in current_state.items():
             prev_state = self._previous_applied_state.get(entity_id)
 
-            if prev_state is None or prev_state != (slot_id, binding_id):
-                # State changed or new binding
+            # Build current payload for this entity (with entity_overrides if applicable)
+            default_payload = slot.get("default_climate_payload", {})
+            entity_overrides = slot.get("entity_overrides", {})
+
+            # Merge default payload with entity-specific override
+            current_payload = default_payload.copy()
+            if entity_id in entity_overrides:
+                current_payload.update(entity_overrides[entity_id])
+
+            # Render templates in current payload
+            rendered_current_payload = render_climate_payload(self.hass, current_payload)
+
+            # Get previous rendered payload
+            prev_rendered_payload = self._previous_applied_payloads.get(entity_id)
+
+            # Detect changes: binding changed OR payload changed
+            binding_changed = prev_state is None or prev_state != (slot_id, binding_id)
+            payload_changed = prev_rendered_payload != rendered_current_payload
+
+            if binding_changed or payload_changed:
+                # State or payload changed - apply
+                change_reason = []
+                if binding_changed:
+                    change_reason.append(f"binding: {prev_state} → {(slot_id, binding_id)}")
+                if payload_changed:
+                    change_reason.append(f"payload changed")
+
                 entities_to_apply_changes.append((entity_id, slot_id, slot, binding_metadata, event_summary, {"action": "apply"}))
+
                 _LOGGER.info(
-                    "%s [CHANGE DETECTED] Entity %s: %s → %s (binding: %s, event: '%s')",
+                    "%s [CHANGE DETECTED] Entity %s: %s (event: '%s')",
                     LOG_PREFIX_ENGINE,
                     entity_id,
-                    prev_state if prev_state else "None",
-                    (slot_id, binding_id),
-                    binding_id,
+                    ", ".join(change_reason),
                     event_summary,
                 )
+
+                # Update tracked payload
+                self._previous_applied_payloads[entity_id] = rendered_current_payload
 
         # Check for removed bindings (entities that had binding before but not anymore)
         for entity_id, prev_state in self._previous_applied_state.items():
@@ -355,6 +387,10 @@ class ClimateControlEngine:
                     entity_id,
                     prev_state,
                 )
+                # Clean up payload tracking for removed entity
+                if entity_id in self._previous_applied_payloads:
+                    del self._previous_applied_payloads[entity_id]
+
                 # Note: We don't have a "clear" slot to apply here
                 # The entity will just keep its last applied state until next binding
                 # If you want to reset to default, you'd need to implement a default slot

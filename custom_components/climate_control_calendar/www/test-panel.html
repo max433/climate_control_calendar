@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Climate Control Test Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            padding: 40px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 3em;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.2em;
+            margin: 20px 0;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ff88;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .info-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .info-label {
+            font-size: 0.9em;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #00d4ff;
+        }
+
+        .success {
+            color: #00ff88;
+        }
+
+        code {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎉 Climate Control Panel</h1>
+
+        <div class="card">
+            <div class="status">
+                <div class="status-dot"></div>
+                <span class="success">Panel is LIVE!</span>
+            </div>
+            <p>Se vedi questa pagina, il panel funziona correttamente! ✨</p>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 15px;">📊 Live Info</h2>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Current Time</div>
+                    <div class="info-value" id="time">--:--:--</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Page Loads</div>
+                    <div class="info-value" id="counter">0</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value success">Active</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Integration</div>
+                    <div class="info-value">Climate Control</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 15px;">✅ Next Steps</h2>
+            <ol style="line-height: 1.8; padding-left: 20px;">
+                <li>✓ Panel HTML statico funziona</li>
+                <li>→ Aggiungere comunicazione WebSocket con Home Assistant</li>
+                <li>→ Mostrare dati reali dall'integrazione (slots, bindings, calendari)</li>
+                <li>→ Aggiungere componenti interattivi (Lit web components)</li>
+                <li>→ Implementare UI completa per gestione configurazione</li>
+            </ol>
+        </div>
+
+        <div class="card">
+            <h2 style="margin-bottom: 15px;">🔧 Technical Details</h2>
+            <p><strong>Integration:</strong> <code>climate_control_calendar</code></p>
+            <p><strong>Panel Type:</strong> Custom HTML (iframe embedded)</p>
+            <p><strong>Framework:</strong> None (plain HTML for testing)</p>
+            <p style="margin-top: 15px; color: #aaa; font-size: 0.9em;">
+                Questo è un test panel minimale per verificare che la registrazione funzioni correttamente.
+                Una volta confermato, procederemo con l'implementazione di una UI moderna e interattiva.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Simple counter in localStorage
+        let count = parseInt(localStorage.getItem('pageLoads') || '0') + 1;
+        localStorage.setItem('pageLoads', count.toString());
+        document.getElementById('counter').textContent = count;
+
+        // Update time every second
+        function updateTime() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('it-IT', {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            document.getElementById('time').textContent = timeStr;
+        }
+
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        // Log to console for debugging
+        console.log('🎉 Climate Control Test Panel loaded successfully!');
+        console.log('Page loads:', count);
+    </script>
+</body>
+</html>

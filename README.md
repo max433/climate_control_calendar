@@ -38,12 +38,14 @@ A Home Assistant custom integration that manages climate devices (thermostats, v
 - **Multi-Calendar Support**: Monitor multiple calendars simultaneously
 - **Conflict Resolution**: Automatic priority-based resolution for overlapping events
 - **Target Entity Flexibility**: Global pool + per-binding overrides + per-slot exclusions
+- **🎨 Jinja2 Templates**: Dynamic climate values based on sensors (e.g., outdoor temp + 2°C)
+- **🎯 Smart Conditions**: Activate bindings only when criteria met (temp thresholds, window state, time ranges)
 
 ### 🛠️ Developer-Friendly
 - **Dry Run Mode**: Test without touching real devices
 - **Rich Event System**: 10+ event types for automation triggers
 - **Debug Logging**: Comprehensive logs for troubleshooting
-- **GUI Configuration**: Everything configurable through UI (no YAML)
+- **Web UI Configuration**: Full-featured panel for slots, bindings, templates, and conditions
 - **Service Calls**: Manual override and control services
 
 ## 🚀 Installation
@@ -137,6 +139,102 @@ A Home Assistant custom integration that manages climate devices (thermostats, v
 ```
 
 **📖 For detailed architecture explanation, see [ARCHITECTURE.md](ARCHITECTURE.md)**
+
+---
+
+## 🧠 Decision Engine
+
+Climate Control Calendar uses an intelligent decision engine that evaluates calendar events, conditions, and templates to determine the optimal climate settings.
+
+### Resolution Flow
+
+```
+1. 📅 Active Events Detection (every 60s)
+   ↓
+2. 🔗 Pattern Matching (bindings)
+   ↓
+3. ✅ Condition Evaluation (optional smart filters)
+   ↓
+4. ⚡ Priority Resolution (highest wins)
+   ↓
+5. 🎚️ Slot Activation (climate profile)
+   ↓
+6. 🌡️ Template Rendering (dynamic values)
+   ↓
+7. 🔄 Change Detection (apply only if different)
+   ↓
+8. 🎯 Entity Application (control devices)
+```
+
+### 🎨 Template Support
+
+**Make climate values dynamic with Jinja2 templates:**
+
+```yaml
+# Static value
+temperature: 21.5
+
+# Dynamic template
+temperature: "{{ states('input_number.target_temp') | float }}"
+
+# Complex logic
+temperature: "{{ states('sensor.outdoor_temp') | float + 2 }}"
+humidity: "{{ 60 if states('sensor.outdoor_humidity') | int > 70 else 50 }}"
+```
+
+**Supported fields:** temperature, target_temp_high, target_temp_low, humidity
+
+**Benefits:**
+- Adapt to outdoor temperature sensors
+- Use input helpers for user-adjustable targets
+- Calculate relative temperatures (outdoor + offset)
+- Smooth transitions based on conditions
+
+**Change Detection:** Templates are re-evaluated every 60 seconds. If the rendered value changes, settings are re-applied automatically.
+
+### 🎯 Condition Support
+
+**Add smart activation logic to bindings:**
+
+Conditions allow bindings to activate only when specific criteria are met. All conditions must pass (AND logic).
+
+**Example - Heating only if cold outside + window closed:**
+
+```yaml
+bindings:
+  - id: smart_heating
+    match:
+      type: summary_contains
+      value: "WFH"
+    conditions:
+      - type: numeric_state
+        entity_id: sensor.external_temp
+        below: 15
+      - type: state
+        entity_id: binary_sensor.window
+        state: 'off'
+    slot_id: comfort_slot
+    priority: 10
+```
+
+**Supported Condition Types:**
+
+| Type | Description | Example Use Case |
+|------|-------------|------------------|
+| `state` | Check entity state | Window closed, presence detected |
+| `numeric_state` | Numeric comparison (above/below) | Temperature thresholds, battery levels |
+| `time` | Time range + weekday filter | Work hours only, weekend schedules |
+| `template` | Custom Jinja2 logic | Complex multi-sensor conditions |
+
+**Behavior Notes:**
+- Conditions are evaluated every 60 seconds (same as template rendering)
+- When conditions become false, entities keep their last applied state
+- Use multiple bindings with different priorities to handle state transitions
+- Conditions can contain templates for dynamic threshold logic
+
+**Configuration:** Conditions and templates are configured via the Web UI (Settings → Devices & Services → Climate Control Calendar → Configure).
+
+---
 
 ## 💡 Quick Start Examples
 
@@ -309,8 +407,11 @@ data:
 - Multi-calendar support with priority resolution
 - Retry logic with error handling
 
-**🔄 Milestone 4** (Polish & Release) - In Progress:
-- Italian translations ✅
+**✅ Milestone 4** (Polish & Release) - Completed:
+- Italian translations
+- Full-featured Web UI for configuration
+- Jinja2 template support for dynamic climate values
+- Smart condition system for binding activation
 - Documentation (README, debugging guide, API reference)
 - Unit tests for critical paths
 - v1.0.0 release preparation
