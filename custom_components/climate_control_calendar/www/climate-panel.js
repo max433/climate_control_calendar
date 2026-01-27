@@ -315,6 +315,43 @@ function defineComponents() {
 
   // Charts Page Component
   ChartsPage = class extends HAThemeMixin(LitElement) {
+    static get properties() {
+      return {
+        statusData: { type: Object },
+        slots: { type: Array }
+      };
+    }
+
+    constructor() {
+      super();
+      this.statusData = null;
+      this.slots = [];
+      // Demo data for statistics
+      this.demoStats = {
+        totalEvents: 156,
+        avgTemperature: 21.5,
+        heatingHours: 847,
+        coolingHours: 234,
+        energySaved: 15,
+        weeklyData: [
+          { day: 'Mon', heating: 4.2, cooling: 1.0, events: 8 },
+          { day: 'Tue', heating: 5.1, cooling: 0.5, events: 12 },
+          { day: 'Wed', heating: 3.8, cooling: 1.2, events: 6 },
+          { day: 'Thu', heating: 4.5, cooling: 0.8, events: 10 },
+          { day: 'Fri', heating: 3.2, cooling: 1.5, events: 9 },
+          { day: 'Sat', heating: 6.0, cooling: 0.3, events: 4 },
+          { day: 'Sun', heating: 5.5, cooling: 0.2, events: 5 }
+        ],
+        hvacModes: [
+          { mode: 'heat', percentage: 65, color: '#ff5722' },
+          { mode: 'cool', percentage: 18, color: '#2196f3' },
+          { mode: 'auto', percentage: 12, color: '#9c27b0' },
+          { mode: 'off', percentage: 5, color: '#9e9e9e' }
+        ],
+        temperatureHistory: [19, 20, 21, 22, 21, 20, 19, 20, 21, 22, 23, 22]
+      };
+    }
+
     static get styles() {
       return css`
         :host {
@@ -325,65 +362,417 @@ function defineComponents() {
           background: var(--card-background-color, #fff);
           border-radius: 12px;
           padding: 24px;
+          margin-bottom: 20px;
           box-shadow: var(--ha-card-box-shadow, 0 2px 8px rgba(0,0,0,0.1));
         }
 
         h2 {
-          margin: 0 0 24px 0;
+          margin: 0 0 20px 0;
           color: var(--primary-text-color, #212121);
           font-size: 1.5em;
         }
 
-        .placeholder {
-          color: var(--secondary-text-color, #757575);
-          text-align: center;
-          padding: 40px 20px;
-          line-height: 1.8;
+        h3 {
+          margin: 0 0 16px 0;
+          color: var(--primary-text-color, #212121);
+          font-size: 1.1em;
         }
 
-        .placeholder-icon {
-          font-size: 4em;
+        .demo-badge {
+          display: inline-block;
+          background: var(--warning-color, #ff9800);
+          color: white;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 0.75em;
+          margin-left: 10px;
+          vertical-align: middle;
+        }
+
+        /* Stats Summary Grid */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+          gap: 16px;
           margin-bottom: 20px;
-          opacity: 0.3;
         }
 
-        .feature-list {
-          list-style: none;
-          padding: 0;
-          margin: 20px 0 0 0;
+        .stat-card {
+          background: var(--primary-background-color, #fafafa);
+          border-radius: 12px;
+          padding: 20px;
+          text-align: center;
+          border: 1px solid var(--divider-color, #e0e0e0);
+          transition: transform 0.2s, box-shadow 0.2s;
         }
 
-        .feature-list li {
-          margin: 8px 0;
+        .stat-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .stat-icon {
+          font-size: 2em;
+          margin-bottom: 8px;
+        }
+
+        .stat-value {
+          font-size: 1.8em;
+          font-weight: bold;
+          color: var(--primary-color, #03a9f4);
+          margin-bottom: 4px;
+        }
+
+        .stat-label {
+          font-size: 0.85em;
           color: var(--secondary-text-color, #757575);
         }
 
-        .feature-list li::before {
-          content: "• ";
-          color: var(--primary-color, #03a9f4);
+        /* Bar Chart */
+        .bar-chart {
+          display: flex;
+          align-items: flex-end;
+          justify-content: space-around;
+          height: 200px;
+          padding: 20px 0;
+          border-bottom: 2px solid var(--divider-color, #e0e0e0);
+        }
+
+        .bar-group {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          flex: 1;
+        }
+
+        .bar-container {
+          display: flex;
+          gap: 4px;
+          align-items: flex-end;
+          height: 160px;
+        }
+
+        .bar {
+          width: 20px;
+          border-radius: 4px 4px 0 0;
+          transition: height 0.5s ease;
+          min-height: 4px;
+        }
+
+        .bar.heating {
+          background: linear-gradient(to top, #ff5722, #ff8a65);
+        }
+
+        .bar.cooling {
+          background: linear-gradient(to top, #2196f3, #64b5f6);
+        }
+
+        .bar-label {
+          margin-top: 8px;
+          font-size: 0.8em;
+          color: var(--secondary-text-color, #757575);
+          font-weight: 500;
+        }
+
+        .chart-legend {
+          display: flex;
+          justify-content: center;
+          gap: 24px;
+          margin-top: 16px;
+        }
+
+        .legend-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.85em;
+          color: var(--secondary-text-color, #757575);
+        }
+
+        .legend-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 3px;
+        }
+
+        .legend-dot.heating {
+          background: #ff5722;
+        }
+
+        .legend-dot.cooling {
+          background: #2196f3;
+        }
+
+        /* Horizontal Bar Chart (HVAC Modes) */
+        .horizontal-bars {
+          margin-top: 12px;
+        }
+
+        .h-bar-row {
+          display: flex;
+          align-items: center;
+          margin: 12px 0;
+        }
+
+        .h-bar-label {
+          width: 60px;
+          font-size: 0.9em;
+          color: var(--primary-text-color, #212121);
+          text-transform: capitalize;
+        }
+
+        .h-bar-track {
+          flex: 1;
+          height: 24px;
+          background: var(--primary-background-color, #fafafa);
+          border-radius: 12px;
+          overflow: hidden;
+          margin: 0 12px;
+          border: 1px solid var(--divider-color, #e0e0e0);
+        }
+
+        .h-bar-fill {
+          height: 100%;
+          border-radius: 12px;
+          transition: width 0.8s ease;
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          padding-right: 8px;
+        }
+
+        .h-bar-value {
+          width: 45px;
+          text-align: right;
+          font-size: 0.9em;
+          font-weight: 600;
+          color: var(--primary-text-color, #212121);
+        }
+
+        /* Temperature Sparkline */
+        .sparkline-container {
+          background: var(--primary-background-color, #fafafa);
+          border-radius: 8px;
+          padding: 16px;
+          margin-top: 12px;
+          border: 1px solid var(--divider-color, #e0e0e0);
+        }
+
+        .sparkline {
+          display: flex;
+          align-items: flex-end;
+          height: 60px;
+          gap: 4px;
+        }
+
+        .spark-bar {
+          flex: 1;
+          background: linear-gradient(to top, var(--primary-color, #03a9f4), var(--accent-color, #00bcd4));
+          border-radius: 2px;
+          min-height: 8px;
+          transition: height 0.3s ease;
+        }
+
+        .sparkline-labels {
+          display: flex;
+          justify-content: space-between;
+          margin-top: 8px;
+          font-size: 0.75em;
+          color: var(--secondary-text-color, #757575);
+        }
+
+        /* Events List */
+        .events-summary {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .event-stat {
+          background: var(--primary-background-color, #fafafa);
+          padding: 16px;
+          border-radius: 8px;
+          border-left: 4px solid var(--primary-color, #03a9f4);
+        }
+
+        .event-stat-value {
+          font-size: 1.5em;
           font-weight: bold;
-          margin-right: 8px;
+          color: var(--primary-text-color, #212121);
+        }
+
+        .event-stat-label {
+          font-size: 0.85em;
+          color: var(--secondary-text-color, #757575);
+          margin-top: 4px;
+        }
+
+        /* Info Box */
+        .info-box {
+          background: var(--info-color, #2196f3);
+          color: white;
+          padding: 12px 16px;
+          border-radius: 8px;
+          margin-bottom: 20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .info-box-icon {
+          font-size: 1.5em;
+        }
+
+        .info-box-text {
+          font-size: 0.9em;
+          line-height: 1.4;
         }
       `;
     }
 
     render() {
+      const stats = this.demoStats;
+      const maxHours = Math.max(...stats.weeklyData.map(d => d.heating + d.cooling));
+
       return html`
+        <!-- Info Banner -->
+        <div class="info-box">
+          <span class="info-box-icon">ℹ️</span>
+          <span class="info-box-text">
+            This page shows demo statistics. Real data integration will be available in future versions.
+          </span>
+        </div>
+
+        <!-- Summary Statistics -->
         <div class="card">
-          <h2>📈 Charts & Statistics</h2>
-          <div class="placeholder">
-            <div class="placeholder-icon">📊</div>
-            <p>Charts and statistics dashboard coming soon!</p>
-            <p>This will show:</p>
-            <ul class="feature-list">
-              <li>Temperature history graphs</li>
-              <li>Usage statistics</li>
-              <li>Event frequency charts</li>
-              <li>Energy consumption trends</li>
-            </ul>
+          <h2>📊 Overview Statistics <span class="demo-badge">DEMO</span></h2>
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">📅</div>
+              <div class="stat-value">${stats.totalEvents}</div>
+              <div class="stat-label">Total Events</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🌡️</div>
+              <div class="stat-value">${stats.avgTemperature}°</div>
+              <div class="stat-label">Avg Temperature</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🔥</div>
+              <div class="stat-value">${stats.heatingHours}h</div>
+              <div class="stat-label">Heating Hours</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">❄️</div>
+              <div class="stat-value">${stats.coolingHours}h</div>
+              <div class="stat-label">Cooling Hours</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">💚</div>
+              <div class="stat-value">${stats.energySaved}%</div>
+              <div class="stat-label">Energy Saved</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Weekly Usage Chart -->
+        <div class="card">
+          <h2>📈 Weekly Usage</h2>
+          <div class="bar-chart">
+            ${stats.weeklyData.map(day => html`
+              <div class="bar-group">
+                <div class="bar-container">
+                  <div class="bar heating" style="height: ${(day.heating / maxHours) * 140}px" title="${day.heating}h heating"></div>
+                  <div class="bar cooling" style="height: ${(day.cooling / maxHours) * 140}px" title="${day.cooling}h cooling"></div>
+                </div>
+                <div class="bar-label">${day.day}</div>
+              </div>
+            `)}
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item">
+              <div class="legend-dot heating"></div>
+              <span>Heating</span>
+            </div>
+            <div class="legend-item">
+              <div class="legend-dot cooling"></div>
+              <span>Cooling</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HVAC Mode Distribution -->
+        <div class="card">
+          <h2>🎛️ HVAC Mode Distribution</h2>
+          <div class="horizontal-bars">
+            ${stats.hvacModes.map(mode => html`
+              <div class="h-bar-row">
+                <div class="h-bar-label">${this._getModeIcon(mode.mode)} ${mode.mode}</div>
+                <div class="h-bar-track">
+                  <div class="h-bar-fill" style="width: ${mode.percentage}%; background: ${mode.color};">
+                  </div>
+                </div>
+                <div class="h-bar-value">${mode.percentage}%</div>
+              </div>
+            `)}
+          </div>
+        </div>
+
+        <!-- Temperature Trend -->
+        <div class="card">
+          <h2>📉 Temperature Trend (Last 12h)</h2>
+          <div class="sparkline-container">
+            <div class="sparkline">
+              ${stats.temperatureHistory.map(temp => {
+                const minTemp = Math.min(...stats.temperatureHistory);
+                const maxTemp = Math.max(...stats.temperatureHistory);
+                const range = maxTemp - minTemp || 1;
+                const height = ((temp - minTemp) / range) * 100;
+                return html`<div class="spark-bar" style="height: ${Math.max(height, 10)}%" title="${temp}°C"></div>`;
+              })}
+            </div>
+            <div class="sparkline-labels">
+              <span>12h ago</span>
+              <span>6h ago</span>
+              <span>Now</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Events Summary -->
+        <div class="card">
+          <h2>📅 Events Summary</h2>
+          <div class="events-summary">
+            <div class="event-stat">
+              <div class="event-stat-value">${Math.round(stats.totalEvents / 7)}</div>
+              <div class="event-stat-label">Avg events per day</div>
+            </div>
+            <div class="event-stat">
+              <div class="event-stat-value">${stats.weeklyData.reduce((a, b) => a + b.events, 0)}</div>
+              <div class="event-stat-label">Events this week</div>
+            </div>
+            <div class="event-stat">
+              <div class="event-stat-value">${Math.max(...stats.weeklyData.map(d => d.events))}</div>
+              <div class="event-stat-label">Peak day events</div>
+            </div>
+            <div class="event-stat">
+              <div class="event-stat-value">${Math.round((stats.heatingHours + stats.coolingHours) / 30)}</div>
+              <div class="event-stat-label">Avg hours/day active</div>
+            </div>
           </div>
         </div>
       `;
+    }
+
+    _getModeIcon(mode) {
+      const icons = {
+        'heat': '🔥',
+        'cool': '❄️',
+        'auto': '🤖',
+        'off': '⭕'
+      };
+      return icons[mode] || '❓';
     }
   };
 
@@ -1291,16 +1680,32 @@ class ClimatePanelCard extends HTMLElement {
           position: relative;
         }
 
-        /* Custom Hamburger Menu */
+        /* Page Header with space for hamburger menu */
+        .container > h1 {
+          margin: 0 0 8px 0;
+          padding-left: 56px;
+          color: var(--primary-text-color, #212121);
+          font-size: 1.5em;
+          font-weight: 500;
+        }
+
+        .container > .subtitle {
+          margin: 0 0 20px 0;
+          padding-left: 56px;
+          color: var(--secondary-text-color, #757575);
+          font-size: 0.9em;
+        }
+
+        /* HA-Style Hamburger Menu */
         .hamburger-menu {
           position: fixed;
-          top: 20px;
-          left: 20px;
-          width: 40px;
-          height: 40px;
-          background: var(--card-background-color, #fff);
-          border: 1px solid var(--divider-color, #e0e0e0);
-          border-radius: 8px;
+          top: 16px;
+          left: 16px;
+          width: 48px;
+          height: 48px;
+          background: transparent;
+          border: none;
+          border-radius: 50%;
           cursor: pointer;
           display: flex;
           flex-direction: column;
@@ -1308,49 +1713,85 @@ class ClimatePanelCard extends HTMLElement {
           align-items: center;
           gap: 5px;
           z-index: 1001;
-          transition: all 0.3s;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+          transition: background 0.2s ease;
         }
 
         .hamburger-menu:hover {
-          background: var(--primary-background-color, #fafafa);
-          border-color: var(--primary-color, #03a9f4);
-          box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
+        }
+
+        .hamburger-menu:active {
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.12));
         }
 
         .hamburger-line {
-          width: 24px;
+          width: 20px;
           height: 2px;
-          background: var(--primary-color, #03a9f4);
-          transition: all 0.3s;
+          background: var(--primary-text-color, #212121);
+          transition: all 0.3s ease;
+          border-radius: 1px;
         }
 
         .hamburger-menu.open .hamburger-line:nth-child(1) {
-          transform: rotate(45deg) translateY(7px);
+          transform: rotate(45deg) translate(5px, 5px);
         }
 
         .hamburger-menu.open .hamburger-line:nth-child(2) {
           opacity: 0;
+          transform: scaleX(0);
         }
 
         .hamburger-menu.open .hamburger-line:nth-child(3) {
-          transform: rotate(-45deg) translateY(-7px);
+          transform: rotate(-45deg) translate(5px, -5px);
         }
 
-        /* Custom Sidebar */
+        /* HA-Style Sidebar */
         .sidebar {
           position: fixed;
           top: 0;
           left: ${this.sidebarOpen ? '0' : '-280px'};
           width: 280px;
           height: 100%;
-          background: var(--card-background-color, #fff);
-          border-right: 1px solid var(--divider-color, #e0e0e0);
-          transition: left 0.3s ease;
+          background: var(--sidebar-background-color, var(--card-background-color, #fff));
+          border-right: none;
+          transition: left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 1000;
           overflow-y: auto;
-          padding: 80px 20px 20px 20px;
-          box-shadow: 2px 0 8px rgba(0, 0, 0, 0.1);
+          overflow-x: hidden;
+          box-shadow: var(--ha-card-box-shadow, 0 2px 6px 0 rgba(0, 0, 0, 0.15));
+          display: flex;
+          flex-direction: column;
+        }
+
+        .sidebar-header {
+          padding: 16px 16px 8px 16px;
+          border-bottom: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+          margin-bottom: 8px;
+        }
+
+        .sidebar-title {
+          font-size: 1.1em;
+          font-weight: 500;
+          color: var(--primary-text-color, #212121);
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .sidebar-title-icon {
+          font-size: 1.4em;
+        }
+
+        .sidebar-subtitle {
+          font-size: 0.8em;
+          color: var(--secondary-text-color, #757575);
+          margin-top: 4px;
+          margin-left: 36px;
+        }
+
+        .sidebar-nav {
+          padding: 8px;
+          flex: 1;
         }
 
         .sidebar-overlay {
@@ -1359,36 +1800,59 @@ class ClimatePanelCard extends HTMLElement {
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.4);
           display: ${this.sidebarOpen ? 'block' : 'none'};
           z-index: 999;
+          opacity: ${this.sidebarOpen ? '1' : '0'};
+          transition: opacity 0.25s ease;
         }
 
         .nav-item {
+          display: flex;
+          align-items: center;
           padding: 12px 16px;
-          margin: 4px 0;
-          border-radius: 6px;
+          margin: 2px 0;
+          border-radius: 28px;
           cursor: pointer;
-          transition: all 0.2s;
-          border-left: 3px solid transparent;
+          transition: background 0.15s ease;
           color: var(--primary-text-color, #212121);
+          font-size: 0.95em;
+          font-weight: 400;
+          text-decoration: none;
+          user-select: none;
         }
 
         .nav-item:hover {
-          background: var(--primary-background-color, #fafafa);
-          border-left-color: var(--primary-color, #03a9f4);
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.06));
+        }
+
+        .nav-item:active {
+          background: var(--secondary-background-color, rgba(0, 0, 0, 0.12));
         }
 
         .nav-item.active {
-          background: var(--primary-background-color, #fafafa);
-          border-left-color: var(--primary-color, #03a9f4);
-          font-weight: 600;
+          background: color-mix(in srgb, var(--primary-color, #03a9f4) 12%, transparent);
           color: var(--primary-color, #03a9f4);
+          font-weight: 500;
+        }
+
+        .nav-item.active:hover {
+          background: color-mix(in srgb, var(--primary-color, #03a9f4) 18%, transparent);
         }
 
         .nav-item-icon {
-          font-size: 1.2em;
-          margin-right: 10px;
+          font-size: 1.3em;
+          margin-right: 16px;
+          width: 24px;
+          text-align: center;
+        }
+
+        .sidebar-footer {
+          padding: 16px;
+          border-top: 1px solid var(--divider-color, rgba(0, 0, 0, 0.12));
+          font-size: 0.75em;
+          color: var(--secondary-text-color, #757575);
+          text-align: center;
         }
 
         /* Custom Status Bar */
@@ -1648,21 +2112,33 @@ class ClimatePanelCard extends HTMLElement {
 
       <!-- Sidebar -->
       <div class="sidebar">
-        <div class="nav-item ${this.currentPage === 'config' ? 'active' : ''}" data-page="config">
-          <span class="nav-item-icon">⚙️</span>
-          ${this.t('navigation.config')}
+        <div class="sidebar-header">
+          <div class="sidebar-title">
+            <span class="sidebar-title-icon">🌡️</span>
+            Climate Control
+          </div>
+          <div class="sidebar-subtitle">Calendar Integration</div>
         </div>
-        <div class="nav-item ${this.currentPage === 'monitor' ? 'active' : ''}" data-page="monitor">
-          <span class="nav-item-icon">📊</span>
-          ${this.t('navigation.monitor')}
-        </div>
-        <div class="nav-item ${this.currentPage === 'charts' ? 'active' : ''}" data-page="charts">
-          <span class="nav-item-icon">📈</span>
-          ${this.t('navigation.charts')}
-        </div>
-        <div class="nav-item ${this.currentPage === 'about' ? 'active' : ''}" data-page="about">
-          <span class="nav-item-icon">ℹ️</span>
-          ${this.t('navigation.about')}
+        <nav class="sidebar-nav">
+          <div class="nav-item ${this.currentPage === 'config' ? 'active' : ''}" data-page="config">
+            <span class="nav-item-icon">⚙️</span>
+            ${this.t('navigation.config')}
+          </div>
+          <div class="nav-item ${this.currentPage === 'monitor' ? 'active' : ''}" data-page="monitor">
+            <span class="nav-item-icon">📊</span>
+            ${this.t('navigation.monitor')}
+          </div>
+          <div class="nav-item ${this.currentPage === 'charts' ? 'active' : ''}" data-page="charts">
+            <span class="nav-item-icon">📈</span>
+            ${this.t('navigation.charts')}
+          </div>
+          <div class="nav-item ${this.currentPage === 'about' ? 'active' : ''}" data-page="about">
+            <span class="nav-item-icon">ℹ️</span>
+            ${this.t('navigation.about')}
+          </div>
+        </nav>
+        <div class="sidebar-footer">
+          Alpha Version
         </div>
       </div>
 
